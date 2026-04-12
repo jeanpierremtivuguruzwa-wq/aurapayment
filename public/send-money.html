@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Send Money - Aura payment</title>
+    <!-- Firebase SDKs (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f7fafc; padding-bottom: 2rem; }
+        .main { max-width: 800px; margin: 20px auto; padding: 0 1rem; }
+        .card { background: white; padding: 1.5rem; border-radius: 24px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .grid { display: flex; flex-direction: column; gap: 12px; margin: 20px 0; }
+        .option { border: 2px solid #e2e8f0; padding: 1rem; border-radius: 16px; cursor: pointer; transition: all 0.2s; }
+        .option:hover { border-color: #0b1b3a; transform: translateY(-2px); }
+        .option.selected { border-color: #0b1b3a; background: #f0f4ff; }
+        .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 0.5rem; }
+        .row:last-child { border-bottom: none; }
+        button { padding: 12px 24px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; min-height: 48px; }
+        .primary { background: #0b1b3a; color: white; }
+        .primary:hover { background: #1a2b4a; }
+        .primary:disabled { background: #9ca3af; cursor: not-allowed; }
+        .secondary { background: white; border: 2px solid #e2e8f0; color: #4a5568; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; margin: 8px 0; }
+        input:focus, select:focus { outline: none; border-color: #0b1b3a; }
+        .helper-text { font-size: 0.85rem; color: #718096; margin-top: 4px; }
+        .copy-btn { background: none; border: none; cursor: pointer; color: #718096; font-size: 1rem; margin-left: 8px; }
+        .copy-success { color: #059669; font-size: 0.8rem; margin-left: 8px; }
+        .how-to-pay { background: #f7fafc; padding: 16px; border-radius: 12px; margin-top: 16px; display: none; }
+        .support-link { display: inline-block; margin-top: 16px; color: #0b1b3a; text-decoration: underline; cursor: pointer; font-size: 0.9rem; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; border-radius: 24px; max-width: 500px; width: 90%; padding: 1.5rem; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-modal { background: none; border: none; font-size: 1.2rem; cursor: pointer; }
+        .amount-input { margin: 16px 0; }
+        .error-msg { color: #e53e3e; font-size: 0.85rem; margin-top: 4px; }
+        .loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; display: flex; justify-content: center; align-items: center; z-index: 2000; font-size: 1.2rem; color: #0b1b3a; }
+        @media (min-width: 640px) { .grid { flex-direction: row; gap: 15px; } .option { flex: 1; } }
+        @media (max-width: 480px) { .card { padding: 1rem; } .row { flex-direction: column; align-items: flex-start; } button { width: 100%; } .modal-content { width: 95%; padding: 1rem; } }
+    </style>
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen">Verifying authentication...</div>
+
+    <div class="main" id="mainContent" style="display: none;">
+        <!-- Step 1: Delivery Method & Amount -->
+        <div id="step1" class="card">
+            <h2>Send Money</h2>
+            <div class="amount-input">
+                <label><strong>Amount to send</strong> (minimum 100)</label>
+                <input type="number" id="sendAmountInput" min="100" step="1" value="10000">
+                <div class="helper-text">Enter amount in your selected currency</div>
+                <div id="amountError" class="error-msg" style="display: none;">Amount must be at least 100</div>
+            </div>
+            <h3>Choose Delivery Method</h3>
+            <div id="deliveryOptions" class="grid"></div>
+            <button class="primary" onclick="nextStep(2)">Continue</button>
+        </div>
+
+        <!-- Step 2: Recipient Details -->
+        <div id="step2" class="card" style="display: none;">
+            <h2>Recipient Details</h2>
+            <input id="recipientName" placeholder="Full name" required>
+            <label id="providerLabel" style="display: block; margin-top: 16px;">Provider</label>
+            <select id="provider"></select>
+            <div id="phoneGroup" style="margin-top: 16px;"><input id="phoneNumber" placeholder="Phone number"></div>
+            <div id="accountGroup" style="margin-top: 16px; display: none;"><input id="accountNumber" placeholder="Account number"></div>
+            <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                <button class="secondary" onclick="prevStep(1)">Back</button>
+                <button class="primary" onclick="nextStep(3)">Continue</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Payment Method -->
+        <div id="step3" class="card" style="display: none;">
+            <h2>Make Payment</h2>
+            <div id="paymentOptions" class="grid"></div>
+            <div id="paymentDetails"></div>
+            <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+                <button class="secondary" onclick="prevStep(2)">Back</button>
+                <button class="primary" onclick="nextStep(4)">Continue to Upload Proof</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Upload Proof -->
+        <div id="step4" class="card" style="display: none;">
+            <h2>Upload Payment Proof</h2>
+            <div style="border: 2px dashed #e2e8f0; border-radius: 16px; padding: 40px 20px; text-align: center;">
+                <div style="font-size: 3rem; margin-bottom: 12px;">📎</div>
+                <h3 style="margin-bottom: 8px;">Drag and drop or click to upload</h3>
+                <p style="color: #718096; margin-bottom: 16px;">Supported: JPG, PNG, PDF (Max 10MB)</p>
+                <input type="file" accept="image/*,.pdf" style="display: none;" id="fileInput">
+                <button class="primary" onclick="document.getElementById('fileInput').click()">Choose File</button>
+                <div id="selectedFileName" style="margin-top: 12px; font-size: 0.85rem; color: #0b1b3a;"></div>
+            </div>
+            <div style="text-align: center; margin-top: 16px;">
+                <a href="#" class="support-link" onclick="openSupportModal(event)">❓ Need help? Contact Support</a>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+                <button class="secondary" onclick="prevStep(3)">Back</button>
+                <button class="primary" id="submitTransactionBtn" onclick="completeTransaction()">Submit & Complete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Support Modal -->
+    <div id="supportModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Contact Support</h3><button class="close-modal" onclick="closeSupportModal()">✕</button></div>
+            <p style="margin-bottom: 16px;">Describe your issue and we'll get back to you shortly.</p>
+            <form id="supportForm">
+                <input type="text" id="supportName" placeholder="Your Name" required>
+                <input type="email" id="supportEmail" placeholder="Email" required>
+                <input type="text" id="supportSubject" placeholder="Subject" required>
+                <textarea id="supportMessage" rows="4" placeholder="Message" required style="width: 100%; padding: 8px; margin-top: 12px;"></textarea>
+                <input type="file" id="supportAttachment" accept="image/*,.pdf" style="margin-top: 12px;">
+                <button type="submit" class="primary" style="margin-top: 16px; width: 100%;">Send Message</button>
+                <div id="supportMessageStatus" class="helper-text" style="margin-top: 12px;"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDlz5mH-x7P7H6FNdPj62PYhqAY5hsH19A",
+            authDomain: "aura-payment.firebaseapp.com",
+            projectId: "aura-payment",
+            storageBucket: "aura-payment.firebasestorage.app",
+            messagingSenderId: "213847107667",
+            appId: "1:213847107667:web:9949c7a1ad9101959afea6",
+            measurementId: "G-YG1G8CGC07"
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        // ❌ REMOVED Storage Emulator – now using live Firebase Storage with deployed security rules
+        // (The emulator was causing 'storage/unauthorized' because it wasn't running or had no rules)
+
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        auth.onAuthStateChanged((user) => {
+            const loadingScreen = document.getElementById('loadingScreen');
+            if (!user) {
+                alert('Please log in to send money.');
+                window.location.href = 'signin.html';
+                return;
+            }
+            loadingScreen.style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            window.currentUser = user;
+            initializeSendMoneyPage(user);
+        });
+
+        let transactionData, selectedDelivery, globalCardHolder, amountInput, amountError;
+        let sendAmount, sendCurrency, receiveCurrency, liveRate;
+
+        function initializeSendMoneyPage(user) {
+            const urlParams = new URLSearchParams(window.location.search);
+            sendAmount = parseFloat(urlParams.get('amount')) || 10000;
+            sendCurrency = urlParams.get('send') || 'RUB';
+            receiveCurrency = urlParams.get('receive') || 'XOF';
+            liveRate = parseFloat(urlParams.get('rate')) || 6.72;
+            if (sendAmount < 100) sendAmount = 100;
+
+            transactionData = {
+                sendAmount: sendAmount,
+                sendCurrency: sendCurrency,
+                receiveCurrency: receiveCurrency,
+                rate: liveRate,
+                receiveAmount: sendAmount * liveRate,
+                recipientName: '',
+                provider: '',
+                phoneNumber: '',
+                accountNumber: '',
+                paymentMethod: null,
+                deliveryMethod: null,
+                proofFileName: null,
+                userId: user.uid,
+                userEmail: user.email,
+                timestamp: null
+            };
+
+            selectedDelivery = (sendCurrency === 'XOF' || sendCurrency === 'XAF') ? 'bank' : 'mobile';
+            globalCardHolder = "AURA PAYMENT";
+
+            amountInput = document.getElementById('sendAmountInput');
+            amountError = document.getElementById('amountError');
+            amountInput.value = sendAmount;
+            amountInput.addEventListener('input', function() {
+                let val = parseFloat(this.value);
+                if (isNaN(val)) val = 0;
+                if (val < 100) amountError.style.display = 'block';
+                else amountError.style.display = 'none';
+                transactionData.sendAmount = val;
+                transactionData.receiveAmount = val * liveRate;
+            });
+
+            renderDeliveryOptions();
+        }
+
+        function renderDeliveryOptions() {
+            const container = document.getElementById('deliveryOptions');
+            container.innerHTML = '';
+            if (sendCurrency === 'XOF' || sendCurrency === 'XAF') {
+                container.innerHTML = `<div class="option selected" data-delivery="bank"><h3>Bank Account</h3><p>Transfer to a bank account</p></div>`;
+                selectedDelivery = 'bank';
+                transactionData.deliveryMethod = 'bank';
+                updateRecipientForm('bank');
+            } else {
+                container.innerHTML = `
+                    <div class="option" data-delivery="mobile"><span style="background:#d1fae5; color:#059669; padding:2px 8px; border-radius:20px;">Recommended</span><h3>Mobile Money</h3><p>Fastest for popular corridors</p></div>
+                    <div class="option" data-delivery="bank"><h3>Bank Account</h3><p>Use a bank account number</p></div>
+                `;
+                document.querySelectorAll('.option').forEach(opt => {
+                    opt.addEventListener('click', () => {
+                        document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+                        opt.classList.add('selected');
+                        selectedDelivery = opt.getAttribute('data-delivery');
+                        transactionData.deliveryMethod = selectedDelivery;
+                        updateRecipientForm(selectedDelivery);
+                    });
+                });
+                document.querySelector('.option[data-delivery="mobile"]').classList.add('selected');
+                selectedDelivery = 'mobile';
+                transactionData.deliveryMethod = 'mobile';
+                updateRecipientForm('mobile');
+            }
+        }
+
+        function updateRecipientForm(deliveryType) {
+            const providerSelect = document.getElementById('provider');
+            const providerLabel = document.getElementById('providerLabel');
+            const phoneGroup = document.getElementById('phoneGroup');
+            const accountGroup = document.getElementById('accountGroup');
+            if (deliveryType === 'mobile') {
+                providerLabel.textContent = 'Mobile Money Provider';
+                providerSelect.innerHTML = `<option value="">Select provider</option><option value="mtn">MTN Momo</option><option value="airtel">Airtel Money</option><option value="orange">Orange Money</option>`;
+                phoneGroup.style.display = 'block';
+                accountGroup.style.display = 'none';
+            } else {
+                providerLabel.textContent = 'Bank Provider';
+                providerSelect.innerHTML = `<option value="">Select bank</option><option value="sber">Sber Bank</option><option value="tinkoff">Tinkoff Bank</option><option value="alfa">Alfa Bank</option>`;
+                phoneGroup.style.display = 'none';
+                accountGroup.style.display = 'block';
+            }
+        }
+
+        function getPaymentOptions() {
+            if (sendCurrency === 'RUB') {
+                return { type: 'rub', options: [{ id: 'sber', name: 'Sber • CARD', fee: 100, feeLabel: '+100 RUB fee' }, { id: 'cash', name: 'Cash', fee: 0, feeLabel: null }] };
+            } else {
+                return { type: 'cfa', options: [{ id: 'mtn', name: 'MTN Money', phone: '671234567', reference: 'MTN-671234567' }, { id: 'airtel', name: 'Airtel Money', phone: '651234567', reference: 'AIRTEL-651234567' }, { id: 'orange', name: 'Orange Money', phone: '691234567', reference: 'ORANGE-691234567' }] };
+            }
+        }
+
+        let paymentConfig;
+        function renderPaymentStep() {
+            paymentConfig = getPaymentOptions();
+            const container = document.getElementById('paymentOptions');
+            const detailsDiv = document.getElementById('paymentDetails');
+            container.innerHTML = '';
+            detailsDiv.innerHTML = '';
+            if (paymentConfig.type === 'rub') {
+                paymentConfig.options.forEach(opt => {
+                    const amount = (transactionData.sendAmount + opt.fee).toFixed(2);
+                    const div = document.createElement('div');
+                    div.className = 'option';
+                    if (opt.id === 'sber') div.classList.add('selected');
+                    div.setAttribute('data-payment-id', opt.id);
+                    div.onclick = () => selectPayment(opt.id);
+                    div.innerHTML = `<div style="display: flex; justify-content: space-between;"><strong>${amount} ${sendCurrency}</strong>${opt.feeLabel ? `<span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:20px;">${opt.feeLabel}</span>` : ''}</div><div>${opt.name}</div><div style="margin-top: 8px;">${opt.id === 'sber' ? 'SELECTED' : 'SELECT'}</div>`;
+                    container.appendChild(div);
+                });
+                if (!transactionData.paymentMethod) transactionData.paymentMethod = 'sber';
+                renderRubDetails();
+            } else {
+                paymentConfig.options.forEach(opt => {
+                    const div = document.createElement('div');
+                    div.className = 'option';
+                    if (opt.id === 'mtn') div.classList.add('selected');
+                    div.setAttribute('data-payment-id', opt.id);
+                    div.onclick = () => selectPayment(opt.id);
+                    div.innerHTML = `<strong>${transactionData.sendAmount.toFixed(2)} ${sendCurrency}</strong><br>${opt.name}<br><div style="margin-top: 8px;">${opt.id === 'mtn' ? 'SELECTED' : 'SELECT'}</div>`;
+                    container.appendChild(div);
+                });
+                if (!transactionData.paymentMethod) transactionData.paymentMethod = 'mtn';
+                renderCfaDetails();
+            }
+        }
+
+        function renderRubDetails() {
+            const selectedId = transactionData.paymentMethod;
+            const opt = paymentConfig.options.find(o => o.id === selectedId);
+            if (!opt) return;
+            const amount = (transactionData.sendAmount + opt.fee).toFixed(2);
+            const detailsDiv = document.getElementById('paymentDetails');
+            if (selectedId === 'sber') {
+                detailsDiv.innerHTML = `<div class="card" style="margin-top: 20px;"><h3>PAYMENT DETAILS • Sber</h3><div class="row"><span>AMOUNT TO PAY</span><span>${amount} ${sendCurrency}</span></div><div class="row"><span>BANK NAME</span><span>Sber</span></div><div class="row"><span>CARD NUMBER</span><span>2202 0000 0000 0000 <button class="copy-btn" onclick="copyText('2202 0000 0000 0000', this)">📋</button><span class="copy-success" style="display:none;">Copied!</span></span></div><div class="row"><span>CARD HOLDER</span><span>${escapeHtml(globalCardHolder)}</span></div></div>`;
+            } else {
+                detailsDiv.innerHTML = `<div class="card" style="margin-top: 20px;"><h3>PAYMENT DETAILS • Cash</h3><div class="row"><span>AMOUNT TO PAY</span><span>${amount} ${sendCurrency}</span></div><div class="row"><span>BANK NAME</span><span>Sber</span></div><div class="row"><span>CARD NUMBER</span><span>2202 0000 0000 0000 <button class="copy-btn" onclick="copyText('2202 0000 0000 0000', this)">📋</button><span class="copy-success" style="display:none;">Copied!</span></span></div><div class="row"><span>CARD HOLDER</span><span>${escapeHtml(globalCardHolder)}</span></div><div style="margin-top: 16px;"><button class="secondary" onclick="toggleHowToPay(this)">🔔 How to pay</button></div><div class="how-to-pay"><ol><li>Visit any Sberbank branch with cash.</li><li>Provide the card details above.</li><li>Make the payment and keep the receipt.</li></ol></div></div>`;
+            }
+        }
+
+        function renderCfaDetails() {
+            const selectedId = transactionData.paymentMethod;
+            const opt = paymentConfig.options.find(o => o.id === selectedId);
+            if (!opt) return;
+            const detailsDiv = document.getElementById('paymentDetails');
+            detailsDiv.innerHTML = `<div class="card" style="margin-top: 20px;"><h3>PAYMENT DETAILS • ${opt.name}</h3><div class="row"><span>AMOUNT TO PAY</span><span>${transactionData.sendAmount.toFixed(2)} ${sendCurrency}</span></div><div class="row"><span>PHONE NUMBER</span><span>${opt.phone} <button class="copy-btn" onclick="copyText('${opt.phone}', this)">📋</button><span class="copy-success" style="display:none;">Copied!</span></span></div><div class="row"><span>REFERENCE</span><span>${opt.reference} <button class="copy-btn" onclick="copyText('${opt.reference}', this)">📋</button><span class="copy-success" style="display:none;">Copied!</span></span></div><div class="helper-text">Use your mobile money app to send the exact amount to this phone number.</div></div>`;
+        }
+
+        function selectPayment(methodId) {
+            transactionData.paymentMethod = methodId;
+            document.querySelectorAll('#paymentOptions .option').forEach(opt => {
+                opt.classList.remove('selected');
+                if (opt.getAttribute('data-payment-id') === methodId) {
+                    opt.classList.add('selected');
+                    const selectDiv = opt.querySelector('div:last-child');
+                    if (selectDiv) selectDiv.textContent = 'SELECTED';
+                } else {
+                    const selectDiv = opt.querySelector('div:last-child');
+                    if (selectDiv) selectDiv.textContent = 'SELECT';
+                }
+            });
+            if (paymentConfig.type === 'rub') renderRubDetails();
+            else renderCfaDetails();
+        }
+
+        function toggleHowToPay(btn) {
+            const howToPayDiv = btn.closest('.card').querySelector('.how-to-pay');
+            if (howToPayDiv) howToPayDiv.style.display = howToPayDiv.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function copyText(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                const successSpan = btn.nextElementSibling;
+                if (successSpan) {
+                    successSpan.style.display = 'inline';
+                    setTimeout(() => successSpan.style.display = 'none', 2000);
+                }
+            }).catch(() => alert('Unable to copy. Please copy manually.'));
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        function nextStep(step) {
+            if (step === 2) {
+                let amount = parseFloat(amountInput.value);
+                if (isNaN(amount) || amount < 100) {
+                    amountError.style.display = 'block';
+                    alert('Please enter a valid amount (minimum 100).');
+                    return;
+                }
+                transactionData.sendAmount = amount;
+                transactionData.receiveAmount = amount * liveRate;
+                amountError.style.display = 'none';
+            } else if (step === 3) {
+                const name = document.getElementById('recipientName').value.trim();
+                const provider = document.getElementById('provider').value;
+                const phone = document.getElementById('phoneNumber').value.trim();
+                const account = document.getElementById('accountNumber').value.trim();
+                if (!name || !provider) { alert('Please fill in recipient name and provider.'); return; }
+                if (selectedDelivery === 'mobile' && !phone) { alert('Please enter recipient phone number.'); return; }
+                if (selectedDelivery === 'bank' && !account) { alert('Please enter recipient account number.'); return; }
+                transactionData.recipientName = name;
+                transactionData.provider = provider;
+                transactionData.phoneNumber = phone;
+                transactionData.accountNumber = account;
+                renderPaymentStep();
+            }
+            document.getElementById('step1').style.display = 'none';
+            document.getElementById('step2').style.display = 'none';
+            document.getElementById('step3').style.display = 'none';
+            document.getElementById('step4').style.display = 'none';
+            document.getElementById(`step${step}`).style.display = 'block';
+        }
+
+        function prevStep(step) { nextStep(step); }
+
+        function openSupportModal(event) {
+            event.preventDefault();
+            const modal = document.getElementById('supportModal');
+            const user = auth.currentUser;
+            if (user) {
+                document.getElementById('supportName').value = user.displayName || user.email.split('@')[0];
+                document.getElementById('supportEmail').value = user.email;
+            }
+            const subject = `Help with transaction (${transactionData.sendAmount} ${transactionData.sendCurrency} → ${transactionData.receiveCurrency})`;
+            const message = `I need assistance with my transaction:\n- Amount: ${transactionData.sendAmount} ${transactionData.sendCurrency}\n- Recipient: ${transactionData.recipientName || 'Not yet entered'}\n- Provider: ${transactionData.provider || 'Not yet entered'}\n- Phone: ${transactionData.phoneNumber || 'Not yet entered'}\n- Account: ${transactionData.accountNumber || 'Not yet entered'}\n- Payment method: ${transactionData.paymentMethod || 'Not selected'}\n- Exchange rate: 1 ${transactionData.sendCurrency} = ${transactionData.rate} ${transactionData.receiveCurrency}\n- Receive amount: ${transactionData.receiveAmount} ${transactionData.receiveCurrency}\n\nPlease help me resolve this issue.`;
+            document.getElementById('supportSubject').value = subject;
+            document.getElementById('supportMessage').value = message;
+            modal.style.display = 'flex';
+        }
+
+        function closeSupportModal() { document.getElementById('supportModal').style.display = 'none'; }
+
+        document.getElementById('supportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = { id: Date.now(), name: document.getElementById('supportName').value, email: document.getElementById('supportEmail').value, subject: document.getElementById('supportSubject').value, message: document.getElementById('supportMessage').value, attachmentName: document.getElementById('supportAttachment').files[0]?.name || null, transactionData: transactionData, userId: auth.currentUser?.uid, date: new Date().toISOString() };
+            let supportTickets = JSON.parse(localStorage.getItem('supportTickets') || '[]');
+            supportTickets.push(formData);
+            localStorage.setItem('supportTickets', JSON.stringify(supportTickets));
+            const msgDiv = document.getElementById('supportMessageStatus');
+            msgDiv.textContent = 'Message sent! Our support team will contact you soon.';
+            msgDiv.style.color = '#059669';
+            setTimeout(() => { closeSupportModal(); msgDiv.textContent = ''; }, 2000);
+        });
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                const fileName = e.target.files[0].name;
+                document.getElementById('selectedFileName').textContent = `Selected: ${fileName}`;
+                transactionData.proofFileName = fileName;
+            } else {
+                document.getElementById('selectedFileName').textContent = '';
+            }
+        });
+
+        // ========== FIXED completeTransaction – uses live Storage, correct path ==========
+        async function completeTransaction() {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput || fileInput.files.length === 0) {
+                alert('Please upload a proof of payment image or PDF.');
+                return;
+            }
+
+            const user = auth.currentUser;
+            if (!user) {
+                alert('You must be logged in.');
+                window.location.href = 'signin.html';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            // Sanitize file name to avoid special characters
+            const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+            const fileName = `proof_${Date.now()}_${user.uid}_${safeName}`;
+            // Path must match the storage rule: proofs/{userId}/...
+            const storageRef = storage.ref(`proofs/${user.uid}/${fileName}`);
+
+            const submitBtn = document.getElementById('submitTransactionBtn');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Uploading proof...';
+            submitBtn.disabled = true;
+
+            console.log('Uploading to:', storageRef.fullPath);
+            console.log('File size:', file.size, 'bytes');
+
+            try {
+                // Upload to live Firebase Storage (emulator removed)
+                const snapshot = await storageRef.put(file);
+                const downloadURL = await snapshot.ref.getDownloadURL();
+                console.log('Upload success! URL:', downloadURL);
+
+                // Save transaction to Firestore
+                const transactionRecord = {
+                    userId: user.uid,
+                    userEmail: user.email,
+                    amountSent: transactionData.sendAmount,
+                    currencySent: transactionData.sendCurrency,
+                    amountReceived: transactionData.receiveAmount,
+                    currencyReceived: transactionData.receiveCurrency,
+                    rate: transactionData.rate,
+                    recipientName: transactionData.recipientName,
+                    provider: transactionData.provider,
+                    phoneNumber: transactionData.phoneNumber,
+                    accountNumber: transactionData.accountNumber,
+                    paymentMethod: transactionData.paymentMethod,
+                    deliveryMethod: transactionData.deliveryMethod,
+                    proofFileName: fileName,
+                    proofDownloadURL: downloadURL,
+                    status: 'pending',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                await db.collection('transactions').add(transactionRecord);
+                alert('Transaction submitted successfully! Our team will verify your payment proof.');
+                window.location.href = 'history.html';
+            } catch (error) {
+                console.error('Upload or save error:', error);
+                alert('Failed to submit transaction: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        }
+    </script>
+</body>
+</html>

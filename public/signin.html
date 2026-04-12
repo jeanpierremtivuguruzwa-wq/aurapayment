@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+    <title>Sign In - Aura payment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #f7fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 440px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #0b1b3a;
+            margin-bottom: 1.8rem;
+            letter-spacing: -0.3px;
+        }
+
+        .signin-card {
+            background: white;
+            border-radius: 32px;
+            padding: 2rem 1.8rem;
+            box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s ease;
+        }
+
+        h2 {
+            color: #0b1b3a;
+            margin-bottom: 1.8rem;
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            color: #2d3748;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            background: #ffffff;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #0b1b3a;
+            box-shadow: 0 0 0 3px rgba(11, 27, 58, 0.1);
+        }
+
+        .forgot-password {
+            text-align: right;
+            margin-bottom: 1.8rem;
+        }
+
+        .forgot-password a {
+            color: #4a5568;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .forgot-password a:hover {
+            color: #0b1b3a;
+            text-decoration: underline;
+        }
+
+        .signin-btn {
+            width: 100%;
+            padding: 0.9rem;
+            background: #0b1b3a;
+            color: white;
+            border: none;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .signin-btn:hover {
+            background: #1f2f4f;
+        }
+
+        .signin-btn:active {
+            transform: scale(0.98);
+        }
+
+        .signup-link {
+            text-align: center;
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .signup-link a {
+            color: #0b1b3a;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+
+        /* Modal overlay for password reset */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0.2s, opacity 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-container {
+            background: white;
+            max-width: 440px;
+            width: 90%;
+            border-radius: 36px;
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            transform: scale(0.96);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.active .modal-container {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid #edf2f7;
+            background: #fefefe;
+        }
+
+        .modal-header h3 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #0b1b3a;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: #718096;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .close-modal:hover {
+            color: #e53e3e;
+        }
+
+        .modal-body {
+            padding: 1.8rem 1.5rem 2rem;
+        }
+
+        .step-buttons {
+            margin-top: 1.8rem;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: #0b1b3a;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.2rem;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            flex: 1;
+            transition: background 0.2s;
+        }
+
+        .btn-secondary {
+            background: #edf2f7;
+            color: #2d3748;
+            border: none;
+            padding: 0.8rem 1.2rem;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            flex: 1;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #1f2f4f;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        .info-message {
+            background: #eef2ff;
+            padding: 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #1e3a8a;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .inline-error {
+            color: #e53e3e;
+            font-size: 0.8rem;
+            margin-top: 0.3rem;
+            display: block;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .back-link a {
+            color: #4a5568;
+            font-size: 0.85rem;
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .signin-card {
+                padding: 1.5rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            .logo {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="logo">Aura payment</div>
+
+    <div class="signin-card">
+        <h2>Welcome Back</h2>
+
+        <div id="feedbackMessage" style="display: none; padding: 1rem; border-radius: 12px; margin-bottom: 1rem; text-align: center;"></div>
+
+        <form id="signinForm">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" placeholder="hello@aura.com" required autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" required autocomplete="current-password">
+            </div>
+
+            <div class="forgot-password">
+                <a href="#" id="forgotPasswordBtn">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="signin-btn" id="submitBtn">
+                Sign In
+            </button>
+
+            <div class="signup-link">
+                Don't have an account? <a href="signup.html">Create account</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Password Reset Modal -->
+<div id="resetModal" class="modal-overlay">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3>🔐 Reset password</h3>
+            <button class="close-modal" id="closeResetModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom: 1rem; color: #4a5568;">Enter your email address and we’ll send you a link to reset your password.</p>
+            <div class="form-group">
+                <label>Email address</label>
+                <input type="email" id="resetEmail" placeholder="your@email.com" autocomplete="off">
+                <span id="resetEmailError" class="inline-error" style="display: none;"></span>
+            </div>
+            <div class="step-buttons">
+                <button class="btn-primary" id="sendResetLinkBtn">Send reset link</button>
+                <button class="btn-secondary" id="cancelResetBtn">Cancel</button>
+            </div>
+            <div class="back-link">
+                <a href="#" id="backToSigninFromReset">← Back to sign in</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+
+    // Firebase configuration (must match your project)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDlz5mH-x7P7H6FNdPj62PYhqAY5hsH19A",
+        authDomain: "aura-payment.firebaseapp.com",
+        projectId: "aura-payment",
+        storageBucket: "aura-payment.firebasestorage.app",
+        messagingSenderId: "213847107667",
+        appId: "1:213847107667:web:9949c7a1ad9101959afea6",
+        measurementId: "G-YG1G8CGC07"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // DOM elements
+    const signinForm = document.getElementById('signinForm');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const submitBtn = document.getElementById('submitBtn');
+    const feedbackDiv = document.getElementById('feedbackMessage');
+
+    // Sign in handler
+    signinForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        
+        feedbackDiv.style.display = 'none';
+        
+        if (!email || !password) {
+            feedbackDiv.style.display = 'block';
+            feedbackDiv.style.background = '#fed7d7';
+            feedbackDiv.style.color = '#742a2a';
+            feedbackDiv.innerHTML = '⚠️ Please fill in both fields';
+            return;
+        }
+        
+        submitBtn.disabled = true;
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = '⏳ Signing in...';
+        
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            
+            // Build the user object
+            const fullName = user.displayName || email.split('@')[0];
+            const displayName = user.displayName || email.split('@')[0];
+            
+            const userData = {
+                uid: user.uid,
+                email: user.email,
+                fullName: fullName,
+                full_name: fullName,
+                displayName: displayName,
+                display_name: displayName,
+                emailVerified: user.emailVerified
+            };
+            
+            localStorage.setItem('currentUser', JSON.stringify(userData));
+            localStorage.setItem('aura_user_profile', JSON.stringify({
+                uid: user.uid,
+                email: user.email,
+                fullName: fullName,
+                displayName: displayName
+            }));
+            
+            feedbackDiv.style.display = 'block';
+            feedbackDiv.style.background = '#c6f6d5';
+            feedbackDiv.style.color = '#22543d';
+            feedbackDiv.innerHTML = '✅ Sign in successful! Redirecting...';
+            
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';   // CHANGED from index.html
+            }, 1200);
+            
+        } catch (error) {
+            console.error('Firebase sign-in error:', error.code);
+            let errorMsg = 'Invalid email or password.';
+            if (error.code === 'auth/user-not-found') errorMsg = 'No account found with this email.';
+            if (error.code === 'auth/wrong-password') errorMsg = 'Incorrect password.';
+            if (error.code === 'auth/too-many-requests') errorMsg = 'Too many failed attempts. Try again later.';
+            if (error.code === 'auth/invalid-email') errorMsg = 'Please enter a valid email address.';
+            
+            feedbackDiv.style.display = 'block';
+            feedbackDiv.style.background = '#fed7d7';
+            feedbackDiv.style.color = '#742a2a';
+            feedbackDiv.innerHTML = `❌ ${errorMsg}`;
+            
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    });
+    
+    // ---------- Password Reset Modal ----------
+    const resetModal = document.getElementById('resetModal');
+    const resetEmailInput = document.getElementById('resetEmail');
+    const sendResetLinkBtn = document.getElementById('sendResetLinkBtn');
+    const cancelResetBtn = document.getElementById('cancelResetBtn');
+    const closeResetModalBtn = document.getElementById('closeResetModalBtn');
+    const backToSigninFromReset = document.getElementById('backToSigninFromReset');
+    const resetEmailError = document.getElementById('resetEmailError');
+    
+    function openResetModal() {
+        resetEmailInput.value = '';
+        resetEmailError.style.display = 'none';
+        resetModal.classList.add('active');
+    }
+    
+    function closeResetModal() {
+        resetModal.classList.remove('active');
+    }
+    
+    document.getElementById('forgotPasswordBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        openResetModal();
+    });
+    
+    sendResetLinkBtn.addEventListener('click', async () => {
+        const email = resetEmailInput.value.trim();
+        if (!email) {
+            resetEmailError.textContent = 'Please enter your email address';
+            resetEmailError.style.display = 'block';
+            return;
+        }
+        
+        sendResetLinkBtn.disabled = true;
+        sendResetLinkBtn.textContent = 'Sending...';
+        
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert('✅ Password reset email sent! Check your inbox (and spam folder).');
+            closeResetModal();
+        } catch (error) {
+            let errorMsg = 'Unable to send reset email. ';
+            if (error.code === 'auth/user-not-found') errorMsg = 'No account found with this email.';
+            if (error.code === 'auth/invalid-email') errorMsg = 'Please enter a valid email address.';
+            resetEmailError.textContent = errorMsg;
+            resetEmailError.style.display = 'block';
+        } finally {
+            sendResetLinkBtn.disabled = false;
+            sendResetLinkBtn.textContent = 'Send reset link';
+        }
+    });
+    
+    cancelResetBtn.addEventListener('click', closeResetModal);
+    closeResetModalBtn.addEventListener('click', closeResetModal);
+    backToSigninFromReset.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeResetModal();
+    });
+    
+    resetModal.addEventListener('click', (e) => {
+        if (e.target === resetModal) closeResetModal();
+    });
+    
+    // Demo auto-fill
+    const demoHint = document.createElement('div');
+    demoHint.style.fontSize = '0.75rem';
+    demoHint.style.textAlign = 'center';
+    demoHint.style.marginTop = '12px';
+    demoHint.style.color = '#718096';
+    demoHint.innerHTML = `💡 Demo: demo@aurapay.com / demo123 &nbsp;&nbsp;|&nbsp; <span style="cursor:pointer; color:#0b1b3a; text-decoration:underline;" id="quickDemoFill">Auto-fill demo</span>`;
+    document.querySelector('.signin-card').appendChild(demoHint);
+    
+    const quickFill = document.getElementById('quickDemoFill');
+    if (quickFill) {
+        quickFill.addEventListener('click', () => {
+            emailInput.value = 'demo@aurapay.com';
+            passwordInput.value = 'demo123';
+        });
+    }
+</script>
+</body>
+</html>

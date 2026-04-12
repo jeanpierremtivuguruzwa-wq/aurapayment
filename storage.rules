@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow users to read/write their own proofs folder
+    match /proofs/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // (Optional) Allow public read for resized images (if you use the image resizer)
+    match /thumbs/{allPaths=**} {
+      allow read: if true;
+    }
+    
+    // Default deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

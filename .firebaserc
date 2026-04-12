@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "aura-payment"
+  },
+  "targets": {},
+  "etags": {
+    "aura-payment": {
+      "extensionInstances": {
+        "firestore-bigquery-export": "e7fbc52c6ca54c321337683f422e40d176af73e97b0badeeaa553d09cc773d6b",
+        "storage-resize-images": "25cb082c270c142d8f31abc37311ce0b9cb70ccd219734e687962ffb9a7250fa"
+      }
+    }
+  }
+}

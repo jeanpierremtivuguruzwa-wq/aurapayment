@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Aura payment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #f7fafc;
+            padding: 2rem;
+        }
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 5%;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 2rem;
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0b1b3a;
+        }
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        .nav-menu a {
+            text-decoration: none;
+            color: #4a5568;
+            font-weight: 500;
+            padding: 0.5rem 0;
+        }
+        .nav-menu a.active {
+            color: #0b1b3a;
+            border-bottom: 2px solid #0b1b3a;
+        }
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .user-name {
+            color: #2d3748;
+            font-weight: 500;
+        }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: #0b1b3a;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        .main-content {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        h1 {
+            margin-bottom: 1.5rem;
+            color: #0b1b3a;
+        }
+        label {
+            display: block;
+            margin-top: 1rem;
+            font-weight: 500;
+            color: #2d3748;
+        }
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 0.25rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+        }
+        button {
+            width: 100%;
+            margin-top: 2rem;
+            padding: 0.75rem;
+            background: #0b1b3a;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #1a2b4a;
+        }
+        .message {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 12px;
+            display: none;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            display: block;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            display: block;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            text-align: center;
+            width: 100%;
+            color: #718096;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Aura payment</div>
+        <div class="nav-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="send-money.html">Send Money</a>
+            <a href="history.html">History</a>
+            <a href="profile.html" class="active">Profile</a>
+        </div>
+        <div class="user-profile" id="userProfile">
+            <span class="user-name" id="displayName">Loading...</span>
+            <div class="avatar" id="userInitials">...</div>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <h1>My Profile</h1>
+        <form id="profile-form">
+            <label>Full Name</label>
+            <input type="text" id="fullName" required>
+
+            <label>Display Name (shown on dashboard)</label>
+            <input type="text" id="displayNameInput" required>
+
+            <label>Email</label>
+            <input type="email" id="email" required>
+
+            <button type="submit">Update Profile</button>
+        </form>
+        <div id="message" class="message"></div>
+        <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+    </div>
+
+    <script>
+        const user = JSON.parse(localStorage.getItem('currentUser'));
+        if (!user) {
+            window.location.href = 'signup.html';
+        }
+
+        // Set navbar
+        document.getElementById('displayName').textContent = user.displayName || user.fullName.split(' ')[0];
+        const initials = user.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+        document.getElementById('userInitials').textContent = initials.substring(0, 2);
+
+        // Load current profile data
+        fetch(`/api/user/${user.id}`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('fullName').value = data.fullName;
+                document.getElementById('displayNameInput').value = data.displayName || '';
+                document.getElementById('email').value = data.email;
+            })
+            .catch(err => {
+                console.error(err);
+                showMessage('Failed to load profile data.', 'error');
+            });
+
+        // Update profile
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const updated = {
+                fullName: document.getElementById('fullName').value,
+                displayName: document.getElementById('displayNameInput').value,
+                email: document.getElementById('email').value
+            };
+
+            try {
+                const res = await fetch(`/api/user/${user.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updated)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Update localStorage
+                    user.fullName = updated.fullName;
+                    user.displayName = updated.displayName;
+                    user.email = updated.email;
+                    localStorage.setItem('currentUser', JSON.stringify(user));
+                    // Update navbar
+                    document.getElementById('displayName').textContent = updated.displayName || updated.fullName.split(' ')[0];
+                    const newInitials = updated.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+                    document.getElementById('userInitials').textContent = newInitials.substring(0, 2);
+                    showMessage('Profile updated successfully!', 'success');
+                } else {
+                    showMessage('Update failed. Please try again.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showMessage('Server error. Please try again later.', 'error');
+            }
+        });
+
+        function showMessage(text, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.textContent = text;
+            msgDiv.className = `message ${type}`;
+            setTimeout(() => {
+                msgDiv.className = 'message';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

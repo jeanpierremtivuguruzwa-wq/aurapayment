@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test API</title></head>
+<body>
+  <button onclick="test()">Send Test Transaction</button>
+  <script>
+    async function test() {
+      const user = firebase.auth().currentUser;
+      if (!user) { alert('Sign in first'); return; }
+      const token = await user.getIdToken();
+      const res = await fetch('http://localhost:3000/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ amountSent: 100, currencySent: 'RUB' })
+      });
+      const data = await res.json();
+      alert(JSON.stringify(data));
+    }
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = { /* your config */ };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+</body>
+</html>
