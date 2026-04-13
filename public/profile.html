@@ -149,81 +149,83 @@
 
     <div class="main-content">
         <h1>My Profile</h1>
-        <form id="profile-form">
-            <label>Full Name</label>
-            <input type="text" id="fullName" required>
+        
+        <!-- Profile Info Display -->
+        <div id="profileInfo" style="margin-bottom: 2rem;">
+            <div style="padding: 1.5rem; background: #f7fafc; border-radius: 12px;">
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="margin-top: 0; color: #718096; font-weight: 400; font-size: 0.9rem;">Full Name</label>
+                    <div style="font-size: 1.1rem; font-weight: 500; color: #0b1b3a; margin-top: 0.5rem;" id="displayFullName">Loading...</div>
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="margin-top: 0; color: #718096; font-weight: 400; font-size: 0.9rem;">Email</label>
+                    <div style="font-size: 1.1rem; font-weight: 500; color: #0b1b3a; margin-top: 0.5rem;" id="displayEmail">Loading...</div>
+                </div>
+                <div>
+                    <label style="margin-top: 0; color: #718096; font-weight: 400; font-size: 0.9rem;">Account Status</label>
+                    <div style="font-size: 1.1rem; font-weight: 500; color: #059669; margin-top: 0.5rem;">✓ Active</div>
+                </div>
+            </div>
+        </div>
 
-            <label>Display Name (shown on dashboard)</label>
-            <input type="text" id="displayNameInput" required>
-
-            <label>Email</label>
-            <input type="email" id="email" required>
-
-            <button type="submit">Update Profile</button>
-        </form>
         <div id="message" class="message"></div>
         <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
     </div>
 
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
     <script>
-        const user = JSON.parse(localStorage.getItem('currentUser'));
-        if (!user) {
-            window.location.href = 'signup.html';
-        }
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDlz5mH-x7P7H6FNdPj62PYhqAY5hsH19A",
+            authDomain: "aura-payment.firebaseapp.com",
+            projectId: "aura-payment",
+            storageBucket: "aura-payment.firebasestorage.app",
+            messagingSenderId: "213847107667",
+            appId: "1:213847107667:web:9949c7a1ad9101959afea6",
+            measurementId: "G-YG1G8CGC07"
+        };
 
-        // Set navbar
-        document.getElementById('displayName').textContent = user.displayName || user.fullName.split(' ')[0];
-        const initials = user.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
-        document.getElementById('userInitials').textContent = initials.substring(0, 2);
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-        // Load current profile data
-        fetch(`/api/user/${user.id}`)
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('fullName').value = data.fullName;
-                document.getElementById('displayNameInput').value = data.displayName || '';
-                document.getElementById('email').value = data.email;
-            })
-            .catch(err => {
-                console.error(err);
-                showMessage('Failed to load profile data.', 'error');
-            });
+        let currentUser = null;
 
-        // Update profile
-        document.getElementById('profile-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const updated = {
-                fullName: document.getElementById('fullName').value,
-                displayName: document.getElementById('displayNameInput').value,
-                email: document.getElementById('email').value
-            };
-
-            try {
-                const res = await fetch(`/api/user/${user.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updated)
-                });
-                const data = await res.json();
-                if (data.success) {
-                    // Update localStorage
-                    user.fullName = updated.fullName;
-                    user.displayName = updated.displayName;
-                    user.email = updated.email;
-                    localStorage.setItem('currentUser', JSON.stringify(user));
-                    // Update navbar
-                    document.getElementById('displayName').textContent = updated.displayName || updated.fullName.split(' ')[0];
-                    const newInitials = updated.fullName.split(' ').map(n => n[0]).join('').toUpperCase();
-                    document.getElementById('userInitials').textContent = newInitials.substring(0, 2);
-                    showMessage('Profile updated successfully!', 'success');
-                } else {
-                    showMessage('Update failed. Please try again.', 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showMessage('Server error. Please try again later.', 'error');
-            }
+        // Load user on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserProfile();
         });
+
+        function loadUserProfile() {
+            try {
+                const storedUser = localStorage.getItem('currentUser');
+                if (!storedUser) {
+                    window.location.href = 'signin.html';
+                    return;
+                }
+
+                currentUser = JSON.parse(storedUser);
+                
+                // Update navbar
+                const fullName = currentUser.fullName || currentUser.full_name || 'User';
+                const displayName = fullName.split(' ')[0];
+                document.getElementById('displayName').textContent = displayName;
+                const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+                document.getElementById('userInitials').textContent = initials.substring(0, 2);
+
+                // Display profile info
+                document.getElementById('displayFullName').textContent = fullName;
+                document.getElementById('displayEmail').textContent = currentUser.email || 'N/A';
+
+            } catch (err) {
+                console.error('Error loading profile:', err);
+                window.location.href = 'signin.html';
+            }
+        }
 
         function showMessage(text, type) {
             const msgDiv = document.getElementById('message');

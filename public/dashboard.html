@@ -537,13 +537,13 @@
                 <div class="swap-icon" id="swapIcon" onclick="swapCurrencies()">↓↑</div>
 
                 <div class="input-row">
-                    <span>Recipient gets</span>
+                    <span>Recipient</span>
                     <div class="currency-input-group">
                         <div class="currency-select" onclick="openDropdown('receive')">
                             <span id="receive-currency">XOF</span>
                             <span>▼</span>
                         </div>
-                        <span class="amount-input" id="receive-amount">—</span>
+                        <input type="text" class="amount-input" id="receive-amount" value="—" placeholder="Enter amount">
                     </div>
                 </div>
 
@@ -568,12 +568,33 @@
                 <span id="total-fee">₮ 100.00</span>
             </div>
 
-            <button class="continue-btn" id="continue-btn">
+            <button class="continue-btn" id="continue-btn" onclick="goToSendMoney()">
                 Continue to Send Money
             </button>
 
             <div class="view-details">
                 <a href="#">View details ▼</a>
+            </div>
+        </div>
+
+        <div class="calculator-card">
+            <h3>Send Money Options</h3>
+            <div class="swap-container">
+                <div class="input-row">
+                    <span>Edit Recipient</span>
+                    <div class="currency-input-group">
+                        <input type="text" class="amount-input" id="recipient-name" placeholder="Recipient Name">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <span>Check Price</span>
+                    <div class="currency-input-group">
+                        <input type="number" class="amount-input" id="check-price" placeholder="Enter Amount">
+                    </div>
+                </div>
+
+                <button class="continue-btn" onclick="checkPrice()">Check Price</button>
             </div>
         </div>
     </main>
@@ -685,9 +706,9 @@
             const amount = parseFloat(sendAmount.value) || 0;
             let receiveAmount = amount * liveRate;
             if (Math.abs(receiveAmount - Math.round(receiveAmount)) > 0.01) {
-                receiveAmountSpan.textContent = receiveAmount.toFixed(2);
+                receiveAmountSpan.value = receiveAmount.toFixed(2);
             } else {
-                receiveAmountSpan.textContent = Math.round(receiveAmount).toLocaleString();
+                receiveAmountSpan.value = Math.round(receiveAmount).toLocaleString();
             }
 
             const savings = amount * 0.02 * liveRate;
@@ -695,6 +716,25 @@
         }
 
         function recalcFromSend() { updateDisplay(); }
+
+        function recalcFromReceive() {
+            const receiveInput = document.getElementById('receive-amount');
+            const receiveVal = parseFloat(receiveInput.value) || 0;
+            
+            if (receiveVal <= 0) {
+                sendAmount.value = 10000;
+                updateDisplay();
+                return;
+            }
+
+            if (liveRate === null) return;
+
+            // Calculate send amount: receiveAmount / rate = sendAmount
+            const calculatedSend = receiveVal / liveRate;
+            sendAmount.value = calculatedSend.toFixed(2);
+            transactionData.sendAmount = calculatedSend;
+            updateDisplay();
+        }
 
         let isRotated = false;
         function animateSwapIcon() {
@@ -803,7 +843,11 @@
         }
 
         function goToSendMoney() {
-            const amount = parseFloat(sendAmount.value) || 0;
+            const amount = parseFloat(document.getElementById('send-amount').value) || 0;
+            localStorage.setItem('sendAmount', amount);
+            localStorage.setItem('sendCurrency', sendCurrency);
+            localStorage.setItem('receiveCurrency', receiveCurrency);
+            localStorage.setItem('liveRate', liveRate);
             const url = `send-money.html?amount=${amount}&send=${sendCurrency}&receive=${receiveCurrency}&rate=${liveRate}`;
             window.location.href = url;
         }
@@ -814,6 +858,7 @@
             setInterval(fetchLiveRate, 60000);
             setInterval(updateTimestamp, 1000);
             sendAmount.addEventListener('input', recalcFromSend);
+            receiveAmountSpan.addEventListener('input', recalcFromReceive);
             continueBtn.addEventListener('click', goToSendMoney);
             updateTimestamp();
         }

@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Transaction History - Aura payment</title>
+    <!-- Firebase SDKs (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #f7fafc;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 4%;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #0b1b3a;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-menu a {
+            text-decoration: none;
+            color: #4a5568;
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 0.5rem 0;
+            white-space: nowrap;
+        }
+
+        .nav-menu a.active {
+            color: #0b1b3a;
+            border-bottom: 2px solid #0b1b3a;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .user-name {
+            color: #2d3748;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: #0b1b3a;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .main-content {
+            max-width: 1000px;
+            margin: 1rem auto;
+            padding: 0 1rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-header h1 {
+            color: #0b1b3a;
+            margin-bottom: 0.5rem;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #4a5568;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            border-color: #0b1b3a;
+            background: #0b1b3a;
+            color: white;
+        }
+
+        .filter-btn:hover {
+            border-color: #0b1b3a;
+        }
+
+        .orders-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .order-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 4px solid #e2e8f0;
+        }
+
+        .order-card.completed {
+            border-left-color: #059669;
+        }
+
+        .order-card.pending {
+            border-left-color: #f59e0b;
+        }
+
+        .order-card.cancelled {
+            border-left-color: #e53e3e;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .order-info {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .order-id {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 0.25rem;
+        }
+
+        .order-amount {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #0b1b3a;
+            margin-bottom: 0.5rem;
+        }
+
+        .order-status {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-cancelled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .order-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .detail-row {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            font-size: 0.8rem;
+            color: #718096;
+            margin-bottom: 0.25rem;
+        }
+
+        .detail-value {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #0b1b3a;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #0b1b3a;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1a2b4a;
+        }
+
+        .btn-secondary {
+            background: white;
+            border: 2px solid #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            border-color: #0b1b3a;
+            color: #0b1b3a;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state-text {
+            color: #718096;
+            margin-bottom: 1.5rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+
+        @media (min-width: 640px) {
+            .navbar {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+            .order-header {
+                align-items: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .order-details {
+                grid-template-columns: 1fr;
+            }
+            .btn {
+                flex: 1;
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo">Aura payment</div>
+        <div class="nav-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="send-money.html">Send Money</a>
+            <a href="history.html" class="active">History</a>
+            <a href="profile.html">Profile</a>
+        </div>
+        <div class="user-profile" id="userProfile">
+            <span class="user-name" id="displayName">Loading...</span>
+            <div class="avatar" id="userInitials">...</div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <h1>Transaction History</h1>
+            <p style="color: #718096; font-size: 0.95rem;">View all your transactions and their status</p>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <button class="filter-btn active" onclick="filterOrders('all')">All Orders</button>
+            <button class="filter-btn" onclick="filterOrders('completed')">✓ Completed</button>
+            <button class="filter-btn" onclick="filterOrders('pending')">⏳ Pending</button>
+            <button class="filter-btn" onclick="filterOrders('cancelled')">✕ Cancelled</button>
+        </div>
+
+        <!-- Orders List -->
+        <div class="orders-container" id="ordersContainer">
+            <div class="loading">Loading your orders...</div>
+        </div>
+    </main>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDlz5mH-x7P7H6FNdPj62PYhqAY5hsH19A",
+            authDomain: "aura-payment.firebaseapp.com",
+            projectId: "aura-payment",
+            storageBucket: "aura-payment.firebasestorage.app",
+            messagingSenderId: "213847107667",
+            appId: "1:213847107667:web:9949c7a1ad9101959afea6",
+            measurementId: "G-YG1G8CGC07"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        let currentUser = null;
+        let allOrders = [];
+        let currentFilter = 'all';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserData();
+            loadOrders();
+        });
+
+        function loadUserData() {
+            try {
+                const storedUser = localStorage.getItem('currentUser');
+                if (storedUser) {
+                    const user = JSON.parse(storedUser);
+                    currentUser = user;
+                    updateUserDisplay(user);
+                } else {
+                    window.location.href = 'signin.html';
+                }
+            } catch (err) {
+                window.location.href = 'signin.html';
+            }
+        }
+
+        function updateUserDisplay(user) {
+            const fullName = user.fullName || user.full_name || 'User';
+            const displayName = fullName.split(' ')[0];
+            document.getElementById('displayName').textContent = displayName;
+            const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+            document.getElementById('userInitials').textContent = initials.substring(0, 2);
+        }
+
+        function loadOrders() {
+            if (!currentUser) return;
+
+            db.collection('orders')
+                .where('userId', '==', currentUser.uid)
+                .orderBy('createdAt', 'desc')
+                .onSnapshot(snapshot => {
+                    allOrders = [];
+                    snapshot.forEach(doc => {
+                        allOrders.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    displayOrders();
+                }, error => {
+                    console.error('Error loading orders:', error);
+                    document.getElementById('ordersContainer').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⚠️</div>
+                            <div class="empty-state-text">Error loading orders</div>
+                        </div>
+                    `;
+                });
+        }
+
+        function filterOrders(status) {
+            currentFilter = status;
+
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            displayOrders();
+        }
+
+        function displayOrders() {
+            const container = document.getElementById('ordersContainer');
+
+            // Filter orders
+            let filtered = allOrders;
+            if (currentFilter !== 'all') {
+                filtered = allOrders.filter(order => order.status === currentFilter);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div class="empty-state-text">No ${currentFilter !== 'all' ? currentFilter : ''} orders yet</div>
+                        <a href="send-money.html" style="color: #0b1b3a; text-decoration: none; font-weight: 500;">Start sending money →</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(order => createOrderCard(order)).join('');
+        }
+
+        function createOrderCard(order) {
+            const status = order.status || 'pending';
+            const statusLabel = {
+                completed: '✓ Completed',
+                pending: '⏳ Pending',
+                cancelled: '✕ Cancelled'
+            }[status];
+
+            const createdAt = order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleDateString() : 'N/A';
+            const receiveAmount = (order.sendAmount * order.rate).toFixed(2);
+
+            return `
+                <div class="order-card ${status}">
+                    <div class="order-header">
+                        <div class="order-info">
+                            <div class="order-id">Order #${order.id.substring(0, 8).toUpperCase()}</div>
+                            <div class="order-amount">${order.sendAmount.toFixed(2)} ${order.sendCurrency}</div>
+                            <span class="order-status status-${status}">${statusLabel}</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.85rem; color: #718096; margin-bottom: 0.5rem;">${createdAt}</div>
+                        </div>
+                    </div>
+
+                    <div class="order-details">
+                        <div class="detail-row">
+                            <div class="detail-label">Recipient Name</div>
+                            <div class="detail-value">${order.recipientName || 'N/A'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Recipient Gets</div>
+                            <div class="detail-value">${receiveAmount} ${order.receiveCurrency}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Delivery Method</div>
+                            <div class="detail-value">${order.deliveryMethod === 'bank' ? '🏦 Bank' : '📱 Mobile Money'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Provider</div>
+                            <div class="detail-value">${order.provider || 'N/A'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Exchange Rate</div>
+                            <div class="detail-value">1 ${order.sendCurrency} = ${order.rate.toFixed(2)} ${order.receiveCurrency}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Order Status</div>
+                            <div class="detail-value">${statusLabel}</div>
+                        </div>
+                    </div>
+
+                    <div class="order-actions">
+                        ${status === 'pending' ? `
+                            <button class="btn btn-primary" onclick="continuePayment('${order.id}')">Continue Payment</button>
+                            <button class="btn btn-secondary" onclick="cancelOrder('${order.id}')">Cancel Order</button>
+                        ` : ''}
+                        ${status === 'completed' ? `
+                            <button class="btn btn-secondary" onclick="downloadReceipt('${order.id}')">Download Receipt</button>
+                        ` : ''}
+                        <button class="btn btn-secondary" onclick="viewDetails('${order.id}')">View Details</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function continuePayment(orderId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (order) {
+                localStorage.setItem('sendAmount', order.sendAmount);
+                localStorage.setItem('sendCurrency', order.sendCurrency);
+                localStorage.setItem('receiveCurrency', order.receiveCurrency);
+                localStorage.setItem('liveRate', order.rate);
+                window.location.href = 'send-money.html';
+            }
+        }
+
+        function cancelOrder(orderId) {
+            if (confirm('Are you sure you want to cancel this order?')) {
+                db.collection('orders').doc(orderId).update({
+                    status: 'cancelled',
+                    cancelledAt: new Date()
+                }).then(() => {
+                    alert('Order cancelled successfully');
+                    loadOrders();
+                }).catch(err => {
+                    alert('Error cancelling order: ' + err.message);
+                });
+            }
+        }
+
+        function downloadReceipt(orderId) {
+            alert('Receipt download feature coming soon');
+        }
+
+        function viewDetails(orderId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (order) {
+                console.log('Order Details:', order);
+                alert(`Order #${orderId.substring(0, 8).toUpperCase()}\n\nStatus: ${order.status}\nRecipient: ${order.recipientName}\n\nCheck console for full details`);
+            }
+        }
+    </script>
+</body>
+</html>

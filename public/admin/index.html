@@ -2,39 +2,50 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Aura Payment Admin Dashboard" />
     <title>Aura Payment – Admin Dashboard</title>
     <!-- Tailwind CSS CDN (v3) – quick styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Custom overrides (optional) -->
     <style>
+      * {
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
       body {
-        background: #f3f4f6;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
       }
       /* Smooth transitions for interactive elements */
       button, a {
         transition: all 0.2s ease;
       }
-      /* Scrollbar styling (optional) */
+      /* Scrollbar styling */
       ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 8px;
+        height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #e5e7eb;
+        background: #f1f5f9;
         border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb {
-        background: #9ca3af;
+        background: #cbd5e1;
         border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #6b7280;
+        background: #94a3b8;
+      }
+      /* Loading state */
+      #root:empty::before {
+        content: "Loading admin dashboard...";
+        display: block;
+        padding: 2rem;
+        color: #64748b;
+        font-family: system-ui, -apple-system, sans-serif;
+        font-weight: 500;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-DXaPxaqX.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-oVA9E11q.css">
+    <script type="module" crossorigin src="./assets/index-CSqxQXIF.js"></script>
   </head>
   <body class="bg-gray-100">
     <div id="root"></div>

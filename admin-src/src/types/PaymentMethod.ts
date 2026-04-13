@@ -5,4 +5,17 @@ export interface PaymentMethod {
   currency: string
   active: boolean
   totalReceived: number
+  
+  // Bank Transfer Fields
+  accountNumber?: string
+  accountHolder?: string
+  
+  // Mobile Money Fields
+  phoneNumber?: string
+  
+  // Common
+  fees?: number
+  description?: string
+  processingTime?: string
+  createdAt?: any
 }

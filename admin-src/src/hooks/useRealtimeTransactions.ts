@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import { Transaction } from '../types/Transaction'
 
@@ -28,6 +28,3 @@ export function useRealtimeTransactions() {
 
   return { transactions, updateStatus }
 }
-
-// Need to import addDoc – fix by adding at top of file
-import { addDoc } from 'firebase/firestore'

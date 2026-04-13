@@ -10,53 +10,378 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        body { background: #f7fafc; padding-bottom: 2rem; }
-        .main { max-width: 800px; margin: 20px auto; padding: 0 1rem; }
-        .card { background: white; padding: 1.5rem; border-radius: 24px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .grid { display: flex; flex-direction: column; gap: 12px; margin: 20px 0; }
-        .option { border: 2px solid #e2e8f0; padding: 1rem; border-radius: 16px; cursor: pointer; transition: all 0.2s; }
-        .option:hover { border-color: #0b1b3a; transform: translateY(-2px); }
-        .option.selected { border-color: #0b1b3a; background: #f0f4ff; }
-        .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 0.5rem; }
-        .row:last-child { border-bottom: none; }
-        button { padding: 12px 24px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; min-height: 48px; }
-        .primary { background: #0b1b3a; color: white; }
-        .primary:hover { background: #1a2b4a; }
-        .primary:disabled { background: #9ca3af; cursor: not-allowed; }
-        .secondary { background: white; border: 2px solid #e2e8f0; color: #4a5568; }
-        input, select { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; margin: 8px 0; }
-        input:focus, select:focus { outline: none; border-color: #0b1b3a; }
-        .helper-text { font-size: 0.85rem; color: #718096; margin-top: 4px; }
-        .copy-btn { background: none; border: none; cursor: pointer; color: #718096; font-size: 1rem; margin-left: 8px; }
-        .copy-success { color: #059669; font-size: 0.8rem; margin-left: 8px; }
-        .how-to-pay { background: #f7fafc; padding: 16px; border-radius: 12px; margin-top: 16px; display: none; }
-        .support-link { display: inline-block; margin-top: 16px; color: #0b1b3a; text-decoration: underline; cursor: pointer; font-size: 0.9rem; }
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; border-radius: 24px; max-width: 500px; width: 90%; padding: 1.5rem; max-height: 90vh; overflow-y: auto; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .close-modal { background: none; border: none; font-size: 1.2rem; cursor: pointer; }
-        .amount-input { margin: 16px 0; }
-        .error-msg { color: #e53e3e; font-size: 0.85rem; margin-top: 4px; }
-        .loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; display: flex; justify-content: center; align-items: center; z-index: 2000; font-size: 1.2rem; color: #0b1b3a; }
-        @media (min-width: 640px) { .grid { flex-direction: row; gap: 15px; } .option { flex: 1; } }
-        @media (max-width: 480px) { .card { padding: 1rem; } .row { flex-direction: column; align-items: flex-start; } button { width: 100%; } .modal-content { width: 95%; padding: 1rem; } }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #f7fafc;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 4%;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #0b1b3a;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-menu a {
+            text-decoration: none;
+            color: #4a5568;
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 0.5rem 0;
+            white-space: nowrap;
+        }
+
+        .nav-menu a.active {
+            color: #0b1b3a;
+            border-bottom: 2px solid #0b1b3a;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .user-name {
+            color: #2d3748;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: #0b1b3a;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .main-content {
+            max-width: 800px;
+            margin: 1rem auto;
+            padding: 0 1rem;
+        }
+
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .card h2 {
+            margin-bottom: 1.5rem;
+            color: #0b1b3a;
+        }
+
+        .amount-display {
+            background: #f7fafc;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #0b1b3a;
+        }
+
+        .amount-display p {
+            color: #718096;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .amount-display strong {
+            font-size: 1.2rem;
+            color: #0b1b3a;
+            display: block;
+            margin-top: 0.5rem;
+        }
+
+        .grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .option {
+            border: 2px solid #e2e8f0;
+            padding: 1rem;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option:hover {
+            border-color: #0b1b3a;
+            transform: translateY(-2px);
+        }
+
+        .option.selected {
+            border-color: #0b1b3a;
+            background: #f0f4ff;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 48px;
+        }
+
+        .primary {
+            background: #0b1b3a;
+            color: white;
+            width: 100%;
+            margin-top: 1.5rem;
+        }
+
+        .primary:hover {
+            background: #1a2b4a;
+        }
+
+        .primary:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .secondary {
+            background: white;
+            border: 2px solid #e2e8f0;
+            color: #4a5568;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .button-group button {
+            margin-top: 0;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            margin: 8px 0;
+            font-family: inherit;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #0b1b3a;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2d3748;
+            font-weight: 500;
+        }
+
+        .helper-text {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .error-msg {
+            color: #e53e3e;
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 24px;
+            max-width: 500px;
+            width: 90%;
+            padding: 1.5rem;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #718096;
+        }
+
+        .step-indicator {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            background: white;
+            padding: 1rem;
+            border-radius: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            overflow-x: auto;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: #a0aec0;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        .step.active {
+            color: #0b1b3a;
+            font-weight: 600;
+        }
+
+        .step-number {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        .step.active .step-number {
+            background: #0b1b3a;
+            color: white;
+        }
+
+        @media (min-width: 640px) {
+            .navbar {
+                flex-direction: row;
+                justify-content: space-between;
+            }
+            .grid {
+                flex-direction: row;
+                gap: 15px;
+            }
+            .option {
+                flex: 1;
+            }
+            .button-group {
+                gap: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card {
+                padding: 1rem;
+            }
+            .logo {
+                font-size: 1rem;
+            }
+            button {
+                width: 100%;
+            }
+            .step span:last-child {
+                display: none;
+            }
+            .step.active span:last-child {
+                display: inline;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="loading-screen" id="loadingScreen">Verifying authentication...</div>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo">Aura payment</div>
+        <div class="nav-menu">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="send-money.html" class="active">Send Money</a>
+            <a href="history.html">History</a>
+            <a href="profile.html">Profile</a>
+        </div>
+        <div class="user-profile" id="userProfile">
+            <span class="user-name" id="displayName">Loading...</span>
+            <div class="avatar" id="userInitials">...</div>
+        </div>
+    </nav>
 
-    <div class="main" id="mainContent" style="display: none;">
-        <!-- Step 1: Delivery Method & Amount -->
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Step Indicator -->
+        <div class="step-indicator" id="stepIndicator">
+            <div class="step active"><span class="step-number">1</span><span>Amount</span></div>
+            <div class="step"><span class="step-number">2</span><span>Recipient</span></div>
+            <div class="step"><span class="step-number">3</span><span>Payment</span></div>
+            <div class="step"><span class="step-number">4</span><span>Proof</span></div>
+        </div>
+
+        <!-- Step 1: Amount & Delivery Method -->
         <div id="step1" class="card">
             <h2>Send Money</h2>
-            <div class="amount-input">
-                <label><strong>Amount to send</strong> (minimum 100)</label>
-                <input type="number" id="sendAmountInput" min="100" step="1" value="10000">
-                <div class="helper-text">Enter amount in your selected currency</div>
-                <div id="amountError" class="error-msg" style="display: none;">Amount must be at least 100</div>
+            <div class="amount-display">
+                <p>Amount to send</p>
+                <strong><span id="displayAmount">0</span> <span id="displayCurrency">RUB</span></strong>
             </div>
-            <h3>Choose Delivery Method</h3>
+            <h3 style="color: #0b1b3a; margin-bottom: 1rem;">Choose Delivery Method</h3>
             <div id="deliveryOptions" class="grid"></div>
             <button class="primary" onclick="nextStep(2)">Continue</button>
         </div>
@@ -64,12 +389,23 @@
         <!-- Step 2: Recipient Details -->
         <div id="step2" class="card" style="display: none;">
             <h2>Recipient Details</h2>
-            <input id="recipientName" placeholder="Full name" required>
-            <label id="providerLabel" style="display: block; margin-top: 16px;">Provider</label>
-            <select id="provider"></select>
-            <div id="phoneGroup" style="margin-top: 16px;"><input id="phoneNumber" placeholder="Phone number"></div>
-            <div id="accountGroup" style="margin-top: 16px; display: none;"><input id="accountNumber" placeholder="Account number"></div>
-            <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input id="recipientName" placeholder="Enter recipient's full name" required>
+            </div>
+            <div class="form-group">
+                <label id="providerLabel">Provider</label>
+                <select id="provider" required></select>
+            </div>
+            <div id="phoneGroup" class="form-group">
+                <label>Phone Number</label>
+                <input id="phoneNumber" placeholder="Enter phone number" type="tel">
+            </div>
+            <div id="accountGroup" class="form-group" style="display: none;">
+                <label>Account Number</label>
+                <input id="accountNumber" placeholder="Enter account number">
+            </div>
+            <div class="button-group">
                 <button class="secondary" onclick="prevStep(1)">Back</button>
                 <button class="primary" onclick="nextStep(3)">Continue</button>
             </div>
@@ -78,9 +414,10 @@
         <!-- Step 3: Payment Method -->
         <div id="step3" class="card" style="display: none;">
             <h2>Make Payment</h2>
+            <p style="color: #718096; margin-bottom: 1rem;">Select your payment method</p>
             <div id="paymentOptions" class="grid"></div>
-            <div id="paymentDetails"></div>
-            <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+            <div id="paymentDetails" style="margin-top: 1.5rem;"></div>
+            <div class="button-group">
                 <button class="secondary" onclick="prevStep(2)">Back</button>
                 <button class="primary" onclick="nextStep(4)">Continue to Upload Proof</button>
             </div>
@@ -89,43 +426,40 @@
         <!-- Step 4: Upload Proof -->
         <div id="step4" class="card" style="display: none;">
             <h2>Upload Payment Proof</h2>
-            <div style="border: 2px dashed #e2e8f0; border-radius: 16px; padding: 40px 20px; text-align: center;">
+            <div style="border: 2px dashed #e2e8f0; border-radius: 16px; padding: 40px 20px; text-align: center; margin-bottom: 1rem;">
                 <div style="font-size: 3rem; margin-bottom: 12px;">📎</div>
                 <h3 style="margin-bottom: 8px;">Drag and drop or click to upload</h3>
                 <p style="color: #718096; margin-bottom: 16px;">Supported: JPG, PNG, PDF (Max 10MB)</p>
                 <input type="file" accept="image/*,.pdf" style="display: none;" id="fileInput">
-                <button class="primary" onclick="document.getElementById('fileInput').click()">Choose File</button>
+                <button class="primary" style="width: auto; padding: 10px 20px; margin-top: 0;" onclick="document.getElementById('fileInput').click()">Choose File</button>
                 <div id="selectedFileName" style="margin-top: 12px; font-size: 0.85rem; color: #0b1b3a;"></div>
             </div>
-            <div style="text-align: center; margin-top: 16px;">
-                <a href="#" class="support-link" onclick="openSupportModal(event)">❓ Need help? Contact Support</a>
-            </div>
-            <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+            <div class="button-group">
                 <button class="secondary" onclick="prevStep(3)">Back</button>
-                <button class="primary" id="submitTransactionBtn" onclick="completeTransaction()">Submit & Complete</button>
+                <button class="primary" id="submitBtn" onclick="completeTransaction()">Submit & Complete</button>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Support Modal -->
     <div id="supportModal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header"><h3>Contact Support</h3><button class="close-modal" onclick="closeSupportModal()">✕</button></div>
-            <p style="margin-bottom: 16px;">Describe your issue and we'll get back to you shortly.</p>
+            <div class="modal-header">
+                <h3>Contact Support</h3>
+                <button class="close-btn" onclick="closeSupportModal()">✕</button>
+            </div>
             <form id="supportForm">
-                <input type="text" id="supportName" placeholder="Your Name" required>
-                <input type="email" id="supportEmail" placeholder="Email" required>
-                <input type="text" id="supportSubject" placeholder="Subject" required>
-                <textarea id="supportMessage" rows="4" placeholder="Message" required style="width: 100%; padding: 8px; margin-top: 12px;"></textarea>
-                <input type="file" id="supportAttachment" accept="image/*,.pdf" style="margin-top: 12px;">
-                <button type="submit" class="primary" style="margin-top: 16px; width: 100%;">Send Message</button>
-                <div id="supportMessageStatus" class="helper-text" style="margin-top: 12px;"></div>
+                <input type="text" placeholder="Your Name" required>
+                <input type="email" placeholder="Email" required>
+                <input type="text" placeholder="Subject" required>
+                <textarea rows="4" placeholder="Message" required></textarea>
+                <button class="primary">Send Message</button>
             </form>
         </div>
     </div>
 
     <script>
-        // Firebase Config
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDlz5mH-x7P7H6FNdPj62PYhqAY5hsH19A",
             authDomain: "aura-payment.firebaseapp.com",
@@ -135,38 +469,71 @@
             appId: "1:213847107667:web:9949c7a1ad9101959afea6",
             measurementId: "G-YG1G8CGC07"
         };
+
         firebase.initializeApp(firebaseConfig);
-
-        // ❌ REMOVED Storage Emulator – now using live Firebase Storage with deployed security rules
-        // (The emulator was causing 'storage/unauthorized' because it wasn't running or had no rules)
-
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
 
-        auth.onAuthStateChanged((user) => {
-            const loadingScreen = document.getElementById('loadingScreen');
-            if (!user) {
-                alert('Please log in to send money.');
-                window.location.href = 'signin.html';
-                return;
+        // Global state
+        let currentUser = null;
+        let transactionData = {};
+        let selectedDelivery = null;
+        let selectedPayment = null;
+        const countries = [
+            { flag: '🇧🇯', code: 'XOF', symbol: 'CFA', country: 'Benin' },
+            { flag: '🇧🇫', code: 'XOF', symbol: 'CFA', country: 'Burkina Faso' },
+            { flag: '🇨🇲', code: 'XAF', symbol: 'FCFA', country: 'Cameroon' },
+            { flag: '🇷🇺', code: 'RUB', symbol: '₽', country: 'Russia' }
+        ];
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserData();
+            initializeTransactionData();
+            renderDeliveryOptions();
+            
+            // Setup file input handler
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        document.getElementById('selectedFileName').textContent = `✓ Selected: ${file.name}`;
+                    }
+                });
             }
-            loadingScreen.style.display = 'none';
-            document.getElementById('mainContent').style.display = 'block';
-            window.currentUser = user;
-            initializeSendMoneyPage(user);
         });
 
-        let transactionData, selectedDelivery, globalCardHolder, amountInput, amountError;
-        let sendAmount, sendCurrency, receiveCurrency, liveRate;
+        function loadUserData() {
+            try {
+                const storedUser = localStorage.getItem('currentUser');
+                if (storedUser) {
+                    const user = JSON.parse(storedUser);
+                    currentUser = user;
+                    updateUserDisplay(user);
+                } else {
+                    window.location.href = 'signin.html';
+                }
+            } catch (err) {
+                window.location.href = 'signin.html';
+            }
+        }
 
-        function initializeSendMoneyPage(user) {
+        function updateUserDisplay(user) {
+            const fullName = user.fullName || user.full_name || 'User';
+            const displayName = fullName.split(' ')[0];
+            document.getElementById('displayName').textContent = displayName;
+            const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+            document.getElementById('userInitials').textContent = initials.substring(0, 2);
+        }
+
+        function initializeTransactionData() {
             const urlParams = new URLSearchParams(window.location.search);
-            sendAmount = parseFloat(urlParams.get('amount')) || 10000;
-            sendCurrency = urlParams.get('send') || 'RUB';
-            receiveCurrency = urlParams.get('receive') || 'XOF';
-            liveRate = parseFloat(urlParams.get('rate')) || 6.72;
-            if (sendAmount < 100) sendAmount = 100;
+            const sendAmount = parseFloat(urlParams.get('amount')) || parseFloat(localStorage.getItem('sendAmount')) || 10000;
+            const sendCurrency = urlParams.get('send') || localStorage.getItem('sendCurrency') || 'RUB';
+            const receiveCurrency = urlParams.get('receive') || localStorage.getItem('receiveCurrency') || 'XOF';
+            const liveRate = parseFloat(urlParams.get('rate')) || parseFloat(localStorage.getItem('liveRate')) || 6.72;
 
             transactionData = {
                 sendAmount: sendAmount,
@@ -180,42 +547,40 @@
                 accountNumber: '',
                 paymentMethod: null,
                 deliveryMethod: null,
-                proofFileName: null,
-                userId: user.uid,
-                userEmail: user.email,
-                timestamp: null
+                proofFile: null,
+                userId: currentUser?.uid || 'temp',
+                userEmail: currentUser?.email || 'temp@temp.com',
+                timestamp: new Date()
             };
 
-            selectedDelivery = (sendCurrency === 'XOF' || sendCurrency === 'XAF') ? 'bank' : 'mobile';
-            globalCardHolder = "AURA PAYMENT";
-
-            amountInput = document.getElementById('sendAmountInput');
-            amountError = document.getElementById('amountError');
-            amountInput.value = sendAmount;
-            amountInput.addEventListener('input', function() {
-                let val = parseFloat(this.value);
-                if (isNaN(val)) val = 0;
-                if (val < 100) amountError.style.display = 'block';
-                else amountError.style.display = 'none';
-                transactionData.sendAmount = val;
-                transactionData.receiveAmount = val * liveRate;
-            });
-
-            renderDeliveryOptions();
+            // Display amount
+            document.getElementById('displayAmount').textContent = sendAmount.toLocaleString();
+            document.getElementById('displayCurrency').textContent = sendCurrency;
         }
 
         function renderDeliveryOptions() {
             const container = document.getElementById('deliveryOptions');
-            container.innerHTML = '';
-            if (sendCurrency === 'XOF' || sendCurrency === 'XAF') {
-                container.innerHTML = `<div class="option selected" data-delivery="bank"><h3>Bank Account</h3><p>Transfer to a bank account</p></div>`;
+            const isCfa = transactionData.sendCurrency === 'XOF' || transactionData.sendCurrency === 'XAF';
+
+            if (isCfa) {
+                container.innerHTML = `
+                    <div class="option selected" data-delivery="bank">
+                        <h3>Bank Account</h3>
+                        <p>Transfer to a bank account</p>
+                    </div>
+                `;
                 selectedDelivery = 'bank';
-                transactionData.deliveryMethod = 'bank';
-                updateRecipientForm('bank');
             } else {
                 container.innerHTML = `
-                    <div class="option" data-delivery="mobile"><span style="background:#d1fae5; color:#059669; padding:2px 8px; border-radius:20px;">Recommended</span><h3>Mobile Money</h3><p>Fastest for popular corridors</p></div>
-                    <div class="option" data-delivery="bank"><h3>Bank Account</h3><p>Use a bank account number</p></div>
+                    <div class="option" data-delivery="mobile">
+                        <span style="background:#d1fae5; color:#059669; padding:2px 8px; border-radius:20px; font-size:0.75rem;">Recommended</span>
+                        <h3>Mobile Money</h3>
+                        <p>Fastest option</p>
+                    </div>
+                    <div class="option" data-delivery="bank">
+                        <h3>Bank Account</h3>
+                        <p>Use a bank account</p>
+                    </div>
                 `;
                 document.querySelectorAll('.option').forEach(opt => {
                     opt.addEventListener('click', () => {
@@ -223,280 +588,480 @@
                         opt.classList.add('selected');
                         selectedDelivery = opt.getAttribute('data-delivery');
                         transactionData.deliveryMethod = selectedDelivery;
-                        updateRecipientForm(selectedDelivery);
                     });
                 });
-                document.querySelector('.option[data-delivery="mobile"]').classList.add('selected');
                 selectedDelivery = 'mobile';
-                transactionData.deliveryMethod = 'mobile';
-                updateRecipientForm('mobile');
             }
+
+            transactionData.deliveryMethod = selectedDelivery;
+            updateRecipientForm(selectedDelivery);
         }
 
         function updateRecipientForm(deliveryType) {
-            const providerSelect = document.getElementById('provider');
             const providerLabel = document.getElementById('providerLabel');
+            const providerSelect = document.getElementById('provider');
             const phoneGroup = document.getElementById('phoneGroup');
             const accountGroup = document.getElementById('accountGroup');
+
             if (deliveryType === 'mobile') {
                 providerLabel.textContent = 'Mobile Money Provider';
-                providerSelect.innerHTML = `<option value="">Select provider</option><option value="mtn">MTN Momo</option><option value="airtel">Airtel Money</option><option value="orange">Orange Money</option>`;
+                providerSelect.innerHTML = `
+                    <option value="">Select provider</option>
+                    <option value="mtn">MTN Momo</option>
+                    <option value="airtel">Airtel Money</option>
+                    <option value="orange">Orange Money</option>
+                `;
                 phoneGroup.style.display = 'block';
                 accountGroup.style.display = 'none';
             } else {
-                providerLabel.textContent = 'Bank Provider';
-                providerSelect.innerHTML = `<option value="">Select bank</option><option value="sber">Sber Bank</option><option value="tinkoff">Tinkoff Bank</option><option value="alfa">Alfa Bank</option>`;
+                providerLabel.textContent = 'Bank';
+                providerSelect.innerHTML = `
+                    <option value="">Select bank</option>
+                    <option value="sber">Sber Bank</option>
+                    <option value="tinkoff">Tinkoff Bank</option>
+                    <option value="alfa">Alfa Bank</option>
+                `;
                 phoneGroup.style.display = 'none';
                 accountGroup.style.display = 'block';
             }
         }
 
-        function getPaymentOptions() {
-            if (sendCurrency === 'RUB') {
-                return { type: 'rub', options: [{ id: 'sber', name: 'Sber • CARD', fee: 100, feeLabel: '+100 RUB fee' }, { id: 'cash', name: 'Cash', fee: 0, feeLabel: null }] };
-            } else {
-                return { type: 'cfa', options: [{ id: 'mtn', name: 'MTN Money', phone: '671234567', reference: 'MTN-671234567' }, { id: 'airtel', name: 'Airtel Money', phone: '651234567', reference: 'AIRTEL-651234567' }, { id: 'orange', name: 'Orange Money', phone: '691234567', reference: 'ORANGE-691234567' }] };
-            }
-        }
-
-        let paymentConfig;
-        function renderPaymentStep() {
-            paymentConfig = getPaymentOptions();
+        function renderPaymentOptions() {
             const container = document.getElementById('paymentOptions');
             const detailsDiv = document.getElementById('paymentDetails');
-            container.innerHTML = '';
-            detailsDiv.innerHTML = '';
-            if (paymentConfig.type === 'rub') {
-                paymentConfig.options.forEach(opt => {
-                    const amount = (transactionData.sendAmount + opt.fee).toFixed(2);
-                    const div = document.createElement('div');
-                    div.className = 'option';
-                    if (opt.id === 'sber') div.classList.add('selected');
-                    div.setAttribute('data-payment-id', opt.id);
-                    div.onclick = () => selectPayment(opt.id);
-                    div.innerHTML = `<div style="display: flex; justify-content: space-between;"><strong>${amount} ${sendCurrency}</strong>${opt.feeLabel ? `<span style="background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:20px;">${opt.feeLabel}</span>` : ''}</div><div>${opt.name}</div><div style="margin-top: 8px;">${opt.id === 'sber' ? 'SELECTED' : 'SELECT'}</div>`;
-                    container.appendChild(div);
+
+            container.innerHTML = '<p style="text-align: center; color: #718096;">Loading payment methods...</p>';
+
+            // Fetch active payment methods from Firestore
+            db.collection('paymentMethods')
+                .where('active', '==', true)
+                .where('currency', '==', transactionData.sendCurrency)
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        container.innerHTML = '<p style="color: #e53e3e;">No payment methods available for this currency</p>';
+                        return;
+                    }
+
+                    const methods = [];
+                    const promises = [];
+                    
+                    snapshot.forEach(doc => {
+                        const method = { id: doc.id, ...doc.data() };
+                        methods.push(method);
+                        
+                        // Fetch active cardholder for each payment method
+                        promises.push(
+                            db.collection('cardholders')
+                                .where('paymentMethodId', '==', method.id)
+                                .where('status', '==', 'active')
+                                .get()
+                                .then(cardholderSnapshot => {
+                                    if (!cardholderSnapshot.empty) {
+                                        const cardholder = cardholderSnapshot.docs[0].data();
+                                        method.activeCardholder = {
+                                            id: cardholderSnapshot.docs[0].id,
+                                            ...cardholder
+                                        };
+                                    }
+                                })
+                                .catch(err => console.error('Error fetching cardholder:', err))
+                        );
+                    });
+
+                    // Wait for all cardholder fetches
+                    Promise.all(promises).then(() => {
+                        container.innerHTML = '';
+                        
+                        // Try to auto-select method based on sender's first name matching cardholder display name
+                        let autoSelectedIndex = 0;
+                        if (transactionData.recipientName) {
+                            const senderFirstName = transactionData.recipientName.split(' ')[0].toLowerCase();
+                            autoSelectedIndex = methods.findIndex(m => 
+                                m.activeCardholder && 
+                                m.activeCardholder.displayName.toLowerCase() === senderFirstName
+                            );
+                            if (autoSelectedIndex === -1) autoSelectedIndex = 0;
+                        }
+                        
+                        // Create option for each active payment method
+                        methods.forEach((method, index) => {
+                            const processingTime = method.processingTime ? ` · ${method.processingTime}` : '';
+                            const cardholderName = method.activeCardholder ? ` (${method.activeCardholder.displayName})` : '';
+                            const optionHTML = `
+                                <div class="option ${index === autoSelectedIndex ? 'selected' : ''}" data-payment="${method.id}">
+                                    <div><strong>${method.name}</strong></div>
+                                    <div style="font-size:0.9rem; color:#718096; margin: 4px 0;">${cardholderName}</div>
+                                    <div style="font-size:0.85rem; color:#0b1b3a; margin-top:6px;">
+                                        💳 ${method.type === 'bank' ? 'Bank Transfer' : method.type === 'mobile' ? 'Mobile Money' : 'Cash'}${processingTime}
+                                    </div>
+                                </div>
+                            `;
+                            container.innerHTML += optionHTML;
+                        });
+
+                        // Add click handlers to all options
+                        container.querySelectorAll('.option').forEach(opt => {
+                            opt.addEventListener('click', function() {
+                                container.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+                                this.classList.add('selected');
+                                selectedPayment = this.getAttribute('data-payment');
+                                transactionData.paymentMethod = selectedPayment;
+                                
+                                // Find the selected method data
+                                const selectedMethod = methods.find(m => m.id === selectedPayment);
+                                showPaymentDetails(selectedMethod, detailsDiv);
+                            });
+                        });
+
+                        // Select auto-selected method by default
+                        if (methods.length > 0) {
+                            selectedPayment = methods[autoSelectedIndex].id;
+                            transactionData.paymentMethod = selectedPayment;
+                            showPaymentDetails(methods[autoSelectedIndex], detailsDiv);
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.error('Error loading payment methods:', err);
+                    container.innerHTML = '<p style="color: #e53e3e;">Error loading payment methods</p>';
                 });
-                if (!transactionData.paymentMethod) transactionData.paymentMethod = 'sber';
-                renderRubDetails();
-            } else {
-                paymentConfig.options.forEach(opt => {
-                    const div = document.createElement('div');
-                    div.className = 'option';
-                    if (opt.id === 'mtn') div.classList.add('selected');
-                    div.setAttribute('data-payment-id', opt.id);
-                    div.onclick = () => selectPayment(opt.id);
-                    div.innerHTML = `<strong>${transactionData.sendAmount.toFixed(2)} ${sendCurrency}</strong><br>${opt.name}<br><div style="margin-top: 8px;">${opt.id === 'mtn' ? 'SELECTED' : 'SELECT'}</div>`;
-                    container.appendChild(div);
-                });
-                if (!transactionData.paymentMethod) transactionData.paymentMethod = 'mtn';
-                renderCfaDetails();
-            }
         }
 
-        function renderRubDetails() {
-            const selectedId = transactionData.paymentMethod;
-            const opt = paymentConfig.options.find(o => o.id === selectedId);
-            if (!opt) return;
-            const amount = (transactionData.sendAmount + opt.fee).toFixed(2);
-            const detailsDiv = document.getElementById('paymentDetails');
-            if (selectedId === 'sber') {
-                detailsDiv.innerHTML = `<div class="card" style="margin-top: 20px;"><h3>PAYMENT DETAILS • Sber</h3><div class="row"><span>AMOUNT TO PAY</span><span>${amount} ${sendCurrency}</span></div><div class="row"><span>BANK NAME</span><span>Sber</span></div><div class="row"><span>CARD NUMBER</span><span>2202 0000 0000 0000 <button class="copy-btn" onclick="copyText('2202 0000 0000 0000', this)">📋</button><span class="copy-success" style="display:none;">Copied!</span></span></div><div class="row"><span>CARD HOLDER</span><span>${escapeHtml(globalCardHolder)}</span></div></div>`;
-            } else {
-                detailsDiv.innerHTML = `<div class="card" style="margin-top: 20px;"><h3>PAYMENT DETAILS • Cash</h3><div class="row"><span>AMOUNT TO PAY</span><span>${amount} ${sendCurrency}</span></div><div class="row"><span>BANK NAME</span><span>Sber</span></div><div class="row"><span>CARD NUMBER</span><span>2202 0000 0000 0000 <button class="copy-btn" onclick="copyText('2202 0000 0000 0000', this)">📋</button><span class="copy-success" style="display:none;">Copied!</span></span></div><div class="row"><span>CARD HOLDER</span><span>${escapeHtml(globalCardHolder)}</span></div><div style="margin-top: 16px;"><button class="secondary" onclick="toggleHowToPay(this)">🔔 How to pay</button></div><div class="how-to-pay"><ol><li>Visit any Sberbank branch with cash.</li><li>Provide the card details above.</li><li>Make the payment and keep the receipt.</li></ol></div></div>`;
-            }
-        }
+        function showPaymentDetails(paymentMethod, detailsDiv) {
+            let detailsHTML = '';
 
-        function renderCfaDetails() {
-            const selectedId = transactionData.paymentMethod;
-            const opt = paymentConfig.options.find(o => o.id === selectedId);
-            if (!opt) return;
-            const detailsDiv = document.getElementById('paymentDetails');
-            detailsDiv.innerHTML = `<div class="card" style="margin-top: 20px;"><h3>PAYMENT DETAILS • ${opt.name}</h3><div class="row"><span>AMOUNT TO PAY</span><span>${transactionData.sendAmount.toFixed(2)} ${sendCurrency}</span></div><div class="row"><span>PHONE NUMBER</span><span>${opt.phone} <button class="copy-btn" onclick="copyText('${opt.phone}', this)">📋</button><span class="copy-success" style="display:none;">Copied!</span></span></div><div class="row"><span>REFERENCE</span><span>${opt.reference} <button class="copy-btn" onclick="copyText('${opt.reference}', this)">📋</button><span class="copy-success" style="display:none;">Copied!</span></span></div><div class="helper-text">Use your mobile money app to send the exact amount to this phone number.</div></div>`;
-        }
-
-        function selectPayment(methodId) {
-            transactionData.paymentMethod = methodId;
-            document.querySelectorAll('#paymentOptions .option').forEach(opt => {
-                opt.classList.remove('selected');
-                if (opt.getAttribute('data-payment-id') === methodId) {
-                    opt.classList.add('selected');
-                    const selectDiv = opt.querySelector('div:last-child');
-                    if (selectDiv) selectDiv.textContent = 'SELECTED';
+            // Handle payment method object from Firestore
+            if (typeof paymentMethod === 'object') {
+                const method = paymentMethod;
+                const cardholder = method.activeCardholder;
+                
+                if (!cardholder) {
+                    detailsHTML = `<p style="color: #e53e3e;">No active cardholder for this payment method</p>`;
                 } else {
-                    const selectDiv = opt.querySelector('div:last-child');
-                    if (selectDiv) selectDiv.textContent = 'SELECT';
+                    const accountHolder = cardholder.accountHolder || 'N/A';
+                    const accountNumber = cardholder.accountNumber || 'N/A';
+                    const phoneNumber = cardholder.phoneNumber || 'N/A';
+                    const processingTime = method.processingTime || 'Check with merchant';
+
+                    detailsHTML = `
+                        <div style="background: #f7fafc; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #0b1b3a;">
+                            <h4 style="margin-bottom: 1rem; color: #0b1b3a;">💳 ${method.name} - ${cardholder.displayName}</h4>
+                            
+                            <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">
+                                <span>Cardholder</span>
+                                <span><strong>${cardholder.displayName}</strong></span>
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">
+                                <span>Method Type</span>
+                                <span><strong>${method.type === 'bank' ? '🏦 Bank Transfer' : method.type === 'mobile' ? '📱 Mobile Money' : '💵 Cash'}</strong></span>
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">
+                                <span>Currency</span>
+                                <span><strong>${method.currency}</strong></span>
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">
+                                <span>Processing Time</span>
+                                <span><strong>${processingTime}</strong></span>
+                            </div>`;
+
+                    // Show account-specific details from cardholder
+                    if (method.type === 'bank') {
+                        detailsHTML += `
+                            <div style="padding: 1rem; background: white; border-radius: 8px; margin-top: 1rem; border: 2px solid #e2e8f0;">
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">Account Holder</label>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <input type="text" value="${accountHolder}" readonly style="border: none; background: transparent; font-weight: 600; color: #0b1b3a; flex: 1; padding: 0;">
+                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${accountHolder}', this)">Copy</button>
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">Account Number</label>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <input type="text" value="${accountNumber}" readonly style="border: none; background: transparent; font-weight: 600; color: #0b1b3a; flex: 1; padding: 0; font-family: monospace;">
+                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${accountNumber}', this)">Copy</button>
+                                    </div>
+                                </div>
+                            </div>`;
+                    } else if (method.type === 'mobile') {
+                        detailsHTML += `
+                            <div style="padding: 1rem; background: white; border-radius: 8px; margin-top: 1rem; border: 2px solid #e2e8f0;">
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">Account Holder</label>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <input type="text" value="${accountHolder}" readonly style="border: none; background: transparent; font-weight: 600; color: #0b1b3a; flex: 1; padding: 0;">
+                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${accountHolder}', this)">Copy</button>
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">Phone Number</label>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <input type="text" value="${phoneNumber}" readonly style="border: none; background: transparent; font-weight: 600; color: #0b1b3a; flex: 1; padding: 0; font-family: monospace;">
+                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${phoneNumber}', this)">Copy</button>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+
+                    detailsHTML += `<div style="margin-top: 1rem; padding: 0.75rem; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <p style="font-size: 0.85rem; color: #718096; margin: 0;">
+                            ℹ️ Send payment to this ${method.type === 'bank' ? 'bank account' : 'mobile number'}. Your payment will be processed.
+                        </p>
+                    </div>`;
                 }
-            });
-            if (paymentConfig.type === 'rub') renderRubDetails();
-            else renderCfaDetails();
-        }
+            }
 
-        function toggleHowToPay(btn) {
-            const howToPayDiv = btn.closest('.card').querySelector('.how-to-pay');
-            if (howToPayDiv) howToPayDiv.style.display = howToPayDiv.style.display === 'none' ? 'block' : 'none';
-        }
-
-        function copyText(text, btn) {
-            navigator.clipboard.writeText(text).then(() => {
-                const successSpan = btn.nextElementSibling;
-                if (successSpan) {
-                    successSpan.style.display = 'inline';
-                    setTimeout(() => successSpan.style.display = 'none', 2000);
-                }
-            }).catch(() => alert('Unable to copy. Please copy manually.'));
-        }
-
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
+            detailsDiv.innerHTML = detailsHTML;
         }
 
         function nextStep(step) {
+            // Validate current step
             if (step === 2) {
-                let amount = parseFloat(amountInput.value);
-                if (isNaN(amount) || amount < 100) {
-                    amountError.style.display = 'block';
-                    alert('Please enter a valid amount (minimum 100).');
-                    return;
-                }
-                transactionData.sendAmount = amount;
-                transactionData.receiveAmount = amount * liveRate;
-                amountError.style.display = 'none';
+                if (!validateStep1()) return;
             } else if (step === 3) {
-                const name = document.getElementById('recipientName').value.trim();
-                const provider = document.getElementById('provider').value;
-                const phone = document.getElementById('phoneNumber').value.trim();
-                const account = document.getElementById('accountNumber').value.trim();
-                if (!name || !provider) { alert('Please fill in recipient name and provider.'); return; }
-                if (selectedDelivery === 'mobile' && !phone) { alert('Please enter recipient phone number.'); return; }
-                if (selectedDelivery === 'bank' && !account) { alert('Please enter recipient account number.'); return; }
-                transactionData.recipientName = name;
-                transactionData.provider = provider;
-                transactionData.phoneNumber = phone;
-                transactionData.accountNumber = account;
-                renderPaymentStep();
-            }
-            document.getElementById('step1').style.display = 'none';
-            document.getElementById('step2').style.display = 'none';
-            document.getElementById('step3').style.display = 'none';
-            document.getElementById('step4').style.display = 'none';
-            document.getElementById(`step${step}`).style.display = 'block';
-        }
-
-        function prevStep(step) { nextStep(step); }
-
-        function openSupportModal(event) {
-            event.preventDefault();
-            const modal = document.getElementById('supportModal');
-            const user = auth.currentUser;
-            if (user) {
-                document.getElementById('supportName').value = user.displayName || user.email.split('@')[0];
-                document.getElementById('supportEmail').value = user.email;
-            }
-            const subject = `Help with transaction (${transactionData.sendAmount} ${transactionData.sendCurrency} → ${transactionData.receiveCurrency})`;
-            const message = `I need assistance with my transaction:\n- Amount: ${transactionData.sendAmount} ${transactionData.sendCurrency}\n- Recipient: ${transactionData.recipientName || 'Not yet entered'}\n- Provider: ${transactionData.provider || 'Not yet entered'}\n- Phone: ${transactionData.phoneNumber || 'Not yet entered'}\n- Account: ${transactionData.accountNumber || 'Not yet entered'}\n- Payment method: ${transactionData.paymentMethod || 'Not selected'}\n- Exchange rate: 1 ${transactionData.sendCurrency} = ${transactionData.rate} ${transactionData.receiveCurrency}\n- Receive amount: ${transactionData.receiveAmount} ${transactionData.receiveCurrency}\n\nPlease help me resolve this issue.`;
-            document.getElementById('supportSubject').value = subject;
-            document.getElementById('supportMessage').value = message;
-            modal.style.display = 'flex';
-        }
-
-        function closeSupportModal() { document.getElementById('supportModal').style.display = 'none'; }
-
-        document.getElementById('supportForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = { id: Date.now(), name: document.getElementById('supportName').value, email: document.getElementById('supportEmail').value, subject: document.getElementById('supportSubject').value, message: document.getElementById('supportMessage').value, attachmentName: document.getElementById('supportAttachment').files[0]?.name || null, transactionData: transactionData, userId: auth.currentUser?.uid, date: new Date().toISOString() };
-            let supportTickets = JSON.parse(localStorage.getItem('supportTickets') || '[]');
-            supportTickets.push(formData);
-            localStorage.setItem('supportTickets', JSON.stringify(supportTickets));
-            const msgDiv = document.getElementById('supportMessageStatus');
-            msgDiv.textContent = 'Message sent! Our support team will contact you soon.';
-            msgDiv.style.color = '#059669';
-            setTimeout(() => { closeSupportModal(); msgDiv.textContent = ''; }, 2000);
-        });
-
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                const fileName = e.target.files[0].name;
-                document.getElementById('selectedFileName').textContent = `Selected: ${fileName}`;
-                transactionData.proofFileName = fileName;
-            } else {
-                document.getElementById('selectedFileName').textContent = '';
-            }
-        });
-
-        // ========== FIXED completeTransaction – uses live Storage, correct path ==========
-        async function completeTransaction() {
-            const fileInput = document.getElementById('fileInput');
-            if (!fileInput || fileInput.files.length === 0) {
-                alert('Please upload a proof of payment image or PDF.');
+                if (!validateStep2()) return;
+                // Show loading state
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Creating order...';
+                btn.disabled = true;
+                
+                // Save order to database before proceeding
+                saveOrder().then(() => {
+                    console.log('Order saved, showing payment options');
+                    renderPaymentOptions();
+                    showStep(step);
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }).catch(err => {
+                    console.error('Error creating order:', err);
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                    alert('Error creating order. Please check your details and try again.');
+                });
                 return;
+            } else if (step === 4) {
+                if (!validateStep3()) return;
             }
 
-            const user = auth.currentUser;
-            if (!user) {
-                alert('You must be logged in.');
-                window.location.href = 'signin.html';
+            showStep(step);
+        }
+
+        function showStep(step) {
+            // Hide all steps
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`step${i}`).style.display = 'none';
+                document.querySelectorAll('.step')[i - 1].classList.remove('active');
+            }
+
+            // Show new step
+            document.getElementById(`step${step}`).style.display = 'block';
+            document.querySelectorAll('.step')[step - 1].classList.add('active');
+        }
+
+        function prevStep(step) {
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`step${i}`).style.display = 'none';
+                document.querySelectorAll('.step')[i - 1].classList.remove('active');
+            }
+
+            document.getElementById(`step${step}`).style.display = 'block';
+            document.querySelectorAll('.step')[step - 1].classList.add('active');
+        }
+
+        function validateStep1() {
+            if (!selectedDelivery) {
+                alert('Please select a delivery method');
+                return false;
+            }
+            return true;
+        }
+
+        function validateStep2() {
+            const name = document.getElementById('recipientName').value.trim();
+            const provider = document.getElementById('provider').value;
+
+            if (!name) {
+                alert('Please enter recipient name');
+                return false;
+            }
+            if (!provider) {
+                alert('Please select a provider');
+                return false;
+            }
+
+            transactionData.recipientName = name;
+            transactionData.provider = provider;
+
+            if (selectedDelivery === 'mobile') {
+                const phone = document.getElementById('phoneNumber').value.trim();
+                if (!phone) {
+                    alert('Please enter phone number');
+                    return false;
+                }
+                transactionData.phoneNumber = phone;
+            } else {
+                const account = document.getElementById('accountNumber').value.trim();
+                if (!account) {
+                    alert('Please enter account number');
+                    return false;
+                }
+                transactionData.accountNumber = account;
+            }
+
+            return true;
+        }
+
+        function validateStep3() {
+            if (!selectedPayment) {
+                alert('Please select a payment method');
+                return false;
+            }
+            return true;
+        }
+
+        function completeTransaction() {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files[0]) {
+                alert('Please upload payment proof');
                 return;
             }
 
             const file = fileInput.files[0];
-            // Sanitize file name to avoid special characters
-            const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-            const fileName = `proof_${Date.now()}_${user.uid}_${safeName}`;
-            // Path must match the storage rule: proofs/{userId}/...
-            const storageRef = storage.ref(`proofs/${user.uid}/${fileName}`);
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size must be less than 10MB');
+                return;
+            }
 
-            const submitBtn = document.getElementById('submitTransactionBtn');
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Uploading proof...';
-            submitBtn.disabled = true;
+            // Save transaction
+            saveTransaction(file);
+        }
 
-            console.log('Uploading to:', storageRef.fullPath);
-            console.log('File size:', file.size, 'bytes');
-
-            try {
-                // Upload to live Firebase Storage (emulator removed)
-                const snapshot = await storageRef.put(file);
-                const downloadURL = await snapshot.ref.getDownloadURL();
-                console.log('Upload success! URL:', downloadURL);
-
-                // Save transaction to Firestore
-                const transactionRecord = {
-                    userId: user.uid,
-                    userEmail: user.email,
-                    amountSent: transactionData.sendAmount,
-                    currencySent: transactionData.sendCurrency,
-                    amountReceived: transactionData.receiveAmount,
-                    currencyReceived: transactionData.receiveCurrency,
+        function saveOrder() {
+            return new Promise((resolve, reject) => {
+                // Ensure receiveAmount is calculated
+                const receiveAmount = transactionData.sendAmount * transactionData.rate;
+                
+                // Create order data
+                const orderData = {
+                    sendAmount: transactionData.sendAmount,
+                    sendCurrency: transactionData.sendCurrency,
+                    receiveCurrency: transactionData.receiveCurrency,
                     rate: transactionData.rate,
+                    receiveAmount: receiveAmount,
                     recipientName: transactionData.recipientName,
                     provider: transactionData.provider,
-                    phoneNumber: transactionData.phoneNumber,
-                    accountNumber: transactionData.accountNumber,
-                    paymentMethod: transactionData.paymentMethod,
+                    phoneNumber: transactionData.phoneNumber || '',
+                    accountNumber: transactionData.accountNumber || '',
                     deliveryMethod: transactionData.deliveryMethod,
-                    proofFileName: fileName,
-                    proofDownloadURL: downloadURL,
+                    userId: currentUser?.uid || transactionData.userId,
+                    userEmail: currentUser?.email || transactionData.userEmail,
+                    createdAt: firebase.firestore.Timestamp.now(),
                     status: 'pending',
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    paymentMethod: null,
+                    proofFileName: null
                 };
 
-                await db.collection('transactions').add(transactionRecord);
-                alert('Transaction submitted successfully! Our team will verify your payment proof.');
-                window.location.href = 'history.html';
-            } catch (error) {
-                console.error('Upload or save error:', error);
-                alert('Failed to submit transaction: ' + error.message);
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
-            }
+                console.log('Creating order with data:', orderData);
+
+                // Save order to Firestore only
+                db.collection('orders').add(orderData).then((docRef) => {
+                    // Store the order ID in transaction data for later use
+                    transactionData.orderId = docRef.id;
+                    console.log('Order created successfully with ID:', docRef.id);
+                    console.log('Order is now visible in history page');
+                    resolve(docRef.id);
+                }).catch(err => {
+                    console.error('Error creating order:', err);
+                    reject(err);
+                });
+            });
         }
+
+        function saveTransaction(file) {
+            const fileName = `${transactionData.userId}_${Date.now()}_${file.name}`;
+            const storageRef = storage.ref(`proofs/${fileName}`);
+
+            storageRef.put(file).then(() => {
+                transactionData.proofFileName = fileName;
+                
+                const updates = [];
+                
+                // Update the order with proof and payment method
+                if (transactionData.orderId) {
+                    updates.push(
+                        db.collection('orders').doc(transactionData.orderId).update({
+                            proofFileName: fileName,
+                            paymentMethod: transactionData.paymentMethod,
+                            status: 'uploaded'
+                        }).then(() => {
+                            console.log('Order updated to uploaded (awaiting admin approval)');
+                        })
+                    );
+                    
+                    // Create a transaction record ONLY after proof is uploaded
+                    const transactionRecord = {
+                        orderId: transactionData.orderId,
+                        userId: currentUser?.uid || transactionData.userId,
+                        userEmail: currentUser?.email || transactionData.userEmail,
+                        recipientName: transactionData.recipientName,
+                        amountSent: transactionData.sendAmount,
+                        currencySent: transactionData.sendCurrency,
+                        amountReceived: transactionData.sendAmount * transactionData.rate,
+                        currencyReceived: transactionData.receiveCurrency,
+                        provider: transactionData.provider,
+                        paymentMethod: transactionData.paymentMethod,
+                        proofFileName: fileName,
+                        status: 'completed',
+                        timestamp: firebase.firestore.Timestamp.now()
+                    };
+                    
+                    updates.push(
+                        db.collection('transactions').add(transactionRecord).then((txRef) => {
+                            console.log('Transaction created with ID:', txRef.id);
+                        })
+                    );
+                }
+                
+                return Promise.all(updates);
+            }).then(() => {
+                alert('Transaction submitted successfully');
+                window.location.href = 'history.html';
+            }).catch(err => {
+                alert('Error: ' + err.message);
+            });
+        }
+
+        function copyToClipboard(text, button) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.style.background = '#d1fae5';
+                button.style.color = '#059669';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '';
+                    button.style.color = '#0b1b3a';
+                }, 2000);
+            }).catch(() => {
+                alert('Failed to copy');
+            });
+        }
+
+        function closeSupportModal() {
+            document.getElementById('supportModal').style.display = 'none';
+        }
+
+        // Set first step as active on load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.step')[0].classList.add('active');
+        });
     </script>
 </body>
 </html>

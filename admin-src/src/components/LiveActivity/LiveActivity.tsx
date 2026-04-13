@@ -36,21 +36,24 @@ const LiveActivity: React.FC = () => {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow p-6">
-      <h2 className="text-xl font-semibold mb-4">📋 Live Transactions</h2>
+    <div className="card-base p-6">
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
+        <h2 className="text-xl font-semibold">📋 Live Transactions</h2>
+        <span className="text-sm font-medium text-slate-500">{transactions.length} transactions</span>
+      </div>
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              <th className="px-4 py-2 text-left">Date</th>
-              <th className="px-4 py-2 text-left">Amount</th>
-              <th className="px-4 py-2 text-left">Recipient</th>
-              <th className="px-4 py-2 text-left">Status</th>
-              <th className="px-4 py-2 text-left">Actions</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-600">Date</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-600">Amount</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-600">Recipient</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-600">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {transactions.map(tx => (
+            {transactions.map((tx) => (
               <TransactionRow
                 key={tx.id}
                 transaction={tx}
@@ -59,7 +62,7 @@ const LiveActivity: React.FC = () => {
               />
             ))}
             {transactions.length === 0 && (
-              <tr><td colSpan={5} className="text-center py-8 text-gray-500">No transactions yet</td></tr>
+              <tr><td colSpan={5} className="text-center py-12 text-slate-500 font-medium">✨ No transactions yet</td></tr>
             )}
           </tbody>
         </table>
