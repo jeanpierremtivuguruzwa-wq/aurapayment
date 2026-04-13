@@ -1,267 +1,346 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useFirestoreQuery } from '../../hooks/useFirestoreQuery'
 import { PaymentMethod } from '../../types/PaymentMethod'
-import { deletePaymentMethod, setActivePaymentMethod, deactivatePaymentMethod } from '../../services/paymentMethodService'
+import { Cardholder } from '../../types/Cardholder'
+import { deletePaymentMethod, listenToPaymentMethodTotal, autoLinkOrCreateCardholder } from '../../services/paymentMethodService'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '../../services/firebase'
 import CardForm from './CardForm'
 import EditMethodForm from './EditMethodForm'
 
+type FilterTab = 'all' | 'bank' | 'mobile' | 'cash'
+
+const ICONS: Record<string, string> = {
+  bank: '🏦',
+  mobile: '📱',
+  cash: '💵',
+}
+
 const PaymentMethods: React.FC = () => {
   const { data: methods, loading } = useFirestoreQuery<PaymentMethod>('paymentMethods', 'createdAt')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const { data: cardholders } = useFirestoreQuery<Cardholder>('cardholders')
+  const [activeTab, setActiveTab] = useState<FilterTab>('all')
   const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null)
-
-  const handleSetActive = async (id: string) => {
-    try {
-      await setActivePaymentMethod(id)
-      alert('Payment method activated!')
-    } catch (error) {
-      alert('Error activating payment method: ' + (error as Error).message)
-    }
-  }
-
-  const handleDeactivate = async (id: string) => {
-    try {
-      await deactivatePaymentMethod(id)
-      alert('Payment method deactivated!')
-    } catch (error) {
-      alert('Error deactivating payment method: ' + (error as Error).message)
-    }
-  }
+  const [showAddModal, setShowAddModal] = useState(false)
 
   const handleDelete = async (id: string) => {
-    if (confirm('Delete this payment method?')) {
+    if (!confirm('Delete this payment method? This also removes its linked cardholders.')) return
+    try {
       await deletePaymentMethod(id)
+    } catch (err: any) {
+      alert('Error: ' + err?.message)
     }
   }
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'bank': return '🏦'
-      case 'mobile': return '📱'
-      case 'cash': return '💵'
-      default: return '💳'
-    }
-  }
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'bank': return 'Bank Transfer'
-      case 'mobile': return 'Mobile Money'
-      case 'cash': return 'Cash Pickup'
-      default: return type
+  const handleToggleActive = async (method: PaymentMethod) => {
+    try {
+      await updateDoc(doc(db, 'paymentMethods', method.id), { active: !method.active })
+    } catch (err: any) {
+      alert('Error: ' + err?.message)
     }
   }
 
   if (loading) {
     return (
-      <div className="card-base p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-slate-200 rounded w-1/3"></div>
-          <div className="h-32 bg-slate-200 rounded"></div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
       </div>
     )
   }
 
-  // Calculate statistics
-  const activeMethod = methods.find(m => m.active)
-  const totalReceived = methods.reduce((sum, method) => sum + (method.totalReceived || 0), 0)
+  const counts = {
+    all: methods.length,
+    bank: methods.filter(m => m.type === 'bank').length,
+    mobile: methods.filter(m => m.type === 'mobile').length,
+    cash: methods.filter(m => m.type === 'cash').length,
+  }
+
+  const filtered = activeTab === 'all' ? methods : methods.filter(m => m.type === activeTab)
+
+  const tabs: { key: FilterTab; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'bank', label: 'Bank' },
+    { key: 'mobile', label: 'Mobile' },
+    { key: 'cash', label: 'Cash' },
+  ]
 
   return (
     <div className="space-y-6">
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card-base p-4 bg-gradient-to-br from-slate-50 to-slate-100">
-          <p className="text-xs font-semibold text-slate-600 uppercase">Total Methods</p>
-          <p className="text-3xl font-bold text-slate-900 mt-2">{methods.length}</p>
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
+          <p className="text-gray-500 text-sm mt-1">Manage account details for payments</p>
+          <p className="text-xs text-gray-400 mt-1 max-w-xl">
+            These payment account details are shown to customers during checkout. Ensure all information is accurate and up-to-date. Changes apply immediately to new transactions.
+          </p>
         </div>
-        <div className="card-base p-4 bg-gradient-to-br from-green-50 to-green-100">
-          <p className="text-xs font-semibold text-green-600 uppercase">Active</p>
-          <p className="text-2xl font-bold text-green-900 mt-2">{activeMethod?.name || 'None'}</p>
-        </div>
-        <div className="card-base p-4 bg-gradient-to-br from-blue-50 to-blue-100">
-          <p className="text-xs font-semibold text-blue-600 uppercase">Total Received</p>
-          <p className="text-2xl font-bold text-blue-900 mt-2">₽{totalReceived.toFixed(2)}</p>
-        </div>
-        <div className="card-base p-4 bg-gradient-to-br from-purple-50 to-purple-100">
-          <p className="text-xs font-semibold text-purple-600 uppercase">Bank Methods</p>
-          <p className="text-3xl font-bold text-purple-900 mt-2">{methods.filter(m => m.type === 'bank').length}</p>
-        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+        >
+          + Add Payment Method
+        </button>
       </div>
 
-      {/* Payment Methods List */}
-      <div className="card-base p-6">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-          <h2 className="text-xl font-semibold">💳 Payment Methods</h2>
-          <span className="text-sm font-medium text-slate-500">{methods.length} configured</span>
-        </div>
-
-        {methods.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-slate-500 text-lg">No payment methods yet</p>
-            <p className="text-slate-400 text-sm mt-2">Add one below to get started</p>
-          </div>
-        ) : (
-          <div className="space-y-3 mb-6">
-            {methods.map(method => (
-              <div key={method.id} className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="text-2xl">{getTypeIcon(method.type)}</div>
-                    <div>
-                      <div className="font-semibold text-slate-900">{method.name}</div>
-                      <div className="text-xs text-slate-500">
-                        {getTypeLabel(method.type)} · {method.currency}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {method.active && (
-                      <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                        ✓ Active
-                      </span>
-                    )}
-                    <button
-                      onClick={() => setExpandedId(expandedId === method.id ? null : method.id)}
-                      className="text-sky-600 hover:text-sky-700 font-medium text-xs"
-                    >
-                      {expandedId === method.id ? 'Hide' : 'View'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expanded Details */}
-                {expandedId === method.id && (
-                  <div className="bg-slate-50 border-t border-slate-200 pt-4 mt-4 space-y-4">
-                    {/* Basic Details */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <label className="text-xs font-semibold text-slate-600 uppercase">Type</label>
-                        <p className="text-slate-900 font-medium mt-1 capitalize">{getTypeLabel(method.type)}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-slate-600 uppercase">Currency</label>
-                        <p className="text-slate-900 font-medium mt-1">{method.currency}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-slate-600 uppercase">Processing Time</label>
-                        <p className="text-slate-900 font-medium mt-1">{method.processingTime || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-slate-600 uppercase">Fees</label>
-                        <p className="text-slate-900 font-medium mt-1">{method.fees ? method.fees + '%' : 'Free'}</p>
-                      </div>
-                    </div>
-
-                    {/* Description */}
-                    {method.description && (
-                      <div className="bg-white border border-slate-200 rounded-lg p-3">
-                        <label className="text-xs font-semibold text-slate-600 uppercase">Description</label>
-                        <p className="text-slate-700 text-sm mt-2">{method.description}</p>
-                      </div>
-                    )}
-
-                    {/* Bank Details */}
-                    {method.type === 'bank' && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h4 className="font-semibold text-blue-900 mb-3">🏦 Bank Account</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                          <div>
-                            <span className="text-blue-600 font-semibold text-xs uppercase">Account Holder</span>
-                            <p className="text-blue-900 font-medium mt-1">{method.accountHolder || 'N/A'}</p>
-                          </div>
-                          <div>
-                            <span className="text-blue-600 font-semibold text-xs uppercase">Account Number</span>
-                            <p className="text-blue-900 font-medium mt-1 font-mono">{method.accountNumber || 'N/A'}</p>
-                          </div>
-
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Mobile Money Details */}
-                    {method.type === 'mobile' && (
-                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                        <h4 className="font-semibold text-purple-900 mb-3">📱 Mobile Money Account</h4>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-purple-600 font-semibold text-xs uppercase">Account Holder</span>
-                            <p className="text-purple-900 font-medium mt-1">{method.accountHolder || 'N/A'}</p>
-                          </div>
-                          <div>
-                            <span className="text-purple-600 font-semibold text-xs uppercase">Phone Number</span>
-                            <p className="text-purple-900 font-medium mt-1 font-mono">{method.phoneNumber || 'N/A'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Total Received */}
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                      <label className="text-xs font-semibold text-green-600 uppercase">Total Received</label>
-                      <p className="text-green-900 font-medium mt-1 text-lg">₽{method.totalReceived?.toFixed(2) || '0.00'}</p>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 pt-4 flex-wrap border-t border-slate-200">
-                      <button
-                        onClick={() => setEditingMethod(method)}
-                        className="btn-primary text-xs flex items-center gap-1"
-                      >
-                        ✏️ Edit Details
-                      </button>
-                      {!method.active && (
-                        <button
-                          onClick={() => handleSetActive(method.id)}
-                          className="btn-primary text-xs bg-green-50 text-green-600 border border-green-200 hover:bg-green-100"
-                        >
-                          ✓ Activate
-                        </button>
-                      )}
-                      {method.active && (
-                        <button
-                          onClick={() => handleDeactivate(method.id)}
-                          className="btn-secondary text-xs bg-yellow-50 text-yellow-600 border border-yellow-200 hover:bg-yellow-100"
-                        >
-                          ○ Deactivate
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(method.id)}
-                        className="btn-secondary text-xs bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
-                      >
-                        🗑 Delete Method
-                      </button>
-                    </div>
-
-                    {/* Info message about Cardholders */}
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-4">
-                      <p className="text-xs text-purple-900">
-                        💡 <strong>Tip:</strong> Go to <strong>Cardholders</strong> page to add account holders for this payment method
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+      {/* ── Filter Tabs ── */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        {tabs.map(tab => (
+          counts[tab.key] > 0 || tab.key === 'all' ? (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === tab.key
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+              <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                activeTab === tab.key ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-200 text-gray-500'
+              }`}>
+                {counts[tab.key]}
+              </span>
+            </button>
+          ) : null
+        ))}
       </div>
 
-      {/* Add New Payment Method */}
-      <CardForm />
+      {/* ── Cards ── */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">
+          <div className="text-4xl mb-3">💳</div>
+          <p className="font-medium text-gray-500">No {activeTab === 'all' ? '' : activeTab + ' '}methods yet</p>
+          <p className="text-sm mt-1">Click <span className="text-indigo-600 font-medium">+ Add Payment Method</span> to create one.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map(method => (
+            <MethodCard
+              key={method.id}
+              method={method}
+              cardholder={cardholders.find(c => c.paymentMethodId === method.id) ?? null}
+              onEdit={() => setEditingMethod(method)}
+              onDelete={() => handleDelete(method.id)}
+              onToggleActive={() => handleToggleActive(method)}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* Edit Modal */}
+      {/* ── Add Modal ── */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Add Payment Method</h2>
+              <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
+            </div>
+            <div className="p-6">
+              <CardForm onClose={() => setShowAddModal(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Modal ── */}
       {editingMethod && (
         <EditMethodForm
           method={editingMethod}
           onClose={() => setEditingMethod(null)}
-          onSaved={() => {
-            setEditingMethod(null)
-            // The data will refresh automatically via useFirestoreQuery
-          }}
+          onSaved={() => setEditingMethod(null)}
         />
       )}
+    </div>
+  )
+}
+
+// ─── Method Card ──────────────────────────────────────────────────────────────
+
+function MethodCard({
+  method,
+  cardholder,
+  onEdit,
+  onDelete,
+  onToggleActive,
+}: {
+  method: PaymentMethod
+  cardholder: Cardholder | null
+  onEdit: () => void
+  onDelete: () => void
+  onToggleActive: () => void
+}) {
+  const icon = ICONS[method.type] ?? '💳'
+  const isBank = method.type === 'bank'
+  const isMobile = method.type === 'mobile'
+
+  // Live-listen to totalReceived so balance is always current
+  const [liveReceived, setLiveReceived] = useState(method.totalReceived ?? 0)
+  useEffect(() => {
+    return listenToPaymentMethodTotal(method.id, setLiveReceived)
+  }, [method.id])
+
+  const liveBalance = Math.max(0, liveReceived - (cardholder?.totalWithdrawn ?? 0))
+
+  const [linking, setLinking] = useState(false)
+
+  const handleAutoLink = async () => {
+    setLinking(true)
+    try {
+      const result = await autoLinkOrCreateCardholder(method as PaymentMethod & { id: string })
+      alert(result === 'linked' ? '✓ Existing cardholder re-linked to this payment method.' : '✓ New cardholder created and linked.')
+    } catch (err: any) {
+      alert('Error: ' + err?.message)
+    } finally {
+      setLinking(false)
+    }
+  }
+
+  return (
+    <div className={`bg-white rounded-xl border overflow-hidden shadow-sm hover:shadow-md transition-shadow ${
+      method.active ? 'border-green-300' : 'border-gray-200'
+    }`}>
+      {/* Card header */}
+      <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="text-xl flex-shrink-0">{icon}</span>
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 text-sm truncate">{method.name}</p>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                {method.currency}
+              </span>
+              {method.active && (
+                <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
+                  ✓ Active
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={onEdit}
+          className="flex-shrink-0 text-xs px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+        >
+          Edit
+        </button>
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-gray-100 mx-4" />
+
+      {/* Account details */}
+      <div className="px-4 py-3 space-y-3">
+        {/* Account Number (bank) or Phone Number (mobile) */}
+        {isBank && (
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Account Number</p>
+            <p className="text-sm font-mono text-gray-800 font-medium">
+              {method.accountNumber || <span className="text-gray-300 italic font-sans text-xs">Not set</span>}
+            </p>
+          </div>
+        )}
+        {isMobile && (
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Phone Number</p>
+            <p className="text-sm font-mono text-gray-800 font-medium">
+              {method.phoneNumber || <span className="text-gray-300 italic font-sans text-xs">Not set</span>}
+            </p>
+          </div>
+        )}
+        {method.type === 'cash' && (
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Location / Details</p>
+            <p className="text-sm text-gray-700">{method.description || <span className="text-gray-300 italic text-xs">Not set</span>}</p>
+          </div>
+        )}
+
+        {/* Account Holder */}
+        <div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Account Holder</p>
+          <p className="text-sm text-gray-800 font-medium">
+            {method.accountHolder || <span className="text-gray-300 italic text-xs font-normal">Not set</span>}
+          </p>
+        </div>
+
+        {/* Total received + live balance */}
+        {liveReceived > 0 && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Received</p>
+              <p className="text-sm font-semibold text-green-600">
+                {method.currency} {liveReceived.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Current Balance</p>
+              <p className="text-sm font-bold text-indigo-600">
+                {method.currency} {liveBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Linked cardholder */}
+        <div className={`rounded-lg px-3 py-2 border ${
+          cardholder ? 'bg-indigo-50 border-indigo-200' : 'bg-amber-50 border-amber-200'
+        }`}>
+          {cardholder ? (
+            <div>
+              <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${
+                cardholder.status === 'active' ? 'text-indigo-600' : 'text-gray-500'
+              }`}>Linked Cardholder</p>
+              <p className="text-sm font-semibold text-gray-900">{cardholder.accountHolder}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  cardholder.status === 'active'
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {cardholder.status === 'active' ? '✓ Active' : '○ Inactive'}
+                </span>
+                {(cardholder.totalWithdrawn ?? 0) > 0 && (
+                  <span className="text-[10px] text-orange-600">
+                    Withdrawn: {method.currency} {(cardholder.totalWithdrawn ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-amber-700 font-medium">⚠️ No cardholder linked</p>
+              <button
+                onClick={handleAutoLink}
+                disabled={linking}
+                className="text-xs px-2.5 py-1 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap"
+              >
+                {linking ? 'Linking…' : '🔗 Auto-Link'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer actions */}
+      <div className="border-t border-gray-100 px-4 py-2.5 flex items-center justify-between bg-gray-50">
+        <button
+          onClick={onToggleActive}
+          className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
+            method.active
+              ? 'text-yellow-700 bg-yellow-50 hover:bg-yellow-100 border border-yellow-200'
+              : 'text-green-700 bg-green-50 hover:bg-green-100 border border-green-200'
+          }`}
+        >
+          {method.active ? 'Deactivate' : 'Activate'}
+        </button>
+        <button
+          onClick={onDelete}
+          className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-lg transition-colors"
+        >
+          🗑 Delete
+        </button>
+      </div>
     </div>
   )
 }

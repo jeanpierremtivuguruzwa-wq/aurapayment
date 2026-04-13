@@ -4,4 +4,9 @@ export interface CurrencyPair {
   to: string
   rate: number
   urgent: boolean
+  country?: string
+  countryCode?: string
+  flag?: string
+  active?: boolean
+  deliveryMethods?: string[]
 }

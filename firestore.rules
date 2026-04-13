@@ -1,9 +1,99 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /transactions/{document} {
-      allow read, write: if true;
+
+    // Helper: user is authenticated
+    function isAuth() {
+      return request.auth != null;
     }
+
+    // Helper: user has admin or agent role (read from their Firestore profile)
+    function isAdminOrAgent() {
+      return isAuth() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.get('role', 'user') in ['admin', 'agent'];
+    }
+
+    // Helper: the document belongs to the current user
+    function isOwner() {
+      return isAuth() && resource.data.userId == request.auth.uid;
+    }
+
+    // Transactions — users see only their own; admins/agents see all
+    match /transactions/{document} {
+      allow read: if isOwner() || isAdminOrAgent();
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isOwner() || isAdminOrAgent();
+    }
+
+    // Orders — users see only their own; admins/agents see all
+    match /orders/{document} {
+      allow read: if isOwner() || isAdminOrAgent();
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isOwner() || isAdminOrAgent();
+    }
+
+    // Currency pairs — public read; auth required to write (admin app)
+    match /currencyPairs/{document} {
+      allow read: if true;
+      allow write: if isAuth();
+    }
+
+    // Payment methods — public read; auth required to write (admin app)
+    match /paymentMethods/{document} {
+      allow read: if true;
+      allow write: if isAuth();
+    }
+
+    // Cardholders — auth required (admin app only)
+    match /cardholders/{document} {
+      allow read, write: if isAuth();
+    }
+
+    // Cardholder withdrawals — auth required (admin app only)
+    match /cardholderWithdrawals/{document} {
+      allow read, write: if isAuth();
+    }
+
+    // Admin notifications — auth required (admin app only)
+    match /adminNotifications/{document} {
+      allow read, write: if isAuth();
+    }
+
+    // Agents — auth required (admin app only)
+    match /agents/{document} {
+      allow read, write: if isAuth();
+    }
+
+    // Agent permission requests — auth required
+    match /permissionRequests/{document} {
+      allow read, write: if isAuth();
+    }
+
+    // Currency-cardholder assignments — auth required (admin app only)
+    match /currencyAssignments/{document} {
+      allow read, write: if isAuth();
+    }
+
+    // Notification recipients — auth required (admin app only)
+    match /notificationRecipients/{document} {
+      allow read, write: if isAuth();
+    }
+
+    // Mail queue — written by Cloud Functions only (admin SDK bypasses rules)
+    // Client apps never need to read/write this collection directly
+    match /mail/{document} {
+      allow read, write: if false;
+    }
+
+    // User profiles — users write their own; any authenticated user (admin) can read all
+    match /users/{userId} {
+      allow read: if isAuth();
+      allow create: if isAuth() && request.auth.uid == userId;
+      allow update: if isAuth();
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

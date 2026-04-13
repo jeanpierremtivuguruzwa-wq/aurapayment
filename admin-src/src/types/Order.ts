@@ -16,6 +16,7 @@ export interface Order {
   deliveryMethod: DeliveryMethod
   userId: string
   userEmail: string
+  senderName?: string
   createdAt: {
     seconds: number
     nanoseconds: number

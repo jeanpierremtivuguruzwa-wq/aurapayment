@@ -489,10 +489,20 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
-            loadUserData();
-            initializeTransactionData();
-            renderDeliveryOptions();
-            
+            // Wait for Firebase Auth to confirm identity before initializing
+            auth.onAuthStateChanged(firebaseUser => {
+                if (!firebaseUser) {
+                    window.location.href = 'signin.html';
+                    return;
+                }
+                // Merge Firebase Auth uid with localStorage profile
+                const storedUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                currentUser = { ...storedUser, uid: firebaseUser.uid, email: firebaseUser.email };
+                updateUserDisplay(currentUser);
+                initializeTransactionData();
+                renderDeliveryOptions();
+            });
+
             // Setup file input handler
             const fileInput = document.getElementById('fileInput');
             if (fileInput) {
@@ -504,21 +514,6 @@
                 });
             }
         });
-
-        function loadUserData() {
-            try {
-                const storedUser = localStorage.getItem('currentUser');
-                if (storedUser) {
-                    const user = JSON.parse(storedUser);
-                    currentUser = user;
-                    updateUserDisplay(user);
-                } else {
-                    window.location.href = 'signin.html';
-                }
-            } catch (err) {
-                window.location.href = 'signin.html';
-            }
-        }
 
         function updateUserDisplay(user) {
             const fullName = user.fullName || user.full_name || 'User';
@@ -650,19 +645,29 @@
                         const method = { id: doc.id, ...doc.data() };
                         methods.push(method);
                         
-                        // Fetch active cardholder for each payment method
+                        // Fetch cardholder for each payment method (prefer active, fall back to any)
                         promises.push(
                             db.collection('cardholders')
                                 .where('paymentMethodId', '==', method.id)
-                                .where('status', '==', 'active')
                                 .get()
                                 .then(cardholderSnapshot => {
                                     if (!cardholderSnapshot.empty) {
-                                        const cardholder = cardholderSnapshot.docs[0].data();
-                                        method.activeCardholder = {
-                                            id: cardholderSnapshot.docs[0].id,
-                                            ...cardholder
-                                        };
+                                        // Prefer an active one, otherwise use the first available
+                                        const activeDocs = cardholderSnapshot.docs.filter(d => d.data().status === 'active');
+                                        const chosen = activeDocs.length > 0 ? activeDocs[0] : cardholderSnapshot.docs[0];
+                                        method.activeCardholder = { id: chosen.id, ...chosen.data() };
+                                    } else {
+                                        // No cardholder doc at all — synthesise one from the method fields
+                                        if (method.accountHolder || method.accountNumber || method.phoneNumber) {
+                                            method.activeCardholder = {
+                                                id: method.id,
+                                                displayName: method.name,
+                                                accountHolder: method.accountHolder || method.name,
+                                                accountNumber: method.accountNumber,
+                                                phoneNumber: method.phoneNumber,
+                                                status: 'active'
+                                            };
+                                        }
                                     }
                                 })
                                 .catch(err => console.error('Error fetching cardholder:', err))
@@ -737,7 +742,21 @@
                 const cardholder = method.activeCardholder;
                 
                 if (!cardholder) {
-                    detailsHTML = `<p style="color: #e53e3e;">No active cardholder for this payment method</p>`;
+                    // Last-resort fallback: use payment method's own account fields
+                    if (method.accountHolder || method.accountNumber || method.phoneNumber) {
+                        method.activeCardholder = {
+                            id: method.id,
+                            displayName: method.name,
+                            accountHolder: method.accountHolder || method.name,
+                            accountNumber: method.accountNumber,
+                            phoneNumber: method.phoneNumber,
+                            status: 'active'
+                        };
+                        // Re-invoke with the synthesised cardholder
+                        showPaymentDetails(method, detailsDiv || document.getElementById('paymentDetails'));
+                        return;
+                    }
+                    detailsHTML = `<p style="color: #e53e3e;">No payment details configured for this method yet.</p>`;
                 } else {
                     const accountHolder = cardholder.accountHolder || 'N/A';
                     const accountNumber = cardholder.accountNumber || 'N/A';
@@ -848,6 +867,25 @@
                 return;
             } else if (step === 4) {
                 if (!validateStep3()) return;
+                // Save selected payment method to the order immediately
+                if (transactionData.orderId && transactionData.paymentMethod) {
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Saving...';
+                    btn.disabled = true;
+                    db.collection('orders').doc(transactionData.orderId).update({
+                        paymentMethod: transactionData.paymentMethod
+                    }).then(() => {
+                        showStep(step);
+                    }).catch(err => {
+                        console.error('Error updating payment method:', err);
+                        showStep(step); // proceed anyway
+                    }).finally(() => {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    });
+                    return;
+                }
             }
 
             showStep(step);
@@ -962,6 +1000,7 @@
                     deliveryMethod: transactionData.deliveryMethod,
                     userId: currentUser?.uid || transactionData.userId,
                     userEmail: currentUser?.email || transactionData.userEmail,
+                    senderName: currentUser?.fullName || currentUser?.full_name || currentUser?.displayName || currentUser?.email || '',
                     createdAt: firebase.firestore.Timestamp.now(),
                     status: 'pending',
                     paymentMethod: null,

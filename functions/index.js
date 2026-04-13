@@ -36,12 +36,28 @@ apiApp.use(helmet());
 apiApp.use(cors({ origin: true }));
 apiApp.use(express.json());
 
-// Example route: get transactions for a user
-apiApp.post('/transactions', async (req, res) => {
-  const { userId } = req.body;
-  if (!userId) return res.status(400).json({ error: 'Missing userId' });
+// Helper: verify Firebase ID token from Authorization header
+async function verifyFirebaseToken(req, res) {
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!idToken) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return null;
+  }
   try {
-    const snapshot = await db.collection('transactions').where('userId', '==', userId).get();
+    return await admin.auth().verifyIdToken(idToken);
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
+    return null;
+  }
+}
+
+// Get transactions for the authenticated user only
+apiApp.get('/transactions', async (req, res) => {
+  const decoded = await verifyFirebaseToken(req, res);
+  if (!decoded) return;
+  try {
+    const snapshot = await db.collection('transactions').where('userId', '==', decoded.uid).get();
     const transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     res.json(transactions);
   } catch (err) {
@@ -224,3 +240,89 @@ export const processRecurringPayments = onSchedule(
     }
   }
 );
+
+// ---------- Email Notification on Proof Upload ----------
+// Fires when an order's status changes to 'uploaded' (client submitted payment proof).
+// Reads all active notificationRecipients from Firestore, then writes to the `mail`
+// collection which the firestore-send-email extension monitors and dispatches.
+export const notifyOnProofUpload = onDocumentUpdated('orders/{orderId}', async (event) => {
+  const before = event.data?.before.data();
+  const after = event.data?.after.data();
+
+  // Only trigger when status transitions to 'uploaded'
+  if (!before || !after) return;
+  if (before.status === after.status) return;
+  if (after.status !== 'uploaded') return;
+
+  const orderId = event.params.orderId;
+
+  // Gather active notification recipient emails
+  const recipientsSnap = await db.collection('notificationRecipients')
+    .where('active', '==', true)
+    .get();
+
+  if (recipientsSnap.empty) {
+    console.log('No active notification recipients – skipping email.');
+    return;
+  }
+
+  const toEmails = recipientsSnap.docs.map(d => d.data().email);
+
+  const userEmail  = after.userEmail   || after.userId       || 'unknown';
+  const amountSent = after.amountSent  ?? after.amount       ?? '?';
+  const currSent   = after.sendCurrency ?? after.currencySent ?? '';
+  const amountRec  = after.amountReceived ?? '?';
+  const currRec    = after.receiveCurrency ?? after.currencyReceived ?? '';
+  const proofFile  = after.proofFileName || 'uploaded';
+  const adminLink  = 'https://aura-payment.web.app/admin/';
+
+  const subject = `⚠️ Payment Proof Uploaded – Order ${orderId}`;
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a202c;">
+      <div style="background:#0b1b3a;padding:24px 32px;border-radius:12px 12px 0 0;">
+        <h1 style="color:white;margin:0;font-size:22px;">Aura Payment</h1>
+        <p style="color:#90cdf4;margin:4px 0 0;font-size:14px;">Admin Notification</p>
+      </div>
+      <div style="background:#f7fafc;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;">
+        <h2 style="margin-top:0;color:#0b1b3a;">Payment Proof Received</h2>
+        <p>A client has uploaded their payment proof and is waiting for you to complete the transaction.</p>
+        <table style="width:100%;border-collapse:collapse;margin:24px 0;">
+          <tr style="background:#edf2f7;">
+            <td style="padding:10px 14px;font-weight:600;width:40%;">Order ID</td>
+            <td style="padding:10px 14px;font-family:monospace;">${orderId}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;font-weight:600;">Client Email</td>
+            <td style="padding:10px 14px;">${userEmail}</td>
+          </tr>
+          <tr style="background:#edf2f7;">
+            <td style="padding:10px 14px;font-weight:600;">Amount Sent</td>
+            <td style="padding:10px 14px;">${amountSent} ${currSent}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 14px;font-weight:600;">Amount to Receive</td>
+            <td style="padding:10px 14px;">${amountRec} ${currRec}</td>
+          </tr>
+          <tr style="background:#edf2f7;">
+            <td style="padding:10px 14px;font-weight:600;">Proof File</td>
+            <td style="padding:10px 14px;font-family:monospace;font-size:13px;">${proofFile}</td>
+          </tr>
+        </table>
+        <a href="${adminLink}" style="display:inline-block;background:#0b1b3a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+          Open Admin Dashboard →
+        </a>
+        <p style="margin-top:32px;font-size:13px;color:#718096;">
+          Go to <strong>Orders</strong> in the admin dashboard, find this order, review the proof, then mark it as complete.
+        </p>
+      </div>
+    </div>
+  `;
+
+  await db.collection('mail').add({
+    to: toEmails,
+    message: { subject, html },
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  console.log(`Email queued for ${toEmails.length} recipient(s) for order ${orderId}`);
+});

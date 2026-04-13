@@ -1,72 +1,393 @@
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import {
+  collection, onSnapshot, query, orderBy, limit, where,
+} from 'firebase/firestore'
+import { db } from '../../services/firebase'
+import { useUsers } from '../../hooks/useUsers'
+import { useAgents } from '../../hooks/useAgents'
+import { useRealtimeOrders } from '../../hooks/useRealtimeOrders'
 import { useRealtimeTransactions } from '../../hooks/useRealtimeTransactions'
-import TransactionRow from './TransactionRow'
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { Transaction } from '../../types/Transaction'
+import { AppUser } from '../../types/AppUser'
 
-const LiveActivity: React.FC = () => {
-  const { transactions, updateStatus } = useRealtimeTransactions()
-  const functions = getFunctions()
-  const askGemini = httpsCallable(functions, 'askGemini')
+// ── helpers ──────────────────────────────────────────────────────────────────
 
-  const analyzeRisk = async (transaction: Transaction) => {
-    // Use optional chaining and fallback values
-    const provider = (transaction as any).provider || 'Not specified'
-    const paymentMethod = (transaction as any).paymentMethod || 'Not specified'
+function ago(ts: any): string {
+  if (!ts) return '—'
+  const d = ts.toDate ? ts.toDate() : new Date(ts.seconds ? ts.seconds * 1000 : ts)
+  const diff = Math.floor((Date.now() - d.getTime()) / 1000)
+  if (diff < 60) return `${diff}s ago`
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+}
 
-    const prompt = `
-      Analyze this payment transaction for fraud risk.
-      - Amount: ${transaction.amountSent} ${transaction.currencySent}
-      - Recipient: ${transaction.recipientName || 'Unknown'}
-      - Provider: ${provider}
-      - Payment method: ${paymentMethod}
-      - Status: ${transaction.status}
-      Return ONLY a single word: LOW, MEDIUM, or HIGH.
-    `.trim();
+function fmtTime(ts: any): string {
+  if (!ts) return '—'
+  const d = ts.toDate ? ts.toDate() : new Date(ts.seconds ? ts.seconds * 1000 : ts)
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
 
-    try {
-      const result = await askGemini({ prompt })
-      const riskLevel = (result.data as any).message.trim().toUpperCase()
-      alert(`Risk level for transaction ${transaction.id}: ${riskLevel}`)
-      // Optionally save risk level to Firestore
-    } catch (error) {
-      console.error("Risk analysis failed:", error)
-      alert("Failed to analyze risk. See console for details.")
-    }
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000 // 5 minutes
+
+function isOnline(lastSeen: any): boolean {
+  if (!lastSeen) return false
+  const d = lastSeen.toDate ? lastSeen.toDate() : new Date(lastSeen.seconds * 1000)
+  return Date.now() - d.getTime() < ONLINE_THRESHOLD_MS
+}
+
+// ── event types ───────────────────────────────────────────────────────────────
+
+type EventKind = 'order' | 'transaction'
+interface FeedEvent {
+  id: string
+  kind: EventKind
+  userId: string
+  userName: string
+  label: string
+  detail: string
+  status: string
+  ts: any
+}
+
+// ── Status badge ─────────────────────────────────────────────────────────────
+
+function Badge({ status }: { status: string }) {
+  const colours: Record<string, string> = {
+    completed: 'bg-green-100 text-green-700',
+    pending:   'bg-yellow-100 text-yellow-700',
+    uploaded:  'bg-blue-100 text-blue-700',
+    cancelled: 'bg-red-100 text-red-700',
   }
+  return (
+    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${colours[status] ?? 'bg-gray-100 text-gray-600'}`}>
+      {status}
+    </span>
+  )
+}
+
+// ── Live Feed panel ──────────────────────────────────────────────────────────
+
+function LiveFeed({ events }: { events: FeedEvent[] }) {
+  return (
+    <div className="space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+      {events.length === 0 && (
+        <div className="text-center py-16 text-gray-400">
+          <div className="text-3xl mb-2">📭</div>
+          <p>No events yet</p>
+        </div>
+      )}
+      {events.map(ev => (
+        <div key={ev.kind + ev.id} className="flex items-start gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+          <span className="text-lg mt-0.5">{ev.kind === 'order' ? '📦' : '💸'}</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-gray-900 text-sm">{ev.userName || 'Unknown user'}</span>
+              <Badge status={ev.status} />
+            </div>
+            <p className="text-xs text-gray-600 mt-0.5 truncate">{ev.label}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">{ev.detail}</p>
+          </div>
+          <span className="text-[11px] text-gray-400 whitespace-nowrap">{ago(ev.ts)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── User Journey panel ───────────────────────────────────────────────────────
+
+function UserJourney({
+  users,
+  events,
+}: {
+  users: AppUser[]
+  events: FeedEvent[]
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return users.filter(u =>
+      !q ||
+      (u.fullName || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q)
+    )
+  }, [users, search])
+
+  const selected = users.find(u => u.id === selectedId)
+  const userEvents = useMemo(
+    () => events.filter(e => e.userId === selectedId).sort((a, b) => {
+      const ta = a.ts?.seconds ?? 0
+      const tb = b.ts?.seconds ?? 0
+      return tb - ta
+    }),
+    [events, selectedId]
+  )
 
   return (
-    <div className="card-base p-6">
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-        <h2 className="text-xl font-semibold">📋 Live Transactions</h2>
-        <span className="text-sm font-medium text-slate-500">{transactions.length} transactions</span>
+    <div className="flex gap-4 h-[calc(100vh-220px)]">
+      {/* User list */}
+      <div className="w-64 flex-shrink-0 flex flex-col border border-gray-200 rounded-xl overflow-hidden">
+        <div className="p-3 border-b border-gray-100 bg-gray-50">
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search users…"
+            className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          />
+        </div>
+        <div className="overflow-y-auto flex-1">
+          {filtered.map(u => {
+            const count = events.filter(e => e.userId === u.id).length
+            return (
+              <button
+                key={u.id}
+                onClick={() => setSelectedId(u.id === selectedId ? null : u.id)}
+                className={`w-full text-left px-3 py-2.5 border-b border-gray-50 hover:bg-indigo-50 transition-colors ${
+                  selectedId === u.id ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : ''
+                }`}
+              >
+                <p className="text-xs font-semibold text-gray-900 truncate">{u.fullName || u.email}</p>
+                <p className="text-[10px] text-gray-400 truncate">{u.email}</p>
+                {count > 0 && (
+                  <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                    {count} events
+                  </span>
+                )}
+              </button>
+            )
+          })}
+          {filtered.length === 0 && (
+            <p className="text-xs text-gray-400 text-center py-8">No users found</p>
+          )}
+        </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th className="px-4 py-3 text-left font-semibold text-slate-600">Date</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-600">Amount</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-600">Recipient</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-600">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.map((tx) => (
-              <TransactionRow
-                key={tx.id}
-                transaction={tx}
-                onStatusChange={updateStatus}
-                onAnalyzeRisk={analyzeRisk}
-              />
-            ))}
-            {transactions.length === 0 && (
-              <tr><td colSpan={5} className="text-center py-12 text-slate-500 font-medium">✨ No transactions yet</td></tr>
-            )}
-          </tbody>
-        </table>
+
+      {/* Journey timeline */}
+      <div className="flex-1 border border-gray-200 rounded-xl overflow-hidden flex flex-col">
+        {!selected ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+            <div className="text-4xl mb-3">👆</div>
+            <p className="font-medium text-sm">Select a user to see their activity flow</p>
+          </div>
+        ) : (
+          <>
+            <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
+                {(selected.fullName || selected.email || '?')[0].toUpperCase()}
+              </div>
+              <div>
+                <p className="font-bold text-gray-900 text-sm">{selected.fullName || '—'}</p>
+                <p className="text-xs text-gray-400">{selected.email}</p>
+              </div>
+              <span className={`ml-auto text-xs font-semibold px-2 py-1 rounded-full ${
+                (selected.status || 'active') === 'active'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-gray-100 text-gray-500'
+              }`}>
+                {selected.role || 'user'}
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {userEvents.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center mt-8">No recorded events for this user</p>
+              ) : (
+                <ol className="relative border-l border-indigo-100 ml-3 space-y-4">
+                  {userEvents.map(ev => (
+                    <li key={ev.kind + ev.id} className="ml-5">
+                      <span className="absolute -left-1.5 flex items-center justify-center w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-white text-white text-[8px]">
+                        {ev.kind === 'order' ? '📦' : '💸'}
+                      </span>
+                      <p className="text-xs font-semibold text-gray-900">{ev.label}</p>
+                      <p className="text-[11px] text-gray-500">{ev.detail}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge status={ev.status} />
+                        <span className="text-[10px] text-gray-400">{fmtTime(ev.ts)} · {ago(ev.ts)}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          </>
+        )}
       </div>
+    </div>
+  )
+}
+
+// ── Online Now panel ─────────────────────────────────────────────────────────
+
+interface UserWithPresence extends AppUser {
+  lastSeen?: any
+  currentPage?: string
+}
+
+function OnlineNow({ agents }: { agents: any[] }) {
+  const [usersWithPresence, setUsersWithPresence] = useState<UserWithPresence[]>([])
+
+  useEffect(() => {
+    const fiveMinsAgo = new Date(Date.now() - ONLINE_THRESHOLD_MS)
+    const q = query(
+      collection(db, 'users'),
+      where('lastSeen', '>=', fiveMinsAgo),
+      orderBy('lastSeen', 'desc'),
+      limit(50)
+    )
+    return onSnapshot(q, snap => {
+      setUsersWithPresence(snap.docs.map(d => ({ id: d.id, ...d.data() } as UserWithPresence)))
+    }, () => {
+      // Fallback if index not ready — load all users and filter client side
+      const qAll = query(collection(db, 'users'), orderBy('lastSeen', 'desc'), limit(100))
+      onSnapshot(qAll, snap => {
+        const all = snap.docs.map(d => ({ id: d.id, ...d.data() } as UserWithPresence))
+        setUsersWithPresence(all.filter(u => isOnline(u.lastSeen)))
+      })
+    })
+  }, [])
+
+  const onlineAgents = agents.filter(a => a.status === 'active')
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Online Agents */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 bg-green-50 flex items-center justify-between">
+          <h3 className="font-bold text-green-900 text-sm">🟢 Agents Online</h3>
+          <span className="text-xs bg-green-200 text-green-800 font-bold px-2 py-0.5 rounded-full">{onlineAgents.length}</span>
+        </div>
+        <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
+          {onlineAgents.length === 0 && (
+            <p className="text-xs text-gray-400 text-center py-8">No active agents</p>
+          )}
+          {onlineAgents.map(agent => (
+            <div key={agent.id} className="flex items-center gap-3 px-4 py-3">
+              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0 animate-pulse" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{agent.name}</p>
+                <p className="text-xs text-gray-400 truncate">{agent.email}</p>
+              </div>
+              <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-semibold">Active</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Online Users */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 bg-blue-50 flex items-center justify-between">
+          <h3 className="font-bold text-blue-900 text-sm">🔵 Users Online Now</h3>
+          <span className="text-xs bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded-full">{usersWithPresence.length}</span>
+        </div>
+        <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
+          {usersWithPresence.length === 0 && (
+            <p className="text-xs text-gray-400 text-center py-8">No users active in the last 5 minutes</p>
+          )}
+          {usersWithPresence.map(u => (
+            <div key={u.id} className="flex items-center gap-3 px-4 py-3">
+              <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 animate-pulse" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{u.fullName || u.email || '—'}</p>
+                <p className="text-xs text-gray-400 truncate">
+                  {u.currentPage ? `📄 ${u.currentPage}` : u.email}
+                </p>
+              </div>
+              <span className="text-[10px] text-gray-400 whitespace-nowrap">{ago(u.lastSeen)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
+
+type Tab = 'feed' | 'journey' | 'online'
+
+const LiveActivity: React.FC = () => {
+  const [tab, setTab] = useState<Tab>('feed')
+  const { users } = useUsers()
+  const { agents } = useAgents()
+  const { orders } = useRealtimeOrders()
+  const { transactions } = useRealtimeTransactions()
+
+  // Build unified event feed from orders + transactions
+  const events = useMemo<FeedEvent[]>(() => {
+    const userMap: Record<string, string> = {}
+    users.forEach(u => { userMap[u.id] = u.fullName || u.email || u.id })
+
+    const orderEvents: FeedEvent[] = orders.map(o => ({
+      id: o.id,
+      kind: 'order',
+      userId: o.userId || '',
+      userName: userMap[o.userId] || o.userEmail || o.senderName || 'Unknown',
+      label: `Order — ${o.sendAmount} ${o.sendCurrency} → ${o.receiveCurrency}`,
+      detail: `To: ${o.recipientName || '—'} · via ${o.provider || o.deliveryMethod || '—'}`,
+      status: o.status,
+      ts: o.createdAt,
+    }))
+
+    const txEvents: FeedEvent[] = transactions.map(tx => ({
+      id: tx.id,
+      kind: 'transaction',
+      userId: tx.userId || '',
+      userName: userMap[tx.userId || ''] || 'Unknown',
+      label: `Transaction — ${tx.amountSent} ${tx.currencySent}`,
+      detail: `Recipient: ${tx.recipientName || '—'}`,
+      status: tx.status,
+      ts: tx.timestamp,
+    }))
+
+    return [...orderEvents, ...txEvents].sort((a, b) => {
+      const ta = a.ts?.seconds ?? 0
+      const tb = b.ts?.seconds ?? 0
+      return tb - ta
+    })
+  }, [orders, transactions, users])
+
+  const TABS: { id: Tab; label: string; icon: string }[] = [
+    { id: 'feed',    label: 'Live Feed',     icon: '📡' },
+    { id: 'journey', label: 'User Journey',  icon: '🧭' },
+    { id: 'online',  label: 'Online Now',    icon: '🟢' },
+  ]
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Live Activity</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Trace user & agent journeys in real time</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
+          Live · {events.length} events
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+              tab === t.id
+                ? 'bg-white shadow text-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {t.icon} {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {tab === 'feed'    && <LiveFeed events={events} />}
+      {tab === 'journey' && <UserJourney users={users} events={events} />}
+      {tab === 'online'  && <OnlineNow agents={agents} />}
     </div>
   )
 }

@@ -351,6 +351,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
     // Firebase configuration (must match your project)
     const firebaseConfig = {
@@ -365,6 +366,7 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
     // DOM elements
     const signinForm = document.getElementById('signinForm');
@@ -401,6 +403,21 @@
             // Build the user object
             const fullName = user.displayName || email.split('@')[0];
             const displayName = user.displayName || email.split('@')[0];
+
+            // Upsert Firestore user doc — creates it if missing, leaves existing fields intact
+            try {
+                await setDoc(doc(db, 'users', user.uid), {
+                    uid:         user.uid,
+                    email:       user.email,
+                    fullName:    fullName,
+                    displayName: displayName,
+                    role:        'user',
+                    status:      'active',
+                    createdAt:   serverTimestamp(),
+                }, { merge: true });
+            } catch (fsErr) {
+                console.warn('Firestore upsert skipped:', fsErr.message);
+            }
             
             const userData = {
                 uid: user.uid,
@@ -426,7 +443,12 @@
             feedbackDiv.innerHTML = '✅ Sign in successful! Redirecting...';
             
             setTimeout(() => {
-                window.location.href = 'dashboard.html';   // CHANGED from index.html
+                // Admin email goes straight to the admin dashboard
+                if (user.email && user.email.toLowerCase() === 'johnpion2000@gmail.com') {
+                    window.location.href = 'admin/index.html';
+                } else {
+                    window.location.href = 'dashboard.html';
+                }
             }, 1200);
             
         } catch (error) {

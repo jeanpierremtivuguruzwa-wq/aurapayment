@@ -278,6 +278,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDlz5mH-x7P7H6FNdPj62PYhqAY5hsH19A",
@@ -291,6 +292,7 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
     function showError(elementId, message) {
         const el = document.getElementById(elementId);
@@ -358,7 +360,7 @@
             const finalDisplayName = displayNameInput || fullName.split(' ')[0] || fullName;
             await updateProfile(user, { displayName: finalDisplayName });
 
-            // Store user data
+            // Store user data in localStorage
             const userData = {
                 uid: user.uid,
                 email: user.email,
@@ -371,6 +373,18 @@
             };
             localStorage.setItem('currentUser', JSON.stringify(userData));
             localStorage.setItem('aura_user_profile', JSON.stringify(userData));
+
+            // Save user profile to Firestore (for admin User Management)
+            await setDoc(doc(db, 'users', user.uid), {
+                uid:         user.uid,
+                email:       user.email,
+                fullName:    fullName,
+                displayName: finalDisplayName,
+                phone:       phone || '',
+                role:        'user',
+                status:      'active',
+                createdAt:   serverTimestamp(),
+            });
 
             // Show success modal and redirect to dashboard
             const modal = document.getElementById('successModal');

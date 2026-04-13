@@ -1,7 +1,108 @@
 import * as functions from "firebase-functions/v2/https";
+import * as firestoreTriggers from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 
 admin.initializeApp();
+
+// ─── Email notification on proof upload ────────────────────────────────────────
+// Fires when an order document is updated. If the status changes to 'uploaded'
+// (i.e. the client has submitted payment proof), we send an email to every
+// active recipient in the notificationRecipients collection by writing to the
+// `mail` collection which is consumed by the firestore-send-email extension.
+export const notifyOnProofUpload = firestoreTriggers.onDocumentUpdated(
+  "orders/{orderId}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+
+    // Only trigger when status transitions to 'uploaded'
+    if (!before || !after) return null;
+    if (before.status === after.status) return null;
+    if (after.status !== "uploaded") return null;
+
+    const orderId = event.params.orderId;
+    const db = admin.firestore();
+
+    // Gather active notification recipient emails
+    const recipientsSnap = await db
+      .collection("notificationRecipients")
+      .where("active", "==", true)
+      .get();
+
+    if (recipientsSnap.empty) {
+      console.log("No active notification recipients – skipping email.");
+      return null;
+    }
+
+    const toEmails: string[] = recipientsSnap.docs.map(
+      (d) => d.data().email as string
+    );
+
+    // Build a readable email
+    const userEmail = after.userEmail || after.userId || "unknown user";
+    const amountSent = after.amountSent ?? after.amount ?? "?";
+    const currencySent = after.sendCurrency ?? after.currencySent ?? "";
+    const amountReceived = after.amountReceived ?? "?";
+    const currencyReceived = after.receiveCurrency ?? after.currencyReceived ?? "";
+    const proofFile = after.proofFileName || "attached";
+    const adminLink = "https://aura-payment.web.app/admin/";
+
+    const subject = `⚠️ Payment Proof Uploaded – Order ${orderId}`;
+    const html = `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a202c;">
+        <div style="background:#0b1b3a;padding:24px 32px;border-radius:12px 12px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Aura Payment</h1>
+          <p style="color:#90cdf4;margin:4px 0 0;font-size:14px;">Admin Notification</p>
+        </div>
+        <div style="background:#f7fafc;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;">
+          <h2 style="margin-top:0;color:#0b1b3a;">Payment Proof Received</h2>
+          <p>A client has uploaded their payment proof and is waiting for you to complete the transaction.</p>
+
+          <table style="width:100%;border-collapse:collapse;margin:24px 0;">
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;width:40%;">Order ID</td>
+              <td style="padding:10px 14px;font-family:monospace;">${orderId}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;font-weight:600;">Client Email</td>
+              <td style="padding:10px 14px;">${userEmail}</td>
+            </tr>
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;">Amount Sent</td>
+              <td style="padding:10px 14px;">${amountSent} ${currencySent}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;font-weight:600;">Amount to Receive</td>
+              <td style="padding:10px 14px;">${amountReceived} ${currencyReceived}</td>
+            </tr>
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;">Proof File</td>
+              <td style="padding:10px 14px;font-family:monospace;font-size:13px;">${proofFile}</td>
+            </tr>
+          </table>
+
+          <a href="${adminLink}" style="display:inline-block;background:#0b1b3a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            Open Admin Dashboard →
+          </a>
+
+          <p style="margin-top:32px;font-size:13px;color:#718096;">
+            Go to <strong>Orders</strong> in the admin dashboard, find this order, review the proof, then mark it as complete.
+          </p>
+        </div>
+      </div>
+    `;
+
+    // Write one mail document per recipient (or use a single doc with all addresses)
+    await db.collection("mail").add({
+      to: toEmails,
+      message: { subject, html },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log(`Email queued for ${toEmails.length} recipient(s) for order ${orderId}`);
+    return null;
+  }
+);
 
 /**
  * Checks if the calling user has admin privileges.

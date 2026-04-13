@@ -10,7 +10,9 @@ export interface Cardholder {
   phoneNumber?: string
   
   // Balance and transactions
-  balance: number // Total amount received
+  balance: number // Current balance (received - withdrawn)
+  totalReceived?: number // Running total ever received
+  totalWithdrawn?: number // Running total ever withdrawn
   transactionsCount?: number // Number of transactions
   
   createdAt?: any

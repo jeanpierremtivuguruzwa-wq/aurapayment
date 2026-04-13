@@ -1,4 +1,4 @@
-import { collection, doc, updateDoc, addDoc, deleteDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore'
+import { collection, doc, updateDoc, addDoc, deleteDoc, getDocs, query, where, onSnapshot, increment, Timestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { Cardholder } from '../types/Cardholder'
 import { PaymentMethod } from '../types/PaymentMethod'
@@ -28,6 +28,24 @@ export async function setActiveCardholder(paymentMethodId: string, cardholderId:
 // Delete cardholder
 export async function deleteCardholder(id: string) {
   await deleteDoc(doc(db, 'cardholders', id))
+}
+
+// Withdraw money from cardholder balance
+export async function withdrawCardholder(id: string, amount: number, note: string) {
+  if (amount <= 0) throw new Error('Withdrawal amount must be greater than 0')
+  // Log the withdrawal
+  await addDoc(collection(db, 'cardholderWithdrawals'), {
+    cardholderId: id,
+    amount,
+    note: note.trim() || 'Manual withdrawal',
+    createdAt: Timestamp.now(),
+  })
+  // Deduct from balance, add to totalWithdrawn
+  await updateDoc(doc(db, 'cardholders', id), {
+    balance:        increment(-amount),
+    totalWithdrawn: increment(amount),
+    updatedAt:      Timestamp.now(),
+  })
 }
 
 // Migrate existing payment methods to have cardholders if they don't already

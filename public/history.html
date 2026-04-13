@@ -202,6 +202,15 @@
             color: #991b1b;
         }
 
+        .status-uploaded {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .order-card.uploaded {
+            border-left-color: #6366f1;
+        }
+
         .order-details {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -366,24 +375,24 @@
         let allOrders = [];
         let currentFilter = 'all';
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadUserData();
-            loadOrders();
+        // Initialize — wait for Firebase Auth before querying Firestore
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                window.location.href = 'signin.html';
+                return;
+            }
+            currentUser = user;
+            loadUserDisplay();
+            loadOrders(user.uid);
         });
 
-        function loadUserData() {
+        function loadUserDisplay() {
             try {
-                const storedUser = localStorage.getItem('currentUser');
-                if (storedUser) {
-                    const user = JSON.parse(storedUser);
-                    currentUser = user;
-                    updateUserDisplay(user);
-                } else {
-                    window.location.href = 'signin.html';
-                }
+                const storedUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                const fullName = storedUser.fullName || storedUser.full_name || currentUser.displayName || currentUser.email.split('@')[0];
+                updateUserDisplay({ fullName });
             } catch (err) {
-                window.location.href = 'signin.html';
+                updateUserDisplay({ fullName: currentUser.displayName || currentUser.email.split('@')[0] });
             }
         }
 
@@ -395,27 +404,40 @@
             document.getElementById('userInitials').textContent = initials.substring(0, 2);
         }
 
-        function loadOrders() {
-            if (!currentUser) return;
+        let ordersUnsubscribe = null;
 
-            db.collection('orders')
-                .where('userId', '==', currentUser.uid)
-                .orderBy('createdAt', 'desc')
+        function loadOrders(uid) {
+            // Unsubscribe from any previous listener
+            if (ordersUnsubscribe) ordersUnsubscribe();
+
+            // No orderBy → no composite index required; sort client-side instead
+            ordersUnsubscribe = db.collection('orders')
+                .where('userId', '==', uid)
                 .onSnapshot(snapshot => {
                     allOrders = [];
                     snapshot.forEach(doc => {
-                        allOrders.push({
-                            id: doc.id,
-                            ...doc.data()
-                        });
+                        const data = doc.data();
+                        // Defense-in-depth: only include orders that belong to the current user
+                        if (data.userId === uid) {
+                            allOrders.push({ id: doc.id, ...data });
+                        }
                     });
+
+                    // Sort newest first client-side
+                    allOrders.sort((a, b) => {
+                        const ta = a.createdAt?.seconds ?? 0;
+                        const tb = b.createdAt?.seconds ?? 0;
+                        return tb - ta;
+                    });
+
                     displayOrders();
                 }, error => {
                     console.error('Error loading orders:', error);
                     document.getElementById('ordersContainer').innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">⚠️</div>
-                            <div class="empty-state-text">Error loading orders</div>
+                            <div class="empty-state-text">Could not load orders. Please refresh the page.</div>
+                            <button class="btn btn-primary" style="margin-top:1rem;" onclick="location.reload()">Try Again</button>
                         </div>
                     `;
                 });
@@ -461,18 +483,29 @@
             const statusLabel = {
                 completed: '✓ Completed',
                 pending: '⏳ Pending',
+                uploaded: '📤 Proof Uploaded',
                 cancelled: '✕ Cancelled'
-            }[status];
+            }[status] || status;
 
-            const createdAt = order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleDateString() : 'N/A';
-            const receiveAmount = (order.sendAmount * order.rate).toFixed(2);
+            let createdAt = 'N/A';
+            if (order.createdAt?.seconds) {
+                createdAt = new Date(order.createdAt.seconds * 1000).toLocaleDateString();
+            } else if (order.createdAt instanceof Date) {
+                createdAt = order.createdAt.toLocaleDateString();
+            } else if (order.timestamp?.seconds) {
+                createdAt = new Date(order.timestamp.seconds * 1000).toLocaleDateString();
+            }
+
+            const sendAmount = order.sendAmount || 0;
+            const rate = order.rate || 0;
+            const receiveAmount = (sendAmount * rate).toFixed(2);
 
             return `
                 <div class="order-card ${status}">
                     <div class="order-header">
                         <div class="order-info">
                             <div class="order-id">Order #${order.id.substring(0, 8).toUpperCase()}</div>
-                            <div class="order-amount">${order.sendAmount.toFixed(2)} ${order.sendCurrency}</div>
+                            <div class="order-amount">${sendAmount.toFixed(2)} ${order.sendCurrency || ''}</div>
                             <span class="order-status status-${status}">${statusLabel}</span>
                         </div>
                         <div style="text-align: right;">
@@ -487,7 +520,7 @@
                         </div>
                         <div class="detail-row">
                             <div class="detail-label">Recipient Gets</div>
-                            <div class="detail-value">${receiveAmount} ${order.receiveCurrency}</div>
+                            <div class="detail-value">${receiveAmount} ${order.receiveCurrency || ''}</div>
                         </div>
                         <div class="detail-row">
                             <div class="detail-label">Delivery Method</div>
@@ -499,7 +532,7 @@
                         </div>
                         <div class="detail-row">
                             <div class="detail-label">Exchange Rate</div>
-                            <div class="detail-value">1 ${order.sendCurrency} = ${order.rate.toFixed(2)} ${order.receiveCurrency}</div>
+                            <div class="detail-value">${rate ? `1 ${order.sendCurrency} = ${rate.toFixed(2)} ${order.receiveCurrency}` : 'N/A'}</div>
                         </div>
                         <div class="detail-row">
                             <div class="detail-label">Order Status</div>
@@ -536,10 +569,9 @@
             if (confirm('Are you sure you want to cancel this order?')) {
                 db.collection('orders').doc(orderId).update({
                     status: 'cancelled',
-                    cancelledAt: new Date()
+                    cancelledAt: firebase.firestore.Timestamp.now()
                 }).then(() => {
-                    alert('Order cancelled successfully');
-                    loadOrders();
+                    // onSnapshot listener automatically refreshes the list
                 }).catch(err => {
                     alert('Error cancelling order: ' + err.message);
                 });

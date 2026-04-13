@@ -45,4 +45,26 @@ function updateNavbarUser() {
 // Auto-run on pages that include this script
 document.addEventListener('DOMContentLoaded', () => {
     updateNavbarUser();
+    startPresenceHeartbeat();
 });
+
+// ── Presence heartbeat ─────────────────────────────────────────────────────
+// Writes lastSeen + currentPage to the user's Firestore doc every 30s,
+// so the admin Live Activity page can show who is online right now.
+function startPresenceHeartbeat() {
+    const user = getCurrentUser();
+    if (!user || !user.uid) return;
+
+    const db = firebase.firestore ? firebase.firestore() : null;
+    if (!db) return;
+
+    function beat() {
+        db.collection('users').doc(user.uid).set({
+            lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+            currentPage: window.location.pathname.split('/').pop() || 'index.html',
+        }, { merge: true }).catch(() => {});
+    }
+
+    beat();
+    setInterval(beat, 30000);
+}

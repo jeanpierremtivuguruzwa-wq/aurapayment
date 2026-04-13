@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, doc, updateDoc, addDoc } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import { Transaction } from '../types/Transaction'
 
@@ -7,10 +7,16 @@ export function useRealtimeTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
 
   useEffect(() => {
-    const q = query(collection(db, 'transactions'), orderBy('timestamp', 'desc'))
+    const q = query(collection(db, 'transactions'))
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const txs: Transaction[] = []
       snapshot.forEach(doc => txs.push({ id: doc.id, ...doc.data() } as Transaction))
+      // Sort newest-first client-side
+      txs.sort((a: any, b: any) => {
+        const ta = a.timestamp?.seconds ?? 0
+        const tb = b.timestamp?.seconds ?? 0
+        return tb - ta
+      })
       setTransactions(txs)
     })
     return unsubscribe
