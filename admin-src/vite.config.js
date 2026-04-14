@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './',                     // ← relative paths (critical)
+  publicDir: '../public',         // serve public/ files (dashboard.html etc.) at /
   build: {
     outDir: '../public/admin',
     emptyOutDir: true,

@@ -11,6 +11,7 @@ import CardholdersList from './components/Cardholders/CardholdersList'
 import OrderManagement from './components/OrderManagement/OrderManagement'
 import AllTransactions from './components/AllTransactions/AllTransactions'
 import UserManagement from './components/UserManagement/UserManagement'
+import UserDashboardView from './components/UserManagement/UserDashboardView'
 import AdminProfile from './components/AdminProfile/AdminProfile'
 import AgentManagement from './components/AgentManagement/AgentManagement'
 import AuraChat from './components/AuraChat/AuraChat'
@@ -18,8 +19,9 @@ import AuraWallet from './components/AuraWallet/AuraWallet'
 import CurrencyCardholderAssignments from './components/CurrencyAssignments/CurrencyCardholderAssignments'
 import NotificationRecipients from './components/Notifications/NotificationRecipients'
 import CardholderActivity from './components/Cardholders/CardholderActivity'
+import UserDashboard from './components/UserDashboard/UserDashboard'
 
-type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet'
+type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'user-dashboard' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet' | 'public-dashboard'
 type AuthState = 'loading' | 'admin' | 'unauthenticated' | 'unauthorized'
 
 // The one and only authorised admin email
@@ -28,6 +30,7 @@ const ADMIN_EMAIL = 'johnpion2000@gmail.com'
 function App() {
   const [activeSection, setActiveSection] = useState<Section>('live')
   const [authState, setAuthState] = useState<AuthState>('loading')
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null)
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -106,6 +109,16 @@ function App() {
     )
   }
 
+  const handleViewUserDashboard = (userId: string) => {
+    setViewingUserId(userId)
+    setActiveSection('user-dashboard')
+  }
+
+  const handleBackFromUserDashboard = () => {
+    setViewingUserId(null)
+    setActiveSection('users')
+  }
+
   const renderSection = () => {
     switch (activeSection) {
       case 'live': return <LiveActivity />
@@ -114,7 +127,10 @@ function App() {
       case 'cardholders': return <CardholdersList />
       case 'orders': return <OrderManagement />
       case 'transactions': return <AllTransactions />
-      case 'users': return <UserManagement />
+      case 'users': return <UserManagement onViewUserDashboard={handleViewUserDashboard} />
+      case 'user-dashboard': return viewingUserId
+        ? <UserDashboardView userId={viewingUserId} onBack={handleBackFromUserDashboard} />
+        : null
       case 'profile': return <AdminProfile />
       case 'agents': return <AgentManagement />
       case 'currency-assignments': return <CurrencyCardholderAssignments />
@@ -122,6 +138,7 @@ function App() {
       case 'cardholder-activity': return <CardholderActivity />
       case 'chat': return <AuraChat />
       case 'wallet': return <AuraWallet />
+      case 'public-dashboard': return <UserDashboard />
       default: return null
     }
   }
@@ -129,7 +146,10 @@ function App() {
   return (
     <AdminLayout 
       activeSection={activeSection} 
-      onSectionChange={(section: string) => setActiveSection(section as Section)}
+      onSectionChange={(section: string) => {
+        if (section !== 'user-dashboard') setViewingUserId(null)
+        setActiveSection(section as Section)
+      }}
     >
       <ErrorBoundary key={activeSection}>
         {renderSection()}

@@ -1,5 +1,4 @@
 import React from 'react'
-
 interface Props {
   activeSection: string
   onSectionChange: (section: string) => void
@@ -20,8 +19,11 @@ const Sidebar: React.FC<Props> = ({ activeSection, onSectionChange }) => {
     { id: 'wallet',   label: 'AuraWallet',          icon: '💰' },
     { id: 'currency-assignments', label: 'Currency Assignments', icon: '🏦' },
     { id: 'notifications', label: 'Notifications',       icon: '🔔' },
+    { id: 'public-dashboard', label: 'User Dashboard',   icon: '🌐' },
     { id: 'profile',  label: 'My Profile',         icon: '🛡' },
   ]
+
+  const isUserDashboard = activeSection === 'user-dashboard'
 
   return (
     <aside className="bg-gradient-to-b from-slate-900 to-slate-800 text-white w-full md:w-64 md:min-h-screen p-6 border-r border-slate-700 flex flex-col">
@@ -31,18 +33,28 @@ const Sidebar: React.FC<Props> = ({ activeSection, onSectionChange }) => {
       </div>
       <nav className="space-y-1 flex-1">
         {navItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => onSectionChange(item.id)}
-            className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all flex items-center gap-3 ${
-              activeSection === item.id 
-                ? 'bg-sky-600 text-white shadow-lg' 
-                : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
-            }`}
-          >
-            <span className="text-lg">{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
+          <React.Fragment key={item.id}>
+            <button
+              onClick={() => onSectionChange(item.id)}
+              className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all flex items-center gap-3 ${
+                activeSection === item.id || (item.id === 'users' && isUserDashboard)
+                  ? 'bg-sky-600 text-white shadow-lg' 
+                  : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
+              }`}
+            >
+              <span className="text-lg">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+            {/* User Dashboard sub-item — only visible when active */}
+            {item.id === 'users' && isUserDashboard && (
+              <div className="ml-4 border-l border-slate-600 pl-3">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600/40 text-indigo-200 text-sm font-medium">
+                  <span>👁</span>
+                  <span className="truncate">User Dashboard</span>
+                </div>
+              </div>
+            )}
+          </React.Fragment>
         ))}
       </nav>
       <div className="pt-6 border-t border-slate-700">

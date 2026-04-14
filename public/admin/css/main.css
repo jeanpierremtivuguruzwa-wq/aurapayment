@@ -1,0 +1,122 @@
+/* Aura Payment - Global Styles */
+:root {
+    --primary: #0b1b3a;
+    --primary-dark: #061228;
+    --primary-light: #1e3a5f;
+    --gray-50: #f7fafc;
+    --gray-100: #edf2f7;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e0;
+    --gray-600: #718096;
+    --gray-700: #4a5568;
+    --gray-800: #2d3748;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-800);
+    line-height: 1.5;
+}
+
+/* Utility classes */
+.container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+.text-center { text-align: center; }
+.text-primary { color: var(--primary); }
+.bg-white { background: white; }
+.rounded-lg { border-radius: 0.5rem; }
+.rounded-xl { border-radius: 1rem; }
+.rounded-2xl { border-radius: 1.5rem; }
+.shadow-sm { box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
+.shadow { box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); }
+.shadow-md { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+    font-size: 0.875rem;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--gray-300);
+    color: var(--gray-700);
+}
+.btn-outline:hover {
+    background: var(--gray-100);
+}
+
+/* Cards */
+.card {
+    background: white;
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+/* Form elements */
+input, select, textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--gray-200);
+    border-radius: 0.75rem;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(11, 27, 58, 0.1);
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.status-pending { background: #fef3c7; color: #b45309; }
+.status-uploaded { background: #d1fae5; color: #065f46; }
+.status-completed { background: #c7d2fe; color: #3730a3; }
+
+/* Responsive */
+@media (max-width: 640px) {
+    .container {
+        padding: 0 1rem;
+    }
+    .card {
+        padding: 1rem;
+    }
+}

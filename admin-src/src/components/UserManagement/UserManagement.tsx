@@ -8,7 +8,11 @@ type StatusFilter = 'all' | 'active' | 'inactive' | 'suspended'
 type RoleFilter   = 'all' | 'user' | 'admin' | 'agent'
 type SortKey      = 'name' | 'joined' | 'orders'
 
-const UserManagement: React.FC = () => {
+interface Props {
+  onViewUserDashboard?: (userId: string) => void
+}
+
+const UserManagement: React.FC<Props> = ({ onViewUserDashboard }) => {
   const { users, loading, error, updateStatus, updateRole } = useUsers()
   const { orders } = useRealtimeOrders()
   const { agents } = useAgents()
@@ -441,6 +445,14 @@ const UserManagement: React.FC = () => {
                                     ))}
                                   </div>
                                   <p className="text-xs text-slate-400">Current: <strong>{role}</strong></p>
+                                  {onViewUserDashboard && (
+                                    <button
+                                      onClick={() => onViewUserDashboard(user.id)}
+                                      className="mt-1 flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors shadow-sm"
+                                    >
+                                      👁 View User Dashboard
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </td>
