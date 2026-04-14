@@ -610,8 +610,6 @@
         function initializeTransactionData() {
             const urlParams = new URLSearchParams(window.location.search);
             const sendAmount = parseFloat(urlParams.get('amount')) || parseFloat(localStorage.getItem('sendAmount')) || 10000;
-            const sendCurrency = urlParams.get('send') || localStorage.getItem('sendCurrency') || 'RUB';
-            const receiveCurrency = urlParams.get('receive') || localStorage.getItem('receiveCurrency') || 'XOF';
             const liveRate = parseFloat(urlParams.get('rate')) || parseFloat(localStorage.getItem('liveRate')) || 6.72;
 
             // Read pair selected on dashboard
@@ -620,6 +618,10 @@
                 const raw = localStorage.getItem('selectedPair');
                 if (raw) selectedPair = JSON.parse(raw);
             } catch(e) {}
+
+            // Derive currencies from the pair (authoritative), fall back to URL / localStorage
+            const sendCurrency = selectedPair?.from || urlParams.get('send') || localStorage.getItem('sendCurrency') || 'RUB';
+            const receiveCurrency = selectedPair?.to || urlParams.get('receive') || localStorage.getItem('receiveCurrency') || 'XOF';
 
             // Calculate fee from pair
             let fee = 0;
@@ -1208,6 +1210,26 @@
                     updates.push(
                         db.collection('transactions').add(transactionRecord).then((txRef) => {
                             console.log('Transaction created with ID:', txRef.id);
+                            // ── Update AuraWallet balances ──────────────────
+                            // Business receives sendCurrency from customer → +sendAmount
+                            // Business pays receiveCurrency to recipient    → -receiveAmount
+                            const sendCurr = transactionData.sendCurrency;
+                            const recvCurr = transactionData.receiveCurrency;
+                            const sentAmt  = transactionData.sendAmount || 0;
+                            const recvAmt  = transactionData.receiveAmount || 0;
+                            const walletInc = (currency, delta, note) =>
+                                db.collection('walletBalances').doc(currency).set(
+                                    { currency, balance: firebase.firestore.FieldValue.increment(delta), updatedAt: firebase.firestore.Timestamp.now() },
+                                    { merge: true }
+                                ).then(() =>
+                                    db.collection('walletHistory').add({
+                                        currency, delta, reason: 'transaction',
+                                        refId: txRef.id, note,
+                                        createdAt: firebase.firestore.Timestamp.now()
+                                    })
+                                ).catch(e => console.warn('Wallet update error:', e));
+                            walletInc(sendCurr, +sentAmt, `Received from customer (order ${transactionData.orderId || txRef.id})`);
+                            walletInc(recvCurr, -recvAmt, `Paid to recipient (order ${transactionData.orderId || txRef.id})`);
                         })
                     );
                 }

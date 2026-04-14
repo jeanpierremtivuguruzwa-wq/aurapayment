@@ -33,10 +33,23 @@ service cloud.firestore {
       allow update, delete: if isOwner() || isAdminOrAgent();
     }
 
-    // Currency pairs — public read; auth required to write (admin app)
+    // Currency pairs — public read; only admins/agents can write
     match /currencyPairs/{document} {
       allow read: if true;
-      allow write: if isAuth();
+      allow write: if isAdminOrAgent();
+    }
+
+    // Rate history — only admins/agents can read or write
+    match /rateHistory/{document} {
+      allow read, write: if isAdminOrAgent();
+    }
+
+    // AuraChat — rooms readable/writable by admins and agents
+    match /chatRooms/{roomId} {
+      allow read, write: if isAdminOrAgent();
+      match /messages/{msgId} {
+        allow read, write: if isAdminOrAgent();
+      }
     }
 
     // Payment methods — public read; auth required to write (admin app)
@@ -92,6 +105,18 @@ service cloud.firestore {
       allow create: if isAuth() && request.auth.uid == userId;
       allow update: if isAuth();
       allow delete: if false;
+    }
+
+    // AuraWallet — balances writable by any auth user (send-money users are signed in)
+    match /walletBalances/{currency} {
+      allow read: if isAuth();
+      allow write: if isAuth();
+    }
+
+    // Wallet history — readable by admins/agents; writable by any authenticated user
+    match /walletHistory/{docId} {
+      allow read: if isAdminOrAgent();
+      allow write: if isAuth();
     }
 
     match /{document=**} {

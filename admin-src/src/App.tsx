@@ -13,11 +13,13 @@ import AllTransactions from './components/AllTransactions/AllTransactions'
 import UserManagement from './components/UserManagement/UserManagement'
 import AdminProfile from './components/AdminProfile/AdminProfile'
 import AgentManagement from './components/AgentManagement/AgentManagement'
+import AuraChat from './components/AuraChat/AuraChat'
+import AuraWallet from './components/AuraWallet/AuraWallet'
 import CurrencyCardholderAssignments from './components/CurrencyAssignments/CurrencyCardholderAssignments'
 import NotificationRecipients from './components/Notifications/NotificationRecipients'
 import CardholderActivity from './components/Cardholders/CardholderActivity'
 
-type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'profile' | 'agents' | 'currency-assignments' | 'notifications'
+type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet'
 type AuthState = 'loading' | 'admin' | 'unauthenticated' | 'unauthorized'
 
 // The one and only authorised admin email
@@ -118,6 +120,8 @@ function App() {
       case 'currency-assignments': return <CurrencyCardholderAssignments />
       case 'notifications': return <NotificationRecipients />
       case 'cardholder-activity': return <CardholderActivity />
+      case 'chat': return <AuraChat />
+      case 'wallet': return <AuraWallet />
       default: return null
     }
   }

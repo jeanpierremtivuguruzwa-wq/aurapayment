@@ -536,7 +536,9 @@
                     <span>You send</span>
                     <div class="currency-input-group">
                         <div class="currency-select" onclick="openDropdown('send')">
+                            <span id="send-flag">🇷🇺</span>
                             <span id="send-currency">RUB</span>
+                            <span id="send-country" style="font-size:11px;color:#94a3b8;margin-left:2px;">Russia</span>
                             <span>▼</span>
                         </div>
                         <input type="number" class="amount-input" id="send-amount" value="10000" step="any">
@@ -549,7 +551,9 @@
                     <span>Recipient</span>
                     <div class="currency-input-group">
                         <div class="currency-select" onclick="openDropdown('receive')">
+                            <span id="receive-flag">🌍</span>
                             <span id="receive-currency">XOF</span>
+                            <span id="receive-country" style="font-size:11px;color:#94a3b8;margin-left:2px;">West Africa</span>
                             <span>▼</span>
                         </div>
                         <input type="text" class="amount-input" id="receive-amount" value="—" placeholder="Enter amount">
@@ -648,6 +652,18 @@
             return CURRENCY_META[code] || { flag: '💱', label: code, symbol: code };
         }
 
+        function setCurrencyDisplay(field, code, pair) {
+            const isZone = (code === 'XOF' || code === 'XAF');
+            const meta = getCurrencyMeta(code);
+            const flag  = (isZone && pair && pair.flag)    ? pair.flag    : meta.flag;
+            const label = (isZone && pair && pair.country) ? pair.country : meta.label;
+            const flagEl = document.getElementById(field + '-flag');
+            if (flagEl) flagEl.textContent = flag;
+            document.getElementById(field + '-currency').textContent = code;
+            const countryEl = document.getElementById(field + '-country');
+            if (countryEl) countryEl.textContent = label;
+        }
+
         // ── DOM refs ──────────────────────────────────────────────────────────
         const dropdown = document.getElementById('currencyDropdown');
         const overlay = document.getElementById('dropdownOverlay');
@@ -701,8 +717,8 @@
                             selectedPair = firestorePairs[0];
                             sendCurrency = selectedPair.from;
                             receiveCurrency = selectedPair.to;
-                            document.getElementById('send-currency').textContent = sendCurrency;
-                            document.getElementById('receive-currency').textContent = receiveCurrency;
+                            setCurrencyDisplay('send', sendCurrency, selectedPair);
+                            setCurrencyDisplay('receive', receiveCurrency, selectedPair);
                         }
                     }
 
@@ -798,26 +814,41 @@
                     pairs.forEach(pair => currencyList.appendChild(buildPairItem(pair)));
                 });
             } else {
-                // Send side — show unique from-currencies
-                const fromCurrencies = [...new Set(firestorePairs.map(p => p.from))];
+                // Send side — national currencies: one entry per code;
+                // zone currencies (XOF/XAF): one entry per sending country.
                 const title = document.createElement('div');
                 title.className = 'section-title';
                 title.textContent = 'SEND FROM';
                 currencyList.appendChild(title);
-                fromCurrencies.forEach(currency => {
+                const seenKeys = new Set();
+                firestorePairs.forEach(pair => {
+                    const currency = pair.from;
+                    const isZone = currency === 'XOF' || currency === 'XAF';
+                    const key = isZone
+                        ? `${currency}:${pair.countryCode || pair.country || pair.id}`
+                        : currency;
+                    if (seenKeys.has(key)) return;
+                    seenKeys.add(key);
                     const meta = getCurrencyMeta(currency);
+                    const displayFlag  = isZone ? (pair.flag || meta.flag)    : meta.flag;
+                    const displayLabel = isZone ? (pair.country || meta.label) : meta.label;
+                    const isSelected   = isZone
+                        ? (selectedPair && selectedPair.id === pair.id)
+                        : currency === sendCurrency;
                     const item = document.createElement('div');
-                    item.className = 'currency-item' + (currency === sendCurrency ? ' selected' : '');
+                    item.className = 'currency-item' + (isSelected ? ' selected' : '');
                     item.innerHTML = `
                         <div style="display:flex;align-items:center;width:100%;">
-                            <span class="country-flag">${meta.flag}</span>
+                            <span class="country-flag">${displayFlag}</span>
                             <div class="currency-details">
                                 <span class="currency-code">${currency}</span>
-                                <span class="country-name">${meta.label}</span>
+                                <span class="country-name">${displayLabel}</span>
                             </div>
                             <span class="currency-symbol">${meta.symbol}</span>
                         </div>`;
-                    item.onclick = () => selectSendCurrency(currency);
+                    item.onclick = isZone
+                        ? () => selectSendPair(pair)
+                        : () => selectSendCurrency(currency);
                     currencyList.appendChild(item);
                 });
             }
@@ -826,12 +857,19 @@
         function buildPairItem(pair) {
             const item = document.createElement('div');
             item.className = 'currency-item' + (selectedPair && selectedPair.id === pair.id ? ' selected' : '');
+            // For zone currencies (XOF/XAF) the pair's flag/country IS the destination country (e.g. Senegal for XOF).
+            // For national currencies (RUB, USD…) the pair's flag/country is the CFA sender's country,
+            // so we must derive flag/label from CURRENCY_META[pair.to] instead.
+            const receiveMeta = getCurrencyMeta(pair.to);
+            const isZone = (pair.to === 'XOF' || pair.to === 'XAF');
+            const displayFlag    = isZone ? (pair.flag || receiveMeta.flag) : receiveMeta.flag;
+            const displayCountry = isZone ? (pair.country || receiveMeta.label) : receiveMeta.label;
             item.innerHTML = `
                 <div style="display:flex;align-items:center;width:100%;">
-                    <span class="country-flag">${pair.flag || '🌍'}</span>
+                    <span class="country-flag">${displayFlag}</span>
                     <div class="currency-details">
                         <span class="currency-code">${pair.to}</span>
-                        <span class="country-name">${pair.country || ''}</span>
+                        <span class="country-name">${displayCountry}</span>
                     </div>
                     <span class="currency-symbol">${getSymbol(pair.to)}</span>
                 </div>`;
@@ -842,20 +880,30 @@
         function selectReceivePair(pair) {
             selectedPair = pair;
             receiveCurrency = pair.to;
-            document.getElementById('receive-currency').textContent = receiveCurrency;
+            setCurrencyDisplay('receive', receiveCurrency, pair);
+            closeDropdown();
+            updateDisplay();
+        }
+
+        function selectSendPair(pair) {
+            selectedPair = pair;
+            sendCurrency = pair.from;
+            receiveCurrency = pair.to;
+            setCurrencyDisplay('send', sendCurrency, pair);
+            setCurrencyDisplay('receive', receiveCurrency, pair);
             closeDropdown();
             updateDisplay();
         }
 
         function selectSendCurrency(currency) {
             sendCurrency = currency;
-            document.getElementById('send-currency').textContent = sendCurrency;
+            setCurrencyDisplay('send', sendCurrency, null);
             // Default receive to first pair for this sendCurrency
             const first = firestorePairs.find(p => p.from === sendCurrency);
             if (first) {
                 selectedPair = first;
                 receiveCurrency = first.to;
-                document.getElementById('receive-currency').textContent = receiveCurrency;
+                setCurrencyDisplay('receive', receiveCurrency, first);
             } else {
                 selectedPair = null;
             }
@@ -889,8 +937,8 @@
                 sendCurrency = reversePair.from;
                 receiveCurrency = reversePair.to;
                 selectedPair = reversePair;
-                document.getElementById('send-currency').textContent = sendCurrency;
-                document.getElementById('receive-currency').textContent = receiveCurrency;
+                setCurrencyDisplay('send', sendCurrency, reversePair);
+                setCurrencyDisplay('receive', receiveCurrency, reversePair);
                 updateDisplay();
             }
         }
@@ -975,8 +1023,8 @@
                 if (selectedPair) {
                     sendCurrency = selectedPair.from;
                     receiveCurrency = selectedPair.to;
-                    document.getElementById('send-currency').textContent = sendCurrency;
-                    document.getElementById('receive-currency').textContent = receiveCurrency;
+                    setCurrencyDisplay('send', sendCurrency, selectedPair);
+                    setCurrencyDisplay('receive', receiveCurrency, selectedPair);
                 }
                 updateDisplay();
 

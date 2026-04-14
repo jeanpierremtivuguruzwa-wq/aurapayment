@@ -1,7 +1,8 @@
-import { collection, doc, updateDoc, addDoc, deleteDoc, getDocs, query, where, onSnapshot, increment, Timestamp } from 'firebase/firestore'
+import { collection, doc, getDoc, updateDoc, addDoc, deleteDoc, getDocs, query, where, onSnapshot, increment, Timestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { Cardholder } from '../types/Cardholder'
 import { PaymentMethod } from '../types/PaymentMethod'
+import { updateWalletBalance } from './walletService'
 
 // Set cardholder as active (deactivate others for the same payment method)
 export async function setActiveCardholder(paymentMethodId: string, cardholderId: string) {
@@ -46,6 +47,25 @@ export async function withdrawCardholder(id: string, amount: number, note: strin
     totalWithdrawn: increment(amount),
     updatedAt:      Timestamp.now(),
   })
+
+  // ── Update AuraWallet: find cardholder's payment method currency ──────────
+  try {
+    const chSnap = await getDoc(doc(db, 'cardholders', id))
+    if (chSnap.exists()) {
+      const chData = chSnap.data() as Cardholder
+      if (chData.paymentMethodId) {
+        const pmSnap = await getDoc(doc(db, 'paymentMethods', chData.paymentMethodId))
+        if (pmSnap.exists()) {
+          const currency = (pmSnap.data() as PaymentMethod).currency
+          if (currency) {
+            await updateWalletBalance(currency, -amount, 'withdrawal', id, note.trim() || 'Cardholder withdrawal')
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Wallet update after withdrawal failed:', e)
+  }
 }
 
 // Migrate existing payment methods to have cardholders if they don't already

@@ -55,6 +55,18 @@ function AddCardholderModal({
 
   const selectedMethod = paymentMethods.find(m => m.id === form.paymentMethodId)
 
+  // Reset account/phone when method type changes
+  const handleMethodChange = (id: string) => {
+    const pm = paymentMethods.find(m => m.id === id)
+    setForm(f => ({
+      ...f,
+      paymentMethodId: id,
+      accountNumber: pm?.type === 'bank' ? f.accountNumber : '',
+      phoneNumber: pm?.type === 'mobile' ? f.phoneNumber : '',
+    }))
+    setError('')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.paymentMethodId) { setError('Select a payment method'); return }
@@ -106,26 +118,55 @@ function AddCardholderModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method <span className="text-red-500">*</span></label>
             <select
               value={form.paymentMethodId}
-              onChange={e => { setForm(f => ({ ...f, paymentMethodId: e.target.value })); setError('') }}
+              onChange={e => handleMethodChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
             >
               <option value="">— Select payment method —</option>
-              {paymentMethods.map(m => (
-                <option key={m.id} value={m.id}>{m.name} ({m.type} · {m.currency})</option>
-              ))}
+              {/* Group by type */}
+              {['bank', 'mobile', 'cash'].map(type => {
+                const group = paymentMethods.filter(m => m.type === type)
+                if (group.length === 0) return null
+                const groupLabel = type === 'bank' ? '🏦 Bank Transfer' : type === 'mobile' ? '📱 Mobile Money' : '💵 Cash'
+                return (
+                  <optgroup key={type} label={groupLabel}>
+                    {group.map(m => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} · {m.currency}
+                      </option>
+                    ))}
+                  </optgroup>
+                )
+              })}
             </select>
+            {/* Show detected type badge */}
+            {selectedMethod && (
+              <p className="text-xs mt-1.5 text-gray-500">
+                {selectedMethod.type === 'bank' && '🏦 Bank — enter account number below'}
+                {selectedMethod.type === 'mobile' && '📱 Mobile Money — enter phone number below'}
+                {selectedMethod.type === 'cash' && '💵 Cash — no account details needed'}
+              </p>
+            )}
           </div>
 
           {field('Full Name (Account Holder)', 'accountHolder', { placeholder: 'e.g. Jean-Pierre Martin', required: true })}
-          {field('Display Name', 'displayName', { placeholder: 'e.g. Jean, Thierry — used in admin matching', required: true })}
+          {field('Display Name', 'displayName', { placeholder: 'e.g. Jean, Thierry', required: true })}
 
-          {/* Conditional account/phone based on method type */}
-          {(!selectedMethod || selectedMethod.type === 'bank') &&
+          {/* Account number — bank only */}
+          {selectedMethod?.type === 'bank' &&
             field('Account Number', 'accountNumber', { placeholder: 'e.g. 4100 1234 5678 9012' })}
-          {(!selectedMethod || selectedMethod.type === 'mobile') &&
+
+          {/* Phone number — mobile only */}
+          {selectedMethod?.type === 'mobile' &&
             field('Phone Number', 'phoneNumber', { placeholder: 'e.g. +221 77 000 0000' })}
+
+          {/* No fields needed for cash */}
           {selectedMethod?.type === 'cash' && (
-            <p className="text-xs text-gray-400 italic">Cash method — no account number needed.</p>
+            <p className="text-xs text-gray-400 italic bg-gray-50 rounded-lg px-3 py-2">Cash pickup — no account or phone number required.</p>
+          )}
+
+          {/* Prompt if no method selected yet */}
+          {!selectedMethod && (
+            <p className="text-xs text-gray-400 italic">← Select a payment method first to see the required fields.</p>
           )}
 
           {error && <p className="text-xs text-red-600">{error}</p>}

@@ -16,6 +16,8 @@ const Sidebar: React.FC<Props> = ({ activeSection, onSectionChange }) => {
     { id: 'transactions', label: 'All Transactions', icon: '📊' },
     { id: 'users',    label: 'User Management',   icon: '👤' },
     { id: 'agents',   label: 'Agent Management',  icon: '🕵️' },
+    { id: 'chat',     label: 'AuraChat',           icon: '💬' },
+    { id: 'wallet',   label: 'AuraWallet',          icon: '💰' },
     { id: 'currency-assignments', label: 'Currency Assignments', icon: '🏦' },
     { id: 'notifications', label: 'Notifications',       icon: '🔔' },
     { id: 'profile',  label: 'My Profile',         icon: '🛡' },
