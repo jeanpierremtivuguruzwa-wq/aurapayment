@@ -13,6 +13,7 @@ export interface Agent {
   email: string
   status: AgentStatus
   permissions: AgentPermission[]
+  photoURL?: string
   createdAt: { seconds: number; nanoseconds: number } | null
   updatedAt?: { seconds: number; nanoseconds: number } | null
 }

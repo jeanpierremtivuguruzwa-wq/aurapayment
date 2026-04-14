@@ -148,13 +148,24 @@ function UserJourney({
                   selectedId === u.id ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : ''
                 }`}
               >
-                <p className="text-xs font-semibold text-gray-900 truncate">{u.fullName || u.email}</p>
-                <p className="text-[10px] text-gray-400 truncate">{u.email}</p>
-                {count > 0 && (
-                  <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded mt-0.5 inline-block">
-                    {count} events
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {u.photoURL ? (
+                    <img src={u.photoURL} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+                      {(u.fullName || u.email || '?')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-gray-900 truncate">{u.fullName || u.email}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{u.email}</p>
+                    {count > 0 && (
+                      <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                        {count} events
+                      </span>
+                    )}
+                  </div>
+                </div>
               </button>
             )
           })}
@@ -174,9 +185,13 @@ function UserJourney({
         ) : (
           <>
             <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
-                {(selected.fullName || selected.email || '?')[0].toUpperCase()}
-              </div>
+              {selected.photoURL ? (
+                <img src={selected.photoURL} alt="" className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
+                  {(selected.fullName || selected.email || '?')[0].toUpperCase()}
+                </div>
+              )}
               <div>
                 <p className="font-bold text-gray-900 text-sm">{selected.fullName || '—'}</p>
                 <p className="text-xs text-gray-400">{selected.email}</p>
@@ -287,6 +302,13 @@ function OnlineNow({ agents }: { agents: any[] }) {
           {usersWithPresence.map(u => (
             <div key={u.id} className="flex items-center gap-3 px-4 py-3">
               <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 animate-pulse" />
+              {u.photoURL ? (
+                <img src={u.photoURL} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">
+                  {(u.fullName || u.email || '?')[0].toUpperCase()}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 truncate">{u.fullName || u.email || '—'}</p>
                 <p className="text-xs text-gray-400 truncate">

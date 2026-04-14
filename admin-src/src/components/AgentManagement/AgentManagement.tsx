@@ -329,9 +329,13 @@ const AgentManagement: React.FC = () => {
                       {/* Name */}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
-                            {getInitials(agent.name)}
-                          </div>
+                          {agent.photoURL ? (
+                            <img src={agent.photoURL} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
+                              {getInitials(agent.name)}
+                            </div>
+                          )}
                           <span className="font-medium text-slate-900">{agent.name}</span>
                         </div>
                       </td>

@@ -299,9 +299,13 @@ const UserManagement: React.FC = () => {
                           {/* User */}
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarColor(user.id)} flex items-center justify-center text-white font-semibold text-sm shrink-0`}>
-                                {getInitials(user.fullName || user.displayName || '')}
-                              </div>
+                              {user.photoURL ? (
+                                <img src={user.photoURL} alt="" className="w-9 h-9 rounded-full object-cover shrink-0 border border-slate-200" />
+                              ) : (
+                                <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarColor(user.id)} flex items-center justify-center text-white font-semibold text-sm shrink-0`}>
+                                  {getInitials(user.fullName || user.displayName || '')}
+                                </div>
+                              )}
                               <div className="min-w-0">
                                 <div className="font-medium text-slate-900 truncate">
                                   {user.fullName || user.displayName || '—'}

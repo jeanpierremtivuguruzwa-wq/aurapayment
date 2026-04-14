@@ -83,6 +83,25 @@
             font-weight: 600;
         }
 
+        .logout-btn {
+            background: none;
+            border: 1.5px solid #e2e8f0;
+            color: #4a5568;
+            font-size: 0.82rem;
+            font-weight: 500;
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            white-space: nowrap;
+        }
+
+        .logout-btn:hover {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #dc2626;
+        }
+
         .main-content {
             max-width: 1000px;
             margin: 1rem auto;
@@ -331,6 +350,7 @@
         <div class="user-profile" id="userProfile">
             <span class="user-name" id="displayName">Loading...</span>
             <div class="avatar" id="userInitials">...</div>
+            <button class="logout-btn" onclick="handleLogout()">⏻ Log out</button>
         </div>
     </nav>
 
@@ -386,13 +406,21 @@
             loadOrders(user.uid);
         });
 
+        function handleLogout() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('aura_user_profile');
+            auth.signOut().finally(() => {
+                window.location.href = 'signin.html';
+            });
+        }
+
         function loadUserDisplay() {
             try {
                 const storedUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
                 const fullName = storedUser.fullName || storedUser.full_name || currentUser.displayName || currentUser.email.split('@')[0];
-                updateUserDisplay({ fullName });
+                updateUserDisplay({ fullName, uid: storedUser.uid || currentUser.uid, photoURL: storedUser.photoURL });
             } catch (err) {
-                updateUserDisplay({ fullName: currentUser.displayName || currentUser.email.split('@')[0] });
+                updateUserDisplay({ fullName: currentUser.displayName || currentUser.email.split('@')[0], uid: currentUser.uid });
             }
         }
 
@@ -400,8 +428,16 @@
             const fullName = user.fullName || user.full_name || 'User';
             const displayName = fullName.split(' ')[0];
             document.getElementById('displayName').textContent = displayName;
-            const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
-            document.getElementById('userInitials').textContent = initials.substring(0, 2);
+            const avatarEl = document.getElementById('userInitials');
+            const photoURL = user.photoURL || localStorage.getItem('aura_avatar_' + user.uid);
+            if (photoURL) {
+                avatarEl.innerHTML = `<img src="${photoURL}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;display:block;" alt="avatar">`;
+                avatarEl.style.background = 'none';
+                avatarEl.style.padding = '0';
+            } else {
+                const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+                avatarEl.textContent = initials.substring(0, 2);
+            }
         }
 
         let ordersUnsubscribe = null;

@@ -1,6 +1,9 @@
 import React from 'react'
-import { auth } from '../../services/firebase'
+import { auth, storage } from '../../services/firebase'
 import { signOut, updateProfile } from 'firebase/auth'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '../../services/firebase'
 import { useRealtimeOrders } from '../../hooks/useRealtimeOrders'
 
 const PERMISSIONS = [
@@ -22,6 +25,9 @@ const AdminProfile: React.FC = () => {
   const [newName, setNewName] = React.useState(user?.displayName || '')
   const [saving, setSaving] = React.useState(false)
   const [saveMsg, setSaveMsg] = React.useState<string | null>(null)
+  const [photoURL, setPhotoURL] = React.useState<string | null>(user?.photoURL || null)
+  const [uploadingPhoto, setUploadingPhoto] = React.useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   // Order stats for this admin session (all orders — admin manages them all)
   const stats = React.useMemo(() => ({
@@ -47,6 +53,29 @@ const AdminProfile: React.FC = () => {
     }
   }
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (!file.type.startsWith('image/')) { setSaveMsg('Please select an image file.'); return }
+    if (file.size > 5 * 1024 * 1024) { setSaveMsg('Image must be under 5 MB.'); return }
+    setUploadingPhoto(true)
+    try {
+      const storageRef = ref(storage, `admin-avatars/${user.uid}/profile.jpg`)
+      await uploadBytes(storageRef, file, { contentType: file.type })
+      const url = await getDownloadURL(storageRef)
+      await updateProfile(user, { photoURL: url })
+      await updateDoc(doc(db, 'admins', user.uid), { photoURL: url }).catch(() => {})
+      setPhotoURL(url)
+      setSaveMsg('Photo updated!')
+    } catch (e) {
+      setSaveMsg('Upload failed: ' + (e as Error).message)
+    } finally {
+      setUploadingPhoto(false)
+      setTimeout(() => setSaveMsg(null), 3000)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   const handleSignOut = async () => {
     await signOut(auth)
     window.location.href = '../signin.html'
@@ -67,12 +96,33 @@ const AdminProfile: React.FC = () => {
 
           {/* Avatar */}
           <div className="relative shrink-0">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-              {getInitials(displayName)}
+            <div
+              className="w-24 h-24 rounded-2xl overflow-hidden cursor-pointer group shadow-lg border-2 border-slate-200"
+              onClick={() => fileInputRef.current?.click()}
+              title="Click to upload photo"
+            >
+              {photoURL ? (
+                <img src={photoURL} alt="Admin" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white text-3xl font-bold">
+                  {getInitials(displayName)}
+                </div>
+              )}
+              {/* Hover overlay */}
+              <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <span className="text-white text-xs font-semibold">{uploadingPhoto ? 'Uploading…' : '📷 Change'}</span>
+              </div>
             </div>
             <span className="absolute -bottom-2 -right-2 bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow">
               Admin
             </span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
           </div>
 
           {/* Info */}

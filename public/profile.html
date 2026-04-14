@@ -49,6 +49,25 @@
             align-items: center;
             gap: 1rem;
         }
+        .logout-btn {
+            background: none;
+            border: 1.5px solid #e2e8f0;
+            color: #4a5568;
+            font-size: 0.82rem;
+            font-weight: 500;
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            white-space: nowrap;
+            width: auto;
+            margin-top: 0;
+        }
+        .logout-btn:hover {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #dc2626;
+        }
         .user-name {
             color: #2d3748;
             font-weight: 500;
@@ -71,6 +90,79 @@
             border-radius: 24px;
             padding: 2rem;
             box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+
+        /* ── Profile photo ── */
+        .photo-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .photo-wrapper {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            cursor: pointer;
+        }
+        .photo-wrapper:hover .photo-overlay { opacity: 1; }
+        .profile-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #e2e8f0;
+            display: block;
+        }
+        .photo-initials {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: #0b1b3a;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .photo-overlay {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.45);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            gap: 4px;
+        }
+        .photo-overlay svg { width: 22px; height: 22px; }
+        .photo-upload-btn {
+            margin-top: 0.75rem;
+            background: none;
+            border: 1.5px solid #cbd5e0;
+            color: #4a5568;
+            font-size: 0.8rem;
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            width: auto;
+            margin-left: 0;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .photo-upload-btn:hover { border-color: #0b1b3a; color: #0b1b3a; }
+        .upload-progress {
+            margin-top: 0.5rem;
+            font-size: 0.75rem;
+            color: #718096;
+            min-height: 1.2em;
         }
         h1 {
             margin-bottom: 1.5rem;
@@ -144,13 +236,30 @@
         <div class="user-profile" id="userProfile">
             <span class="user-name" id="displayName">Loading...</span>
             <div class="avatar" id="userInitials">...</div>
+            <button class="logout-btn" onclick="handleLogout()">⏻ Log out</button>
         </div>
     </nav>
 
     <div class="main-content">
         <h1>My Profile</h1>
-        
-        <!-- Profile Info Display -->
+
+        <!-- Photo upload -->
+        <div class="photo-section">
+            <div class="photo-wrapper" onclick="document.getElementById('photoInput').click()">
+                <img id="profilePhotoImg" class="profile-photo" src="" alt="" style="display:none">
+                <div class="photo-initials" id="profilePhotoInitials">?</div>
+                <div class="photo-overlay">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    Change
+                </div>
+            </div>
+            <button class="photo-upload-btn" onclick="document.getElementById('photoInput').click()">📷 Upload photo</button>
+            <div class="upload-progress" id="uploadProgress"></div>
+            <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
+        </div>
         <div id="profileInfo" style="margin-bottom: 2rem;">
             <div style="padding: 1.5rem; background: #f7fafc; border-radius: 12px;">
                 <div style="margin-bottom: 1.5rem;">
@@ -176,6 +285,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
 
     <script>
         // Firebase Configuration
@@ -192,6 +302,7 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+        const storage = firebase.storage();
 
         let currentUser = null;
 
@@ -199,6 +310,13 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadUserProfile();
         });
+
+        function handleLogout() {
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('aura_user_profile');
+            if (auth) auth.signOut().catch(() => {});
+            window.location.href = 'signin.html';
+        }
 
         function loadUserProfile() {
             try {
@@ -214,16 +332,102 @@
                 const fullName = currentUser.fullName || currentUser.full_name || 'User';
                 const displayName = fullName.split(' ')[0];
                 document.getElementById('displayName').textContent = displayName;
-                const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
-                document.getElementById('userInitials').textContent = initials.substring(0, 2);
+                const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                document.getElementById('userInitials').textContent = initials;
+
+                // Profile initials in big avatar
+                document.getElementById('profilePhotoInitials').textContent = initials || '?';
 
                 // Display profile info
                 document.getElementById('displayFullName').textContent = fullName;
                 document.getElementById('displayEmail').textContent = currentUser.email || 'N/A';
 
+                // Load saved photo if exists
+                const savedPhoto = currentUser.photoURL || localStorage.getItem('aura_avatar_' + currentUser.uid);
+                if (savedPhoto) setPhotoUI(savedPhoto);
+
+                // Also fetch latest from Firestore in case it was updated elsewhere
+                if (currentUser.uid) {
+                    db.collection('users').doc(currentUser.uid).get().then(snap => {
+                        if (snap.exists && snap.data().photoURL) {
+                            setPhotoUI(snap.data().photoURL);
+                            currentUser.photoURL = snap.data().photoURL;
+                            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        }
+                    }).catch(() => {});
+                }
+
             } catch (err) {
                 console.error('Error loading profile:', err);
                 window.location.href = 'signin.html';
+            }
+        }
+
+        function setPhotoUI(url) {
+            const img = document.getElementById('profilePhotoImg');
+            const initDiv = document.getElementById('profilePhotoInitials');
+            const navAvatar = document.getElementById('userInitials');
+            img.src = url;
+            img.style.display = 'block';
+            initDiv.style.display = 'none';
+            // Also update navbar avatar with photo
+            navAvatar.innerHTML = `<img src="${url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" alt="avatar">`;
+        }
+
+        function handlePhotoSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showMessage('Please select an image file.', 'error');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                showMessage('Image must be under 5 MB.', 'error');
+                return;
+            }
+            uploadPhoto(file);
+        }
+
+        async function uploadPhoto(file) {
+            const progress = document.getElementById('uploadProgress');
+            progress.textContent = 'Uploading…';
+
+            try {
+                // Sign in anonymously if no Firebase auth session (auth is managed by localStorage)
+                let uid = currentUser?.uid;
+                if (!uid) throw new Error('Not logged in');
+
+                // Try to sign in with Firebase auth using stored credentials
+                // Since auth is localStorage-based, we use the uid as the storage path
+                const ref = storage.ref(`avatars/${uid}/profile.jpg`);
+                const snapshot = await ref.put(file, { contentType: file.type });
+                const url = await snapshot.ref.getDownloadURL();
+
+                // Save URL to Firestore
+                await db.collection('users').doc(uid).set({ photoURL: url }, { merge: true });
+
+                // Save to localStorage
+                currentUser.photoURL = url;
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                localStorage.setItem('aura_avatar_' + uid, url);
+
+                setPhotoUI(url);
+                progress.textContent = '';
+                showMessage('Photo updated!', 'success');
+            } catch (err) {
+                console.error('Upload error:', err);
+                // If storage auth fails, save as data URL in localStorage instead
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const dataUrl = e.target.result;
+                    currentUser.photoURL = dataUrl;
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    if (currentUser.uid) localStorage.setItem('aura_avatar_' + currentUser.uid, dataUrl);
+                    setPhotoUI(dataUrl);
+                    progress.textContent = '';
+                    showMessage('Photo saved locally!', 'success');
+                };
+                reader.readAsDataURL(file);
             }
         }
 

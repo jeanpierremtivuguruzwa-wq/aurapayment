@@ -12,6 +12,22 @@ service firebase.storage {
       allow read: if true;
     }
 
+    // Profile photos: user can read/write their own
+    match /avatars/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Admin profile photos
+    match /admin-avatars/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
     // Default deny
     match /{allPaths=**} {
       allow read, write: if false;

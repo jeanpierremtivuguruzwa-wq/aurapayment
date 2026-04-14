@@ -188,9 +188,6 @@ const AuraChat: React.FC = () => {
     }
   })
 
-  const unreadCount = (room: ChatRoom) =>
-    messages.filter(m => m.roomId === room.id && m.senderRole === 'agent' && !m.read).length
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-[calc(100vh-160px)] min-h-[500px] bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -217,9 +214,13 @@ const AuraChat: React.FC = () => {
                 className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-100 transition-all ${isSelected ? 'bg-sky-50 border-r-2 border-sky-500' : ''}`}
               >
                 <div className="relative flex-shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold">
-                    {initials}
-                  </div>
+                  {agentObj?.photoURL ? (
+                    <img src={agentObj.photoURL} alt="" className="w-10 h-10 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold">
+                      {initials}
+                    </div>
+                  )}
                   <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${isOnline ? 'bg-green-400' : 'bg-slate-300'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -245,9 +246,17 @@ const AuraChat: React.FC = () => {
 
           {/* Chat header */}
           <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3 bg-white">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-              {(selectedRoom.agentName || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-            </div>
+            {(() => {
+              const headerAgent = agents.find(a => a.id === selectedRoom.agentId)
+              const headerInitials = (selectedRoom.agentName || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+              return headerAgent?.photoURL ? (
+                <img src={headerAgent.photoURL} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-sky-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                  {headerInitials}
+                </div>
+              )
+            })()}
             <div>
               <p className="font-semibold text-slate-800 text-sm">{selectedRoom.agentName}</p>
               <p className="text-xs text-slate-400">{selectedRoom.agentEmail}</p>

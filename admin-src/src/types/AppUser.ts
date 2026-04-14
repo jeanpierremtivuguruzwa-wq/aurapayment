@@ -8,6 +8,7 @@ export interface AppUser {
   fullName: string
   displayName?: string
   phone?: string
+  photoURL?: string
   role: UserRole
   status: UserStatus
   createdAt: { seconds: number; nanoseconds: number } | null
