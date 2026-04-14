@@ -488,6 +488,9 @@
             }
         }
     </style>
+    <!-- Firebase compat SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -515,7 +518,13 @@
             </div>
         </div>
 
-        <div class="calculator-card">
+        <div id="no-pairs-msg" style="display:none; text-align:center; padding:2.5rem 1.5rem; background:white; border-radius:24px; box-shadow:0 4px 12px rgba(0,0,0,0.05); margin-bottom:20px;">
+            <div style="font-size:2.5rem; margin-bottom:0.75rem;">🚫</div>
+            <h3 style="color:#0b1b3a; margin-bottom:0.5rem;">No exchange rates available</h3>
+            <p style="color:#718096; font-size:0.9rem;">No active currency pairs have been configured yet. Please check back later or contact support.</p>
+        </div>
+
+        <div id="calculator-card-main" class="calculator-card" style="display:none;">
             <div class="timestamp">
                 <span>Last updated: <span id="current-time"></span></span>
                 <span class="live-badge" id="rate-badge">LIVE</span>
@@ -575,28 +584,7 @@
             <div class="view-details">
                 <a href="#">View details ▼</a>
             </div>
-        </div>
-
-        <div class="calculator-card">
-            <h3>Send Money Options</h3>
-            <div class="swap-container">
-                <div class="input-row">
-                    <span>Edit Recipient</span>
-                    <div class="currency-input-group">
-                        <input type="text" class="amount-input" id="recipient-name" placeholder="Recipient Name">
-                    </div>
-                </div>
-
-                <div class="input-row">
-                    <span>Check Price</span>
-                    <div class="currency-input-group">
-                        <input type="number" class="amount-input" id="check-price" placeholder="Enter Amount">
-                    </div>
-                </div>
-
-                <button class="continue-btn" onclick="checkPrice()">Check Price</button>
-            </div>
-        </div>
+        </div> <!-- end #calculator-card-main -->
     </main>
 
     <div class="dropdown-overlay" id="dropdownOverlay" onclick="closeDropdown()"></div>
@@ -609,33 +597,58 @@
     </div>
 
     <script>
-        const countries = [
-            { flag: '🇧🇯', code: 'XOF', symbol: 'CFA', country: 'Benin' },
-            { flag: '🇧🇫', code: 'XOF', symbol: 'CFA', country: 'Burkina Faso' },
-            { flag: '🇨🇮', code: 'XOF', symbol: 'CFA', country: 'Côte d\'Ivoire' },
-            { flag: '🇬🇼', code: 'XOF', symbol: 'CFA', country: 'Guinea-Bissau' },
-            { flag: '🇲🇱', code: 'XOF', symbol: 'CFA', country: 'Mali' },
-            { flag: '🇳🇪', code: 'XOF', symbol: 'CFA', country: 'Niger' },
-            { flag: '🇸🇳', code: 'XOF', symbol: 'CFA', country: 'Senegal' },
-            { flag: '🇹🇬', code: 'XOF', symbol: 'CFA', country: 'Togo' },
-            { flag: '🇨🇲', code: 'XAF', symbol: 'FCFA', country: 'Cameroon' },
-            { flag: '🇨🇫', code: 'XAF', symbol: 'FCFA', country: 'Central African Republic' },
-            { flag: '🇹🇩', code: 'XAF', symbol: 'FCFA', country: 'Chad' },
-            { flag: '🇬🇶', code: 'XAF', symbol: 'FCFA', country: 'Equatorial Guinea' },
-            { flag: '🇬🇦', code: 'XAF', symbol: 'FCFA', country: 'Gabon' },
-            { flag: '🇨🇬', code: 'XAF', symbol: 'FCFA', country: 'Republic of Congo' },
-            { flag: '🇷🇺', code: 'RUB', symbol: '₽', country: 'Russia' }
-        ];
+        // ── Firebase init ─────────────────────────────────────────────────────
+        const firebaseConfig = {
+            apiKey: "AIzaSyDlz5mH-x7P7H6FNdPj62PYhqAY5hsH19A",
+            authDomain: "aura-payment.firebaseapp.com",
+            projectId: "aura-payment",
+            storageBucket: "aura-payment.firebasestorage.app",
+            messagingSenderId: "213847107667",
+            appId: "1:213847107667:web:9949c7a1ad9101959afea6"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
+        // ── State ─────────────────────────────────────────────────────────────
+        let firestorePairs = [];
         let sendCurrency = 'RUB';
         let receiveCurrency = 'XOF';
+        let selectedPair = null;
         let activeField = 'receive';
-        let liveRate = null;
-        const fallbackRates = {
-            'RUB-XOF': 6.72, 'RUB-XAF': 6.72, 'XOF-RUB': 0.15,
-            'XAF-RUB': 0.15, 'XOF-XAF': 0.99, 'XAF-XOF': 1.01
+
+        // ── Currency metadata (expanded — any currency an admin might configure) ─
+        const CURRENCY_META = {
+            // African CFA zones
+            'XOF': { flag: '🌍', label: 'West Africa (XOF)', symbol: 'CFA' },
+            'XAF': { flag: '🌍', label: 'Central Africa (XAF)', symbol: 'FCFA' },
+            // Major send-from currencies
+            'RUB': { flag: '🇷🇺', label: 'Russia',       symbol: '₽' },
+            'USD': { flag: '🇺🇸', label: 'United States', symbol: '$' },
+            'EUR': { flag: '🇪🇺', label: 'Euro Zone',     symbol: '€' },
+            'GBP': { flag: '🇬🇧', label: 'United Kingdom',symbol: '£' },
+            'CNY': { flag: '🇨🇳', label: 'China',         symbol: '¥' },
+            'INR': { flag: '🇮🇳', label: 'India',         symbol: '₹' },
+            'AED': { flag: '🇦🇪', label: 'UAE',           symbol: 'د.إ' },
+            'TRY': { flag: '🇹🇷', label: 'Turkey',        symbol: '₺' },
+            'CAD': { flag: '🇨🇦', label: 'Canada',        symbol: 'C$' },
+            'AUD': { flag: '🇦🇺', label: 'Australia',     symbol: 'A$' },
+            'JPY': { flag: '🇯🇵', label: 'Japan',         symbol: '¥' },
+            'CHF': { flag: '🇨🇭', label: 'Switzerland',   symbol: 'Fr' },
+            'BRL': { flag: '🇧🇷', label: 'Brazil',        symbol: 'R$' },
+            'MXN': { flag: '🇲🇽', label: 'Mexico',        symbol: 'MX$' },
+            'ZAR': { flag: '🇿🇦', label: 'South Africa',  symbol: 'R' },
+            'NGN': { flag: '🇳🇬', label: 'Nigeria',       symbol: '₦' },
+            'KES': { flag: '🇰🇪', label: 'Kenya',         symbol: 'KSh' },
+            'GHS': { flag: '🇬🇭', label: 'Ghana',         symbol: 'GH₵' },
+            'EGP': { flag: '🇪🇬', label: 'Egypt',         symbol: 'E£' },
+            'MAD': { flag: '🇲🇦', label: 'Morocco',       symbol: 'MAD' },
         };
 
+        function getCurrencyMeta(code) {
+            return CURRENCY_META[code] || { flag: '💱', label: code, symbol: code };
+        }
+
+        // ── DOM refs ──────────────────────────────────────────────────────────
         const dropdown = document.getElementById('currencyDropdown');
         const overlay = document.getElementById('dropdownOverlay');
         const currencyList = document.getElementById('currencyList');
@@ -649,148 +662,205 @@
         const continueBtn = document.getElementById('continue-btn');
         const swapIcon = document.getElementById('swapIcon');
 
+        // ── Firestore real-time listener ────────────────────────────────────
+        let pairsUnsubscribe = null; // holds the onSnapshot unsubscribe fn
+
+        function subscribeToPairs(onFirstLoad) {
+            const calculatorEl = document.getElementById('calculator-card-main');
+            const noPairsEl   = document.getElementById('no-pairs-msg');
+            let isFirst = true;
+
+            pairsUnsubscribe = db.collection('currencyPairs')
+                .where('active', '==', true)
+                .onSnapshot(snap => {
+                    firestorePairs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                    if (isFirst) {
+                        isFirst = false;
+                        onFirstLoad(firestorePairs.length > 0);
+                        return;
+                    }
+
+                    // Subsequent updates: rate/pair changed in Firestore
+                    if (!firestorePairs.length) {
+                        calculatorEl.style.display = 'none';
+                        noPairsEl.style.display = 'block';
+                        return;
+                    }
+
+                    calculatorEl.style.display = 'block';
+                    noPairsEl.style.display = 'none';
+
+                    // Refresh selectedPair from updated data
+                    if (selectedPair) {
+                        const refreshed = firestorePairs.find(p => p.id === selectedPair.id);
+                        if (refreshed) {
+                            selectedPair = refreshed;
+                        } else {
+                            // Pair was deactivated — fall back to first available
+                            selectedPair = firestorePairs[0];
+                            sendCurrency = selectedPair.from;
+                            receiveCurrency = selectedPair.to;
+                            document.getElementById('send-currency').textContent = sendCurrency;
+                            document.getElementById('receive-currency').textContent = receiveCurrency;
+                        }
+                    }
+
+                    updateDisplay();
+                }, err => {
+                    console.warn('Firestore snapshot error:', err);
+                });
+        }
+
+        function getDefaultPair() {
+            return firestorePairs[0] || null;
+        }
+
+        // ── Rate / fee helpers ────────────────────────────────────────────────
+        function getEffectiveRate() {
+            if (!selectedPair) return null;
+            return selectedPair.rate * (1 + (selectedPair.margin || 0) / 100);
+        }
+
+        function calculateFee(amount) {
+            if (!selectedPair) return 0;
+            if (selectedPair.feeType === 'flat') return selectedPair.fee || 0;
+            if (selectedPair.feeType === 'percent') return amount * (selectedPair.fee || 0) / 100;
+            return 0;
+        }
+
         function getSymbol(code) {
-            const c = countries.find(c => c.code === code);
-            return c ? c.symbol : '';
+            return getCurrencyMeta(code).symbol;
         }
 
-        function getFallbackRate() {
-            const pair = `${sendCurrency}-${receiveCurrency}`;
-            return fallbackRates[pair] !== undefined ? fallbackRates[pair] : 1;
-        }
-
-        async function fetchLiveRate() {
-            try {
-                rateSourceBadge.textContent = 'LOADING...';
-                exchangeRateSpan.innerHTML = '<span class="loading"></span>';
-                inverseRateSpan.innerHTML = '<span class="loading"></span>';
-                rateBadge.className = 'live-badge';
-                rateBadge.textContent = 'LIVE';
-
-                if (sendCurrency === receiveCurrency) {
-                    liveRate = 1;
-                    rateSourceBadge.textContent = 'FIXED';
-                    updateDisplay();
-                    return true;
-                }
-
-                const url = `https://api.exchangerate.host/latest?base=${sendCurrency}&symbols=${receiveCurrency}`;
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data && data.rates && data.rates[receiveCurrency]) {
-                    liveRate = data.rates[receiveCurrency];
-                    rateSourceBadge.textContent = 'LIVE';
-                    updateDisplay();
-                    return true;
-                } else {
-                    throw new Error('Invalid response');
-                }
-            } catch (error) {
-                liveRate = getFallbackRate();
-                rateSourceBadge.textContent = 'FALLBACK';
-                rateBadge.className = 'live-badge fallback-badge';
-                rateBadge.textContent = 'FALLBACK';
-                updateDisplay();
-                return false;
-            }
-        }
-
+        // ── Display ───────────────────────────────────────────────────────────
         function updateDisplay() {
-            if (liveRate === null) return;
-            const receiveSymbol = getSymbol(receiveCurrency);
-            const sendSymbol = getSymbol(sendCurrency);
-            exchangeRateSpan.textContent = `1 ${sendCurrency} = ${liveRate.toFixed(6)} ${receiveCurrency}`;
-            const inverse = 1 / liveRate;
-            inverseRateSpan.textContent = `1 ${receiveCurrency} = ${inverse.toFixed(6)} ${sendSymbol}`;
-
+            const rate = getEffectiveRate();
             const amount = parseFloat(sendAmount.value) || 0;
-            let receiveAmount = amount * liveRate;
-            if (Math.abs(receiveAmount - Math.round(receiveAmount)) > 0.01) {
-                receiveAmountSpan.value = receiveAmount.toFixed(2);
-            } else {
-                receiveAmountSpan.value = Math.round(receiveAmount).toLocaleString();
-            }
+            const sendSymbol = getSymbol(sendCurrency);
+            const receiveSymbol = getSymbol(receiveCurrency);
 
-            const savings = amount * 0.02 * liveRate;
-            savingsBadge.textContent = `🔗 YOU SAVE ${receiveSymbol} ${savings.toFixed(2)}`;
-        }
-
-        function recalcFromSend() { updateDisplay(); }
-
-        function recalcFromReceive() {
-            const receiveInput = document.getElementById('receive-amount');
-            const receiveVal = parseFloat(receiveInput.value) || 0;
-            
-            if (receiveVal <= 0) {
-                sendAmount.value = 10000;
-                updateDisplay();
+            if (!rate) {
+                exchangeRateSpan.textContent = `No rate available`;
+                inverseRateSpan.textContent = '';
+                receiveAmountSpan.value = '';
+                const feeEl = document.getElementById('total-fee');
+                if (feeEl) feeEl.textContent = `${sendSymbol} 0.00`;
+                if (savingsBadge) savingsBadge.textContent = '';
+                rateBadge.className = 'live-badge fallback-badge';
+                rateBadge.textContent = 'N/A';
+                rateSourceBadge.textContent = 'NO PAIR';
                 return;
             }
 
-            if (liveRate === null) return;
+            const fee = calculateFee(amount);
+            const receiveAmount = Math.max(0, (amount - fee) * rate);
 
-            // Calculate send amount: receiveAmount / rate = sendAmount
-            const calculatedSend = receiveVal / liveRate;
-            sendAmount.value = calculatedSend.toFixed(2);
-            transactionData.sendAmount = calculatedSend;
+            exchangeRateSpan.textContent = `1 ${sendCurrency} = ${rate.toFixed(4)} ${receiveCurrency}`;
+            inverseRateSpan.textContent = `1 ${receiveCurrency} = ${(1 / rate).toFixed(4)} ${sendSymbol}`;
+
+            receiveAmountSpan.value = receiveAmount % 1 === 0
+                ? receiveAmount.toLocaleString()
+                : receiveAmount.toFixed(2);
+
+            const feeEl = document.getElementById('total-fee');
+            if (feeEl) feeEl.textContent = `${sendSymbol} ${fee.toFixed(2)}`;
+
+            const savings = amount * 0.02 * rate;
+            if (savingsBadge) savingsBadge.textContent = `🔗 YOU SAVE ${receiveSymbol} ${savings.toFixed(2)}`;
+
+            rateBadge.className = 'live-badge';
+            rateBadge.textContent = selectedPair.urgent ? 'URGENT' : 'LIVE';
+            rateSourceBadge.textContent = 'FIRESTORE';
+        }
+
+        // ── Dropdown ──────────────────────────────────────────────────────────
+        function renderCurrencyDropdown() {
+            currencyList.innerHTML = '';
+
+            if (activeField === 'receive') {
+                const receivePairs = firestorePairs.filter(p => p.from === sendCurrency);
+                if (!receivePairs.length) {
+                    currencyList.innerHTML = '<div style="padding:16px;color:#666;text-align:center;">No destinations available</div>';
+                    return;
+                }
+                // Group by to-currency
+                const byCurrency = {};
+                receivePairs.forEach(p => {
+                    if (!byCurrency[p.to]) byCurrency[p.to] = [];
+                    byCurrency[p.to].push(p);
+                });
+                Object.entries(byCurrency).forEach(([currency, pairs]) => {
+                    const title = document.createElement('div');
+                    title.className = 'section-title';
+                    title.textContent = currency + ' COUNTRIES';
+                    currencyList.appendChild(title);
+                    pairs.forEach(pair => currencyList.appendChild(buildPairItem(pair)));
+                });
+            } else {
+                // Send side — show unique from-currencies
+                const fromCurrencies = [...new Set(firestorePairs.map(p => p.from))];
+                const title = document.createElement('div');
+                title.className = 'section-title';
+                title.textContent = 'SEND FROM';
+                currencyList.appendChild(title);
+                fromCurrencies.forEach(currency => {
+                    const meta = getCurrencyMeta(currency);
+                    const item = document.createElement('div');
+                    item.className = 'currency-item' + (currency === sendCurrency ? ' selected' : '');
+                    item.innerHTML = `
+                        <div style="display:flex;align-items:center;width:100%;">
+                            <span class="country-flag">${meta.flag}</span>
+                            <div class="currency-details">
+                                <span class="currency-code">${currency}</span>
+                                <span class="country-name">${meta.label}</span>
+                            </div>
+                            <span class="currency-symbol">${meta.symbol}</span>
+                        </div>`;
+                    item.onclick = () => selectSendCurrency(currency);
+                    currencyList.appendChild(item);
+                });
+            }
+        }
+
+        function buildPairItem(pair) {
+            const item = document.createElement('div');
+            item.className = 'currency-item' + (selectedPair && selectedPair.id === pair.id ? ' selected' : '');
+            item.innerHTML = `
+                <div style="display:flex;align-items:center;width:100%;">
+                    <span class="country-flag">${pair.flag || '🌍'}</span>
+                    <div class="currency-details">
+                        <span class="currency-code">${pair.to}</span>
+                        <span class="country-name">${pair.country || ''}</span>
+                    </div>
+                    <span class="currency-symbol">${getSymbol(pair.to)}</span>
+                </div>`;
+            item.onclick = () => selectReceivePair(pair);
+            return item;
+        }
+
+        function selectReceivePair(pair) {
+            selectedPair = pair;
+            receiveCurrency = pair.to;
+            document.getElementById('receive-currency').textContent = receiveCurrency;
+            closeDropdown();
             updateDisplay();
         }
 
-        let isRotated = false;
-        function animateSwapIcon() {
-            isRotated = !isRotated;
-            swapIcon.style.transform = isRotated ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
-
-        async function swapCurrencies() {
-            animateSwapIcon();
-            const oldSend = sendCurrency;
-            const oldReceive = receiveCurrency;
-            sendCurrency = oldReceive;
-            receiveCurrency = oldSend;
+        function selectSendCurrency(currency) {
+            sendCurrency = currency;
             document.getElementById('send-currency').textContent = sendCurrency;
-            document.getElementById('receive-currency').textContent = receiveCurrency;
-            await fetchLiveRate();
-        }
-
-        async function refreshRates() { await fetchLiveRate(); }
-
-        function renderCurrencyDropdown() {
-            currencyList.innerHTML = '';
-            const africanCountries = countries.filter(c => c.code !== 'RUB');
-            const rubCountry = countries.find(c => c.code === 'RUB');
-
-            const africaTitle = document.createElement('div');
-            africaTitle.className = 'section-title';
-            africaTitle.textContent = 'AFRICAN COUNTRIES';
-            currencyList.appendChild(africaTitle);
-            africanCountries.forEach(country => addCountryItem(country));
-
-            const sendTitle = document.createElement('div');
-            sendTitle.className = 'section-title';
-            sendTitle.textContent = 'SEND FROM (RUB)';
-            currencyList.appendChild(sendTitle);
-            addCountryItem(rubCountry);
-        }
-
-        function addCountryItem(country) {
-            const item = document.createElement('div');
-            item.className = 'currency-item';
-            const isSelected = (activeField === 'send' && country.code === sendCurrency) ||
-                              (activeField === 'receive' && country.code === receiveCurrency);
-            if (isSelected) item.classList.add('selected');
-            item.innerHTML = `
-                <div style="display: flex; align-items: center; width: 100%;">
-                    <span class="country-flag">${country.flag}</span>
-                    <div class="currency-details">
-                        <span class="currency-code">${country.code}</span>
-                        <span class="country-name">${country.country}</span>
-                    </div>
-                    <span class="currency-symbol">${country.symbol}</span>
-                </div>
-            `;
-            item.onclick = () => selectCountry(country);
-            currencyList.appendChild(item);
+            // Default receive to first pair for this sendCurrency
+            const first = firestorePairs.find(p => p.from === sendCurrency);
+            if (first) {
+                selectedPair = first;
+                receiveCurrency = first.to;
+                document.getElementById('receive-currency').textContent = receiveCurrency;
+            } else {
+                selectedPair = null;
+            }
+            closeDropdown();
+            updateDisplay();
         }
 
         function openDropdown(field) {
@@ -805,32 +875,65 @@
             overlay.style.display = 'none';
         }
 
-        async function selectCountry(country) {
-            if (activeField === 'send') {
-                sendCurrency = country.code;
+        // ── Swap ──────────────────────────────────────────────────────────────
+        let isRotated = false;
+        function animateSwapIcon() {
+            isRotated = !isRotated;
+            swapIcon.style.transform = isRotated ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
+        function swapCurrencies() {
+            animateSwapIcon();
+            const reversePair = firestorePairs.find(p => p.from === receiveCurrency);
+            if (reversePair) {
+                sendCurrency = reversePair.from;
+                receiveCurrency = reversePair.to;
+                selectedPair = reversePair;
                 document.getElementById('send-currency').textContent = sendCurrency;
-            } else {
-                receiveCurrency = country.code;
                 document.getElementById('receive-currency').textContent = receiveCurrency;
+                updateDisplay();
             }
-            closeDropdown();
-            await fetchLiveRate();
         }
 
-        function updateTimestamp() {
-            const now = new Date();
-            document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', {
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-            });
+        // ── Recalc ────────────────────────────────────────────────────────────
+        function recalcFromSend() { updateDisplay(); }
+
+        function recalcFromReceive() {
+            const receiveInput = document.getElementById('receive-amount');
+            const receiveVal = parseFloat(receiveInput.value) || 0;
+            if (receiveVal <= 0) { sendAmount.value = 10000; updateDisplay(); return; }
+            const rate = getEffectiveRate();
+            if (!rate) return;
+            sendAmount.value = (receiveVal / rate).toFixed(2);
+            updateDisplay();
         }
 
+        // ── Refresh (manual button) ───────────────────────────────────────────
+        function refreshRates() {
+            // onSnapshot keeps data live; just flash the badge to confirm
+            rateSourceBadge.textContent = 'LIVE';
+            updateDisplay();
+        }
+
+        // ── Navigation ────────────────────────────────────────────────────────
+        function goToSendMoney() {
+            const amount = parseFloat(document.getElementById('send-amount').value) || 0;
+            const rate = getEffectiveRate();
+            localStorage.setItem('sendAmount', amount);
+            localStorage.setItem('sendCurrency', sendCurrency);
+            localStorage.setItem('receiveCurrency', receiveCurrency);
+            localStorage.setItem('liveRate', rate);
+            if (selectedPair) localStorage.setItem('selectedPair', JSON.stringify(selectedPair));
+            window.location.href = `send-money.html?amount=${amount}&send=${sendCurrency}&receive=${receiveCurrency}&rate=${rate}`;
+        }
+
+        function checkPrice() { goToSendMoney(); }
+
+        // ── Auth / user ───────────────────────────────────────────────────────
         function loadUserData() {
             try {
                 const userData = JSON.parse(localStorage.getItem('currentUser'));
-                if (!userData) {
-                    window.location.href = 'signin.html';
-                    return;
-                }
+                if (!userData) { window.location.href = 'signin.html'; return; }
                 const fullName = userData.fullName || userData.full_name || 'User';
                 const displayName = userData.displayName || userData.display_name || fullName.split(' ')[0];
                 document.getElementById('displayName').textContent = displayName;
@@ -842,29 +945,49 @@
             }
         }
 
-        function goToSendMoney() {
-            const amount = parseFloat(document.getElementById('send-amount').value) || 0;
-            localStorage.setItem('sendAmount', amount);
-            localStorage.setItem('sendCurrency', sendCurrency);
-            localStorage.setItem('receiveCurrency', receiveCurrency);
-            localStorage.setItem('liveRate', liveRate);
-            const url = `send-money.html?amount=${amount}&send=${sendCurrency}&receive=${receiveCurrency}&rate=${liveRate}`;
-            window.location.href = url;
+        function updateTimestamp() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+            });
         }
 
-        async function init() {
+        // ── Init ──────────────────────────────────────────────────────────────
+        function init() {
             loadUserData();
-            await fetchLiveRate();
-            setInterval(fetchLiveRate, 60000);
             setInterval(updateTimestamp, 1000);
-            sendAmount.addEventListener('input', recalcFromSend);
-            receiveAmountSpan.addEventListener('input', recalcFromReceive);
-            continueBtn.addEventListener('click', goToSendMoney);
             updateTimestamp();
+
+            const calculatorEl = document.getElementById('calculator-card-main');
+            const noPairsEl   = document.getElementById('no-pairs-msg');
+
+            subscribeToPairs(hasData => {
+                if (!hasData) {
+                    calculatorEl.style.display = 'none';
+                    noPairsEl.style.display = 'block';
+                    return;
+                }
+
+                calculatorEl.style.display = 'block';
+                noPairsEl.style.display = 'none';
+
+                selectedPair = getDefaultPair();
+                if (selectedPair) {
+                    sendCurrency = selectedPair.from;
+                    receiveCurrency = selectedPair.to;
+                    document.getElementById('send-currency').textContent = sendCurrency;
+                    document.getElementById('receive-currency').textContent = receiveCurrency;
+                }
+                updateDisplay();
+
+                sendAmount.addEventListener('input', recalcFromSend);
+                receiveAmountSpan.addEventListener('input', recalcFromReceive);
+                continueBtn.addEventListener('click', goToSendMoney);
+            });
         }
 
         init();
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDropdown(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDropdown(); });
     </script>
 </body>
 </html>

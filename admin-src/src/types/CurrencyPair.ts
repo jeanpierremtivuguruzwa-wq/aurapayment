@@ -9,4 +9,7 @@ export interface CurrencyPair {
   flag?: string
   active?: boolean
   deliveryMethods?: string[]
+  fee?: number
+  feeType?: 'flat' | 'percent'
+  margin?: number
 }

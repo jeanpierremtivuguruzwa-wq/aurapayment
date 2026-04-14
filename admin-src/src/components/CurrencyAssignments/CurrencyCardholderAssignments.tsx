@@ -309,7 +309,7 @@ function AddCurrencyModal({ onClose, onAdd }: { onClose: () => void; onAdd: (cod
     e.preventDefault()
     const trimmed = code.trim().toUpperCase()
     if (!trimmed) { setError('Currency code is required'); return }
-    if (!/^[A-Z]{2,6}$/.test(trimmed)) { setError('Enter a valid 2–6 letter code (e.g. RUB, XOF, EUR)'); return }
+    if (!/^[A-Z]{2,6}$/.test(trimmed)) { setError('Enter a valid 2–6 letter code (e.g. RUB, XOF, XAF)'); return }
     setLoading(true)
     try { await onAdd(trimmed); onClose() }
     catch (err: any) { setError(err?.message ?? 'Failed to add currency') }
@@ -330,7 +330,7 @@ function AddCurrencyModal({ onClose, onAdd }: { onClose: () => void; onAdd: (cod
               type="text"
               value={code}
               onChange={e => { setCode(e.target.value.toUpperCase()); setError('') }}
-              placeholder="e.g. RUB, XOF, EUR"
+              placeholder="e.g. RUB, XOF, XAF"
               maxLength={6}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
               autoFocus

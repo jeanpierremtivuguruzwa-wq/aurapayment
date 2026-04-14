@@ -374,12 +374,34 @@
             <div class="step"><span class="step-number">4</span><span>Proof</span></div>
         </div>
 
+        <!-- Rate changed banner -->
+        <div id="rate-changed-banner" style="display:none; background:#fef9c3; border:1px solid #fbbf24; color:#92400e; border-radius:12px; padding:0.85rem 1.25rem; margin-bottom:16px; display:none; align-items:center; gap:0.75rem; font-size:0.9rem;">
+            <span style="font-size:1.2rem;">⚠️</span>
+            <span id="rate-changed-text">The exchange rate has been updated. Please review the new rate below before continuing.</span>
+            <button onclick="dismissRateBanner()" style="margin-left:auto;background:none;border:none;font-size:1rem;cursor:pointer;color:#92400e;">✕</button>
+        </div>
+
         <!-- Step 1: Amount & Delivery Method -->
         <div id="step1" class="card">
             <h2>Send Money</h2>
             <div class="amount-display">
                 <p>Amount to send</p>
                 <strong><span id="displayAmount">0</span> <span id="displayCurrency">RUB</span></strong>
+                <div id="feeBreakdown" style="margin-top:0.75rem; font-size:0.85rem; color:#4a5568; display:none;">
+                    <div style="display:flex;justify-content:space-between;margin-top:4px;">
+                        <span>Fee</span>
+                        <span id="displayFee">—</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:4px;">
+                        <span>Rate</span>
+                        <span id="displayRate">—</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:4px;border-top:1px solid #e2e8f0;padding-top:4px;">
+                        <span><strong>Recipient gets</strong></span>
+                        <span><strong id="displayReceive">—</strong></span>
+                    </div>
+                    <div id="displayCountry" style="margin-top:4px;color:#718096;"></div>
+                </div>
             </div>
             <h3 style="color: #0b1b3a; margin-bottom: 1rem;">Choose Delivery Method</h3>
             <div id="deliveryOptions" class="grid"></div>
@@ -501,6 +523,7 @@
                 updateUserDisplay(currentUser);
                 initializeTransactionData();
                 renderDeliveryOptions();
+                subscribeToPairChanges();
             });
 
             // Setup file input handler
@@ -514,6 +537,67 @@
                 });
             }
         });
+
+        // ── Real-time pair rate listener ───────────────────────────────────
+        function subscribeToPairChanges() {
+            const pairId = transactionData.pairId;
+            if (!pairId) return; // no pair to watch
+
+            let isFirst = true;
+            db.collection('currencyPairs').doc(pairId).onSnapshot(docSnap => {
+                if (!docSnap.exists) return;
+                const updated = { id: docSnap.id, ...docSnap.data() };
+
+                if (isFirst) { isFirst = false; return; } // skip initial read
+
+                // Recalculate with new rate/margin/fee
+                transactionData.selectedPair = updated;
+                transactionData.pairId = updated.id;
+                const sendAmount = transactionData.sendAmount;
+
+                let fee = 0;
+                if (updated.feeType === 'flat') fee = updated.fee || 0;
+                else if (updated.feeType === 'percent') fee = sendAmount * (updated.fee || 0) / 100;
+
+                const effectiveRate = updated.rate * (1 + (updated.margin || 0) / 100);
+                const receiveAmount = Math.max(0, (sendAmount - fee) * effectiveRate);
+
+                transactionData.rate = effectiveRate;
+                transactionData.fee = fee;
+                transactionData.feeType = updated.feeType || 'flat';
+                transactionData.receiveAmount = receiveAmount;
+
+                updateRateBreakdown(updated, fee, effectiveRate, receiveAmount);
+                showRateBanner();
+            }, err => console.warn('Pair snapshot error:', err));
+        }
+
+        function updateRateBreakdown(pair, fee, effectiveRate, receiveAmount) {
+            const sc = transactionData.sendCurrency;
+            const rc = transactionData.receiveCurrency;
+            const feeEl      = document.getElementById('displayFee');
+            const rateEl     = document.getElementById('displayRate');
+            const receiveEl  = document.getElementById('displayReceive');
+            const countryEl  = document.getElementById('displayCountry');
+            const breakdownEl = document.getElementById('feeBreakdown');
+
+            if (!feeEl) return;
+            feeEl.textContent     = fee > 0 ? `${sc} ${fee.toFixed(2)}` : 'None';
+            rateEl.textContent    = `1 ${sc} = ${effectiveRate.toFixed(4)} ${rc}`;
+            receiveEl.textContent = `${receiveAmount.toLocaleString(undefined, {maximumFractionDigits: 2})} ${rc}`;
+            if (countryEl && pair.country) countryEl.textContent = `${pair.flag || ''} Destination: ${pair.country}`;
+            if (breakdownEl) breakdownEl.style.display = 'block';
+        }
+
+        function showRateBanner() {
+            const banner = document.getElementById('rate-changed-banner');
+            if (banner) { banner.style.display = 'flex'; banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+        }
+
+        function dismissRateBanner() {
+            const banner = document.getElementById('rate-changed-banner');
+            if (banner) banner.style.display = 'none';
+        }
 
         function updateUserDisplay(user) {
             const fullName = user.fullName || user.full_name || 'User';
@@ -530,12 +614,39 @@
             const receiveCurrency = urlParams.get('receive') || localStorage.getItem('receiveCurrency') || 'XOF';
             const liveRate = parseFloat(urlParams.get('rate')) || parseFloat(localStorage.getItem('liveRate')) || 6.72;
 
+            // Read pair selected on dashboard
+            let selectedPair = null;
+            try {
+                const raw = localStorage.getItem('selectedPair');
+                if (raw) selectedPair = JSON.parse(raw);
+            } catch(e) {}
+
+            // Calculate fee from pair
+            let fee = 0;
+            if (selectedPair) {
+                if (selectedPair.feeType === 'flat') {
+                    fee = selectedPair.fee || 0;
+                } else if (selectedPair.feeType === 'percent') {
+                    fee = sendAmount * (selectedPair.fee || 0) / 100;
+                }
+            }
+            const effectiveRate = selectedPair
+                ? selectedPair.rate * (1 + (selectedPair.margin || 0) / 100)
+                : liveRate;
+            const receiveAmount = Math.max(0, (sendAmount - fee) * effectiveRate);
+
             transactionData = {
                 sendAmount: sendAmount,
                 sendCurrency: sendCurrency,
                 receiveCurrency: receiveCurrency,
-                rate: liveRate,
-                receiveAmount: sendAmount * liveRate,
+                rate: effectiveRate,
+                fee: fee,
+                feeType: selectedPair ? (selectedPair.feeType || 'flat') : 'flat',
+                receiveAmount: receiveAmount,
+                selectedPair: selectedPair,
+                pairId: selectedPair ? selectedPair.id : null,
+                country: selectedPair ? (selectedPair.country || '') : '',
+                countryCode: selectedPair ? (selectedPair.countryCode || '') : '',
                 recipientName: '',
                 provider: '',
                 phoneNumber: '',
@@ -551,44 +662,66 @@
             // Display amount
             document.getElementById('displayAmount').textContent = sendAmount.toLocaleString();
             document.getElementById('displayCurrency').textContent = sendCurrency;
+
+            // Show fee breakdown if pair available
+            if (selectedPair) {
+                const symbol = receiveCurrency;
+                document.getElementById('displayFee').textContent =
+                    fee > 0 ? `${sendCurrency} ${fee.toFixed(2)}` : 'None';
+                document.getElementById('displayRate').textContent =
+                    `1 ${sendCurrency} = ${effectiveRate.toFixed(4)} ${receiveCurrency}`;
+                document.getElementById('displayReceive').textContent =
+                    `${receiveAmount.toLocaleString(undefined, {maximumFractionDigits: 2})} ${receiveCurrency}`;
+                if (selectedPair.country) {
+                    document.getElementById('displayCountry').textContent =
+                        `${selectedPair.flag || ''} Destination: ${selectedPair.country}`;
+                }
+                document.getElementById('feeBreakdown').style.display = 'block';
+            }
         }
+
+        const DELIVERY_META = {
+            mobile: { label: 'Mobile Money', desc: 'Fastest option', badge: 'Recommended' },
+            bank:   { label: 'Bank Account',  desc: 'Transfer to a bank account', badge: null },
+            cash:   { label: 'Cash Pickup',   desc: 'Pick up at agent', badge: null }
+        };
 
         function renderDeliveryOptions() {
             const container = document.getElementById('deliveryOptions');
-            const isCfa = transactionData.sendCurrency === 'XOF' || transactionData.sendCurrency === 'XAF';
 
-            if (isCfa) {
-                container.innerHTML = `
-                    <div class="option selected" data-delivery="bank">
-                        <h3>Bank Account</h3>
-                        <p>Transfer to a bank account</p>
-                    </div>
-                `;
-                selectedDelivery = 'bank';
-            } else {
-                container.innerHTML = `
-                    <div class="option" data-delivery="mobile">
-                        <span style="background:#d1fae5; color:#059669; padding:2px 8px; border-radius:20px; font-size:0.75rem;">Recommended</span>
-                        <h3>Mobile Money</h3>
-                        <p>Fastest option</p>
-                    </div>
-                    <div class="option" data-delivery="bank">
-                        <h3>Bank Account</h3>
-                        <p>Use a bank account</p>
-                    </div>
-                `;
-                document.querySelectorAll('.option').forEach(opt => {
-                    opt.addEventListener('click', () => {
-                        document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
-                        opt.classList.add('selected');
-                        selectedDelivery = opt.getAttribute('data-delivery');
-                        transactionData.deliveryMethod = selectedDelivery;
-                    });
-                });
-                selectedDelivery = 'mobile';
-            }
+            // Use delivery methods from the selected pair, fall back to defaults
+            const pair = transactionData.selectedPair;
+            let methods = (pair && Array.isArray(pair.deliveryMethods) && pair.deliveryMethods.length)
+                ? pair.deliveryMethods
+                : (transactionData.sendCurrency === 'XOF' || transactionData.sendCurrency === 'XAF'
+                    ? ['bank'] : ['mobile', 'bank']);
 
+            container.innerHTML = '';
+            methods.forEach((method, i) => {
+                const meta = DELIVERY_META[method] || { label: method, desc: '', badge: null };
+                const div = document.createElement('div');
+                div.className = 'option' + (i === 0 ? ' selected' : '');
+                div.setAttribute('data-delivery', method);
+                div.innerHTML = `
+                    ${meta.badge && i === 0 ? `<span style="background:#d1fae5;color:#059669;padding:2px 8px;border-radius:20px;font-size:0.75rem;">${meta.badge}</span>` : ''}
+                    <h3>${meta.label}</h3>
+                    <p>${meta.desc}</p>`;
+                container.appendChild(div);
+            });
+
+            selectedDelivery = methods[0];
             transactionData.deliveryMethod = selectedDelivery;
+
+            container.querySelectorAll('.option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    container.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+                    opt.classList.add('selected');
+                    selectedDelivery = opt.getAttribute('data-delivery');
+                    transactionData.deliveryMethod = selectedDelivery;
+                    updateRecipientForm(selectedDelivery);
+                });
+            });
+
             updateRecipientForm(selectedDelivery);
         }
 
@@ -992,7 +1125,12 @@
                     sendCurrency: transactionData.sendCurrency,
                     receiveCurrency: transactionData.receiveCurrency,
                     rate: transactionData.rate,
+                    fee: transactionData.fee || 0,
+                    feeType: transactionData.feeType || 'flat',
                     receiveAmount: receiveAmount,
+                    pairId: transactionData.pairId || null,
+                    country: transactionData.country || '',
+                    countryCode: transactionData.countryCode || '',
                     recipientName: transactionData.recipientName,
                     provider: transactionData.provider,
                     phoneNumber: transactionData.phoneNumber || '',
@@ -1052,8 +1190,14 @@
                         recipientName: transactionData.recipientName,
                         amountSent: transactionData.sendAmount,
                         currencySent: transactionData.sendCurrency,
-                        amountReceived: transactionData.sendAmount * transactionData.rate,
+                        amountReceived: transactionData.receiveAmount,
                         currencyReceived: transactionData.receiveCurrency,
+                        rate: transactionData.rate,
+                        fee: transactionData.fee || 0,
+                        feeType: transactionData.feeType || 'flat',
+                        pairId: transactionData.pairId || null,
+                        country: transactionData.country || '',
+                        countryCode: transactionData.countryCode || '',
                         provider: transactionData.provider,
                         paymentMethod: transactionData.paymentMethod,
                         proofFileName: fileName,
