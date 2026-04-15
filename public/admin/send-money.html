@@ -775,25 +775,53 @@
 
             if (deliveryType === 'mobile') {
                 providerLabel.textContent = t('send_mobile_provider');
-                providerSelect.innerHTML = `
-                    <option value="">${t('send_select_provider')}</option>
-                    <option value="mtn">MTN Momo</option>
-                    <option value="airtel">Airtel Money</option>
-                    <option value="orange">Orange Money</option>
-                `;
                 phoneGroup.style.display = 'block';
                 accountGroup.style.display = 'none';
-            } else {
+            } else if (deliveryType === 'bank') {
                 providerLabel.textContent = t('send_bank_label');
-                providerSelect.innerHTML = `
-                    <option value="">${t('send_select_bank')}</option>
-                    <option value="sber">Sber Bank</option>
-                    <option value="tinkoff">Tinkoff Bank</option>
-                    <option value="alfa">Alfa Bank</option>
-                `;
                 phoneGroup.style.display = 'none';
                 accountGroup.style.display = 'block';
+            } else {
+                providerLabel.textContent = t('send_provider');
+                phoneGroup.style.display = 'block';
+                accountGroup.style.display = 'none';
             }
+
+            // Show loading state
+            providerSelect.innerHTML = `<option value="">${t('send_loading_methods')}</option>`;
+
+            // Load options from Firestore deliveryOptions collection
+            const countryCode = transactionData.countryCode || '';
+            if (!countryCode) {
+                // No country selected — fall back to placeholder
+                providerSelect.innerHTML = `<option value="">${deliveryType === 'mobile' ? t('send_select_provider') : t('send_select_bank')}</option>`;
+                return;
+            }
+
+            db.collection('deliveryOptions')
+                .where('countryCode', '==', countryCode)
+                .where('type', '==', deliveryType)
+                .where('active', '==', true)
+                .get()
+                .then(snapshot => {
+                    const placeholder = deliveryType === 'mobile' ? t('send_select_provider') : t('send_select_bank');
+                    let html = `<option value="">${placeholder}</option>`;
+                    if (snapshot.empty) {
+                        // No options in Firestore yet — show a sensible placeholder
+                        providerSelect.innerHTML = html;
+                        return;
+                    }
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        html += `<option value="${doc.id}">${data.name}</option>`;
+                    });
+                    providerSelect.innerHTML = html;
+                })
+                .catch(err => {
+                    console.error('Error loading delivery options:', err);
+                    const placeholder = deliveryType === 'mobile' ? t('send_select_provider') : t('send_select_bank');
+                    providerSelect.innerHTML = `<option value="">${placeholder}</option>`;
+                });
         }
 
         function renderPaymentOptions() {
@@ -1098,7 +1126,9 @@
 
         function validateStep2() {
             const name = document.getElementById('recipientName').value.trim();
-            const provider = document.getElementById('provider').value;
+            const providerSelect = document.getElementById('provider');
+            const provider = providerSelect.value;
+            const providerName = providerSelect.options[providerSelect.selectedIndex]?.text || provider;
 
             if (!name) {
                 alert(t('send_validate_name'));
@@ -1111,6 +1141,7 @@
 
             transactionData.recipientName = name;
             transactionData.provider = provider;
+            transactionData.providerName = providerName;
 
             if (selectedDelivery === 'mobile') {
                 const phone = document.getElementById('phoneNumber').value.trim();
@@ -1175,6 +1206,7 @@
                     countryCode: transactionData.countryCode || '',
                     recipientName: transactionData.recipientName,
                     provider: transactionData.provider,
+                    providerName: transactionData.providerName || transactionData.provider,
                     phoneNumber: transactionData.phoneNumber || '',
                     accountNumber: transactionData.accountNumber || '',
                     deliveryMethod: transactionData.deliveryMethod,
@@ -1241,6 +1273,7 @@
                         country: transactionData.country || '',
                         countryCode: transactionData.countryCode || '',
                         provider: transactionData.provider,
+                        providerName: transactionData.providerName || transactionData.provider,
                         paymentMethod: transactionData.paymentMethod,
                         proofFileName: fileName,
                         status: 'completed',

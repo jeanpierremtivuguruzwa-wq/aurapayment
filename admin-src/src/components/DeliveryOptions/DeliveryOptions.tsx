@@ -11,38 +11,6 @@ import {
 import { db } from '../../services/firebase'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Static reference data (mirrors CurrencyPairs)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const XOF_COUNTRIES = [
-  { country: 'Benin',         countryCode: 'BEN', flag: '🇧🇯', currency: 'XOF' },
-  { country: 'Burkina Faso',  countryCode: 'BFA', flag: '🇧🇫', currency: 'XOF' },
-  { country: "Côte d'Ivoire", countryCode: 'CIV', flag: '🇨🇮', currency: 'XOF' },
-  { country: 'Guinea-Bissau', countryCode: 'GNB', flag: '🇬🇼', currency: 'XOF' },
-  { country: 'Mali',          countryCode: 'MLI', flag: '🇲🇱', currency: 'XOF' },
-  { country: 'Niger',         countryCode: 'NER', flag: '🇳🇪', currency: 'XOF' },
-  { country: 'Senegal',       countryCode: 'SEN', flag: '🇸🇳', currency: 'XOF' },
-  { country: 'Togo',          countryCode: 'TGO', flag: '🇹🇬', currency: 'XOF' },
-]
-
-const XAF_COUNTRIES = [
-  { country: 'Cameroon',             countryCode: 'CMR', flag: '🇨🇲', currency: 'XAF' },
-  { country: 'Central African Rep.', countryCode: 'CAF', flag: '🇨🇫', currency: 'XAF' },
-  { country: 'Chad',                 countryCode: 'TCD', flag: '🇹🇩', currency: 'XAF' },
-  { country: 'Republic of Congo',    countryCode: 'COG', flag: '🇨🇬', currency: 'XAF' },
-  { country: 'Equatorial Guinea',    countryCode: 'GNQ', flag: '🇬🇶', currency: 'XAF' },
-  { country: 'Gabon',                countryCode: 'GAB', flag: '🇬🇦', currency: 'XAF' },
-]
-
-const OTHER_CURRENCIES = [
-  { country: 'Russia',        countryCode: 'RUS', flag: '🇷🇺', currency: 'RUB' },
-  { country: 'United States', countryCode: 'USA', flag: '🇺🇸', currency: 'USD' },
-  { country: 'European Union',countryCode: 'EUR', flag: '🇪🇺', currency: 'EUR' },
-]
-
-const ALL_REGIONS = [...XOF_COUNTRIES, ...XAF_COUNTRIES, ...OTHER_CURRENCIES]
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -65,8 +33,16 @@ interface FormState {
   name: string
 }
 
+/** One unique destination country derived from currency pairs */
+interface DestinationCountry {
+  country: string
+  countryCode: string
+  flag: string
+  currency: string   // 'to' currency from the pair (XOF, XAF, GHS, NGN…)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Seed defaults per country
+// Seed defaults per country (known corridors — more can be added freely)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DEFAULT_OPTIONS: Record<string, { type: DeliveryType; name: string }[]> = {
@@ -161,15 +137,45 @@ const TYPE_META: Record<DeliveryType, { label: string; icon: string; bg: string;
 
 const DeliveryOptions: React.FC = () => {
   const [options, setOptions] = useState<DeliveryOption[]>([])
+  const [destinations, setDestinations] = useState<DestinationCountry[]>([])
+  const [pairsLoading, setPairsLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
-  const [selectedCountryCode, setSelectedCountryCode] = useState<string>('BEN')
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>('')
   const [showAddModal, setShowAddModal] = useState(false)
   const [form, setForm] = useState<FormState>({ type: 'bank', name: '' })
   const [saving, setSaving] = useState(false)
   const [formErr, setFormErr] = useState('')
 
-  // ── Real-time listener ──────────────────────────────────────────────────
+  // ── Listen to currencyPairs → derive unique destination countries ───────
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'currencyPairs'), snap => {
+      const seen = new Set<string>()
+      const dests: DestinationCountry[] = []
+      snap.docs.forEach(d => {
+        const p = d.data()
+        // We want unique destination (to) countries — skip pairs with no country info
+        const code = p.countryCode as string | undefined
+        if (!code || seen.has(code)) return
+        seen.add(code)
+        dests.push({
+          country: p.country || code,
+          countryCode: code,
+          flag: p.flag || '',
+          currency: p.to || '',
+        })
+      })
+      // Sort alphabetically by name
+      dests.sort((a, b) => a.country.localeCompare(b.country))
+      setDestinations(dests)
+      // Auto-select first if nothing selected yet
+      setSelectedCountryCode(prev => prev || (dests[0]?.countryCode ?? ''))
+      setPairsLoading(false)
+    })
+    return unsub
+  }, [])
+
+  // ── Real-time listener for delivery options ─────────────────────────────
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'deliveryOptions'), snap => {
       const docs: DeliveryOption[] = snap.docs.map(d => ({ id: d.id, ...d.data() } as DeliveryOption))
@@ -179,10 +185,10 @@ const DeliveryOptions: React.FC = () => {
     return unsub
   }, [])
 
-  // ── Selected region ─────────────────────────────────────────────────────
+  // ── Selected region from live destinations ──────────────────────────────
   const selectedRegion = useMemo(
-    () => ALL_REGIONS.find(r => r.countryCode === selectedCountryCode)!,
-    [selectedCountryCode]
+    () => destinations.find(r => r.countryCode === selectedCountryCode),
+    [destinations, selectedCountryCode]
   )
 
   // ── Options for selected country ────────────────────────────────────────
@@ -197,8 +203,20 @@ const DeliveryOptions: React.FC = () => {
     cash:   countryOptions.filter(o => o.type === 'cash').length,
   }), [countryOptions])
 
+  // ── Group by currency for the picker UI ────────────────────────────────
+  const groupedDestinations = useMemo(() => {
+    const groups: Record<string, DestinationCountry[]> = {}
+    destinations.forEach(d => {
+      const key = d.currency || 'Other'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(d)
+    })
+    return groups
+  }, [destinations])
+
   // ── Seed defaults ───────────────────────────────────────────────────────
   const handleSeedDefaults = async () => {
+    if (!selectedRegion) return
     const defaults = DEFAULT_OPTIONS[selectedCountryCode]
     if (!defaults || defaults.length === 0) {
       alert('No default options defined for this country yet.')
@@ -234,6 +252,7 @@ const DeliveryOptions: React.FC = () => {
   // ── Add option ──────────────────────────────────────────────────────────
   const handleAdd = async () => {
     if (!form.name.trim()) { setFormErr('Name is required'); return }
+    if (!selectedRegion) return
     setSaving(true)
     setFormErr('')
     try {
@@ -282,10 +301,20 @@ const DeliveryOptions: React.FC = () => {
     cash:   countryOptions.filter(o => o.type === 'cash'),
   }
 
-  if (loading) {
+  if (pairsLoading || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full" />
+      </div>
+    )
+  }
+
+  if (destinations.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
+        <div className="text-4xl">💱</div>
+        <p className="text-gray-600 font-medium">No currency pairs configured yet</p>
+        <p className="text-gray-400 text-sm">Add currency pairs in the Currency Pairs section first — destination countries will appear here automatically.</p>
       </div>
     )
   }
@@ -301,117 +330,64 @@ const DeliveryOptions: React.FC = () => {
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={handleSeedDefaults}
-            disabled={seeding}
+            disabled={seeding || !selectedRegion}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60"
           >
             {seeding ? '...' : '🌱'} Seed Defaults
           </button>
           <button
             onClick={() => { setShowAddModal(true); setFormErr('') }}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+            disabled={!selectedRegion}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-60"
           >
             + Add Option
           </button>
         </div>
       </div>
 
-      {/* ── Country / Currency selector ── */}
+      {/* ── Country / Currency selector — built from live currency pairs ── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Select Currency / Country</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+          Select Destination Country
+          <span className="ml-2 normal-case font-normal text-indigo-500">({destinations.length} from your currency pairs)</span>
+        </p>
 
-        {/* XOF */}
-        <div className="mb-4">
-          <p className="text-xs font-medium text-gray-500 mb-2">XOF — West African CFA</p>
-          <div className="flex flex-wrap gap-2">
-            {XOF_COUNTRIES.map(r => {
-              const count = options.filter(o => o.countryCode === r.countryCode).length
-              return (
-                <button
-                  key={r.countryCode}
-                  onClick={() => setSelectedCountryCode(r.countryCode)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
-                    selectedCountryCode === r.countryCode
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
-                  }`}
-                >
-                  <span>{r.flag}</span>
-                  <span>{r.country}</span>
-                  {count > 0 && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
-                      selectedCountryCode === r.countryCode ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                    }`}>{count}</span>
-                  )}
-                </button>
-              )
-            })}
+        {Object.entries(groupedDestinations).map(([currency, countries]) => (
+          <div key={currency} className="mb-4 last:mb-0">
+            <p className="text-xs font-medium text-gray-500 mb-2">{currency}</p>
+            <div className="flex flex-wrap gap-2">
+              {countries.map(r => {
+                const count = options.filter(o => o.countryCode === r.countryCode).length
+                return (
+                  <button
+                    key={r.countryCode}
+                    onClick={() => setSelectedCountryCode(r.countryCode)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
+                      selectedCountryCode === r.countryCode
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
+                    }`}
+                  >
+                    {r.flag && <span>{r.flag}</span>}
+                    <span>{r.country}</span>
+                    {count > 0 && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                        selectedCountryCode === r.countryCode ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                      }`}>{count}</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </div>
-
-        {/* XAF */}
-        <div className="mb-4">
-          <p className="text-xs font-medium text-gray-500 mb-2">XAF — Central African CFA</p>
-          <div className="flex flex-wrap gap-2">
-            {XAF_COUNTRIES.map(r => {
-              const count = options.filter(o => o.countryCode === r.countryCode).length
-              return (
-                <button
-                  key={r.countryCode}
-                  onClick={() => setSelectedCountryCode(r.countryCode)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
-                    selectedCountryCode === r.countryCode
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
-                  }`}
-                >
-                  <span>{r.flag}</span>
-                  <span>{r.country}</span>
-                  {count > 0 && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
-                      selectedCountryCode === r.countryCode ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                    }`}>{count}</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Other */}
-        <div>
-          <p className="text-xs font-medium text-gray-500 mb-2">Other currencies</p>
-          <div className="flex flex-wrap gap-2">
-            {OTHER_CURRENCIES.map(r => {
-              const count = options.filter(o => o.countryCode === r.countryCode).length
-              return (
-                <button
-                  key={r.countryCode}
-                  onClick={() => setSelectedCountryCode(r.countryCode)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
-                    selectedCountryCode === r.countryCode
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                      : 'bg-white text-gray-700 border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
-                  }`}
-                >
-                  <span>{r.flag}</span>
-                  <span className="font-semibold">{r.currency}</span>
-                  <span className="text-gray-400 font-normal">{r.country}</span>
-                  {count > 0 && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
-                      selectedCountryCode === r.countryCode ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
-                    }`}>{count}</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* ── Selected country summary ── */}
+      {selectedRegion && (
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <div className="flex items-center gap-3 mb-5">
-          <span className="text-3xl">{selectedRegion.flag}</span>
+          {selectedRegion.flag && <span className="text-3xl">{selectedRegion.flag}</span>}
           <div>
             <h2 className="text-lg font-bold text-gray-900">{selectedRegion.country}</h2>
             <p className="text-sm text-gray-500">{selectedRegion.currency} · {selectedRegion.countryCode}</p>
@@ -503,6 +479,7 @@ const DeliveryOptions: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* ── Add Option Modal ── */}
       {showAddModal && (
@@ -520,10 +497,10 @@ const DeliveryOptions: React.FC = () => {
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Country</label>
                 <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm text-gray-700">
-                  <span>{selectedRegion.flag}</span>
-                  <span>{selectedRegion.country}</span>
+                  {selectedRegion?.flag && <span>{selectedRegion.flag}</span>}
+                  <span>{selectedRegion?.country}</span>
                   <span className="text-gray-400">·</span>
-                  <span className="font-semibold">{selectedRegion.currency}</span>
+                  <span className="font-semibold">{selectedRegion?.currency}</span>
                 </div>
               </div>
 

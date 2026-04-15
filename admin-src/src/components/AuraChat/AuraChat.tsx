@@ -3,7 +3,8 @@ import {
   collection, addDoc, onSnapshot, orderBy, query,
   serverTimestamp, Timestamp, doc, updateDoc, getDocs, setDoc,
 } from 'firebase/firestore'
-import { db, auth } from '../../services/firebase'
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { db, auth, storage } from '../../services/firebase'
 import { Agent } from '../../types/Agent'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -11,13 +12,14 @@ interface ChatMessage {
   id: string
   roomId: string
   text: string
+  imageUrl?: string
   senderUid: string
   senderName: string
   senderRole: 'admin' | 'agent'
   createdAt: Timestamp | null
   pinnedRef?: string
   pinnedLabel?: string
-  type: 'text' | 'system'
+  type: 'text' | 'system' | 'image'
   read: boolean
 }
 
@@ -68,8 +70,14 @@ const AuraChat: React.FC<Props> = ({ viewerAgent }) => {
   const [showPinForm, setShowPinForm] = useState(false)
   const [sending, setSending] = useState(false)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string>('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [lightboxUrl, setLightboxUrl] = useState<string>('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const msgUnsubRef = useRef<(() => void) | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const adminUser = auth.currentUser
 
@@ -186,6 +194,80 @@ const AuraChat: React.FC<Props> = ({ viewerAgent }) => {
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+  }
+
+  // ── Pick image ────────────────────────────────────────────────────────────
+  function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) { alert('Image must be under 10 MB'); return }
+    setImageFile(file)
+    const reader = new FileReader()
+    reader.onload = ev => setImagePreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+    // reset so same file can be picked again
+    e.target.value = ''
+  }
+
+  function clearImage() {
+    setImageFile(null)
+    setImagePreview('')
+    setUploadProgress(0)
+  }
+
+  // ── Send image ────────────────────────────────────────────────────────────
+  async function sendImage() {
+    if (!selectedRoom || !imageFile || uploading) return
+    setUploading(true)
+    setUploadProgress(0)
+    try {
+      const ext = imageFile.name.split('.').pop() || 'jpg'
+      const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+      const sRef = storageRef(storage, `chatImages/${selectedRoom.id}/${fileName}`)
+      const task = uploadBytesResumable(sRef, imageFile)
+      await new Promise<void>((resolve, reject) => {
+        task.on(
+          'state_changed',
+          snap => setUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+          reject,
+          resolve,
+        )
+      })
+      const url = await getDownloadURL(task.snapshot.ref)
+      const roomRef = doc(db, 'chatRooms', selectedRoom.id)
+      await addDoc(collection(db, 'chatRooms', selectedRoom.id, 'messages'), {
+        roomId: selectedRoom.id,
+        text: '',
+        imageUrl: url,
+        senderUid: adminUser?.uid ?? viewerRole,
+        senderName: viewerName,
+        senderRole: viewerRole,
+        createdAt: serverTimestamp(),
+        type: 'image',
+        read: false,
+      })
+      await updateDoc(roomRef, {
+        lastMessage: '📷 Photo',
+        lastAt: serverTimestamp(),
+        agentId: selectedRoom.agentId,
+        agentName: selectedRoom.agentName,
+        agentEmail: selectedRoom.agentEmail,
+      }).catch(() => setDoc(roomRef, {
+        agentId: selectedRoom.agentId,
+        agentName: selectedRoom.agentName,
+        agentEmail: selectedRoom.agentEmail,
+        lastMessage: '📷 Photo',
+        lastAt: serverTimestamp(),
+        unreadAdmin: 0,
+      }))
+      clearImage()
+    } catch (err) {
+      console.error('Image upload failed', err)
+      alert('Failed to send image. Please try again.')
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
   }
 
   // ── Group messages by day ─────────────────────────────────────────────────
@@ -311,12 +393,21 @@ const AuraChat: React.FC<Props> = ({ viewerAgent }) => {
                               📌 {msg.pinnedLabel || msg.pinnedRef}
                             </div>
                           )}
-                          <div
-                            className={`px-4 py-2.5 text-sm leading-relaxed break-words text-white ${isAdmin ? 'rounded-2xl rounded-tl-sm' : 'rounded-2xl rounded-tr-sm'}`}
-                            style={{ background: isAdmin ? '#2563eb' : '#16a34a' }}
-                          >
-                            {msg.text}
-                          </div>
+                          {msg.type === 'image' && msg.imageUrl ? (
+                            <img
+                              src={msg.imageUrl}
+                              alt="photo"
+                              onClick={() => setLightboxUrl(msg.imageUrl!)}
+                              className={`max-w-[260px] max-h-[280px] rounded-2xl object-cover cursor-zoom-in hover:opacity-90 transition-opacity border-2 ${isAdmin ? 'border-blue-300' : 'border-green-300'}`}
+                            />
+                          ) : (
+                            <div
+                              className={`px-4 py-2.5 text-sm leading-relaxed break-words text-white ${isAdmin ? 'rounded-2xl rounded-tl-sm' : 'rounded-2xl rounded-tr-sm'}`}
+                              style={{ background: isAdmin ? '#2563eb' : '#16a34a' }}
+                            >
+                              {msg.text}
+                            </div>
+                          )}
                           <span className="text-[10px] text-slate-400 px-1">{formatTime(msg.createdAt)}</span>
                         </div>
                       </div>
@@ -349,6 +440,43 @@ const AuraChat: React.FC<Props> = ({ viewerAgent }) => {
             </div>
           )}
 
+          {/* Image preview strip */}
+          {imagePreview && (
+            <div className="px-6 py-3 bg-sky-50 border-t border-sky-200 flex items-center gap-3">
+              <div className="relative flex-shrink-0">
+                <img src={imagePreview} alt="preview" className="w-16 h-16 rounded-xl object-cover border border-sky-200" />
+                <button
+                  onClick={clearImage}
+                  className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                >✕</button>
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-semibold text-sky-700">📷 Photo ready to send</p>
+                <p className="text-xs text-sky-500 truncate">{imageFile?.name}</p>
+                {uploading && (
+                  <div className="mt-1.5">
+                    <div className="h-1.5 bg-sky-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-sky-500 rounded-full transition-all duration-200"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-sky-500 mt-0.5">{uploadProgress}% uploaded…</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImagePick}
+          />
+
           {/* Input area */}
           <div className="px-6 py-4 border-t border-slate-100 bg-white flex gap-3 items-end">
             <button
@@ -356,24 +484,70 @@ const AuraChat: React.FC<Props> = ({ viewerAgent }) => {
               title="Pin a transaction or order reference"
               className={`p-2.5 rounded-xl text-base transition-all flex-shrink-0 ${showPinForm ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
             >📌</button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              title="Send a photo"
+              disabled={uploading}
+              className={`p-2.5 rounded-xl text-base transition-all flex-shrink-0 ${imageFile ? 'bg-sky-100 text-sky-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-50`}
+            >📷</button>
             <textarea
               rows={1}
-              className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm resize-none outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 bg-slate-50"
-              placeholder={`Message ${selectedRoom.agentName}…`}
+              className="flex-1 border border-slate-200 rounded-xl px-4 py-2.5 text-sm resize-none outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 bg-slate-50 disabled:opacity-50"
+              placeholder={imageFile ? 'Press Send Photo to share the image…' : `Message ${selectedRoom.agentName}…`}
               value={text}
               onChange={e => setText(e.target.value)}
               onKeyDown={onKeyDown}
+              disabled={!!imageFile}
             />
-            <button
-              onClick={sendMessage}
-              disabled={!text.trim() || sending}
-              className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-all flex-shrink-0 flex items-center gap-1.5"
-            >
-              {sending ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : '↗'}
-              Send
-            </button>
+            {imageFile ? (
+              <button
+                onClick={sendImage}
+                disabled={uploading}
+                className="px-4 py-2.5 bg-sky-500 text-white rounded-xl text-sm font-semibold hover:bg-sky-600 disabled:opacity-50 transition-all flex-shrink-0 flex items-center gap-1.5"
+              >
+                {uploading
+                  ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                  : '📷'}
+                Send Photo
+              </button>
+            ) : (
+              <button
+                onClick={sendMessage}
+                disabled={!text.trim() || sending}
+                className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-all flex-shrink-0 flex items-center gap-1.5"
+              >
+                {sending ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : '↗'}
+                Send
+              </button>
+            )}
           </div>
 
+        </div>
+      )}
+
+      {/* ── Lightbox ── */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl('')}
+        >
+          <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
+            <img
+              src={lightboxUrl}
+              alt="full size"
+              className="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl"
+            />
+            <button
+              onClick={() => setLightboxUrl('')}
+              className="absolute -top-3 -right-3 w-8 h-8 bg-white text-gray-800 rounded-full text-base font-bold flex items-center justify-center shadow-lg hover:bg-gray-100"
+            >✕</button>
+            <a
+              href={lightboxUrl}
+              download
+              onClick={e => e.stopPropagation()}
+              className="absolute bottom-3 right-3 px-3 py-1.5 bg-white/90 text-gray-700 rounded-xl text-xs font-semibold hover:bg-white shadow flex items-center gap-1"
+            >⬇ Download</a>
+          </div>
         </div>
       )}
     </div>

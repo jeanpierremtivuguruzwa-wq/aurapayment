@@ -929,6 +929,20 @@ const CurrencyPairs: React.FC = () => {
   const mergedXofRub = useMemo(() =>
     mergeWithLive(EXPECTED_XOF_RUB, pairs).sort((a, b) => (a.country ?? '').localeCompare(b.country ?? '')), [pairs])
 
+  // Custom (non-static) corridor groups
+  const STATIC_CORRIDORS = useMemo(() => new Set(['RUB_XAF', 'RUB_XOF', 'XAF_RUB', 'XOF_RUB']), [])
+
+  const customGroups = useMemo(() => {
+    const custom = pairs.filter(p => !STATIC_CORRIDORS.has(`${p.from}_${p.to}`))
+    const groups: Record<string, CurrencyPair[]> = {}
+    custom.forEach(p => {
+      const key = `${p.from}_${p.to}`
+      if (!groups[key]) groups[key] = []
+      groups[key].push(p)
+    })
+    return groups
+  }, [pairs, STATIC_CORRIDORS])
+
   // Apply search filter
   const filterBySearch = (list: CurrencyPair[]) => {
     if (!searchTerm.trim()) return list
@@ -946,8 +960,10 @@ const CurrencyPairs: React.FC = () => {
   const filteredXafRub = filterBySearch(mergedXafRub)
   const filteredXofRub = filterBySearch(mergedXofRub)
 
-  const bulkPairs = [...mergedRubXaf, ...mergedRubXof, ...mergedXafRub, ...mergedXofRub].filter(p => p.id !== '')
-  const totalVisible = filteredRubXaf.length + filteredRubXof.length + filteredXafRub.length + filteredXofRub.length
+  const customPairsFlat = Object.values(customGroups).flat()
+  const bulkPairs = [...mergedRubXaf, ...mergedRubXof, ...mergedXafRub, ...mergedXofRub, ...customPairsFlat].filter(p => p.id !== '')
+  const customTotal = Object.values(customGroups).reduce((s, g) => s + filterBySearch(g).length, 0)
+  const totalVisible = filteredRubXaf.length + filteredRubXof.length + filteredXafRub.length + filteredXofRub.length + customTotal
 
   // ── handlers ──────────────────────────────────────────────────────────────
 
@@ -1116,6 +1132,24 @@ const CurrencyPairs: React.FC = () => {
             onPairAdded={() => {}}
           />
         )}
+
+        {/* Dynamic custom corridor cards */}
+        {Object.entries(customGroups).map(([key, groupPairs]) => {
+          const [fromCode, toCode] = key.split('_')
+          const filtered = filterBySearch(groupPairs)
+          if (filtered.length === 0) return null
+          return (
+            <CurrencyCard
+              key={key}
+              currencyCode={fromCode}
+              currencyName={fromCode}
+              direction={`${fromCode} → ${toCode}`}
+              pairs={filtered}
+              rowProps={rowProps}
+              onPairAdded={() => {}}
+            />
+          )
+        })}
 
         {totalVisible === 0 && (
           <div className="text-center py-16 bg-white rounded-3xl border border-[#edf2f7]">

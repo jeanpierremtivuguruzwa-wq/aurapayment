@@ -119,6 +119,12 @@ service cloud.firestore {
       allow write: if isAuth();
     }
 
+    // Delivery options — public read so send-money page can load providers; write by admin/agent
+    match /deliveryOptions/{document} {
+      allow read: if true;
+      allow write: if isAuth();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
