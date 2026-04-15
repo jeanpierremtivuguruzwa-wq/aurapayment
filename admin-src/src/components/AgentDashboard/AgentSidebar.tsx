@@ -23,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'wallet',              label: 'AuraWallet',            icon: '💰', requiredPermission: 'wallet' },
   { id: 'currency-assignments',label: 'Currency Assignments',  icon: '🏦', requiredPermission: 'currency-assignments' },
   { id: 'notifications',       label: 'Notifications',         icon: '🔔', requiredPermission: 'notifications' },
+  { id: 'support',             label: 'User Support',          icon: '🎧', requiredPermission: 'support' },
   { id: 'profile',             label: 'My Profile',            icon: '🛡', requiredPermission: null },
 ]
 

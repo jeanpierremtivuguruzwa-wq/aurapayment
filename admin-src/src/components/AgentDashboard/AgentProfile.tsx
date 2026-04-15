@@ -16,6 +16,7 @@ const PERMISSION_META: Record<AgentPermission, { icon: string; label: string; de
   wallet:                { icon: '💰', label: 'AuraWallet',            desc: 'View and manage Aura wallet records' },
   'currency-assignments':{ icon: '🏦', label: 'Currency Assignments',  desc: 'Manage cardholder currency assignments' },
   notifications:         { icon: '🔔', label: 'Notifications',         desc: 'Manage notification recipients and alerts' },
+  support:               { icon: '🎧', label: 'User Support',           desc: 'Answer user support tickets and chat' },
 }
 
 const ALL_PERMISSIONS = Object.keys(PERMISSION_META) as AgentPermission[]

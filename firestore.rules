@@ -125,6 +125,27 @@ service cloud.firestore {
       allow write: if isAuth();
     }
 
+    // Support tickets — users create/read their own; agents/admins read and update all
+    match /supportTickets/{ticketId} {
+      allow read:   if isAuth() && (resource.data.userId == request.auth.uid || isAdminOrAgent());
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuth() && (resource.data.userId == request.auth.uid || isAdminOrAgent());
+
+      // Messages sub-collection
+      match /messages/{msgId} {
+        // User can read/write their own ticket's messages; agents/admins can read/write all
+        allow read:   if isAuth() && (
+          get(/databases/$(database)/documents/supportTickets/$(ticketId)).data.userId == request.auth.uid
+          || isAdminOrAgent()
+        );
+        allow create: if isAuth() && (
+          get(/databases/$(database)/documents/supportTickets/$(ticketId)).data.userId == request.auth.uid
+          || isAdminOrAgent()
+        );
+        allow update, delete: if isAdminOrAgent();
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

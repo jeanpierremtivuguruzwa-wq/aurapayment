@@ -14,6 +14,7 @@ const ALL_PERMISSIONS: { key: AgentPermission; label: string; desc: string; icon
   { key: 'wallet',              label: 'AuraWallet',            desc: 'View & manage Aura wallet records',     icon: '💰' },
   { key: 'currency-assignments',label: 'Currency Assignments',  desc: 'Manage cardholder currency assignments', icon: '🏦' },
   { key: 'notifications',       label: 'Notifications',         desc: 'Manage notification recipients',        icon: '🔔' },
+  { key: 'support',             label: 'User Support',          desc: 'Answer user support tickets and chat',  icon: '🎧' },
 ]
 
 const AgentManagement: React.FC = () => {

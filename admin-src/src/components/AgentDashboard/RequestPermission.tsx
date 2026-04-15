@@ -13,6 +13,7 @@ const PERMISSION_META: Record<AgentPermission, { label: string; icon: string; de
   wallet:                { label: 'AuraWallet',           icon: '💰', desc: 'View and manage Aura wallet records' },
   'currency-assignments':{ label: 'Currency Assignments', icon: '🏦', desc: 'Manage cardholder currency assignments' },
   notifications:         { label: 'Notifications',        icon: '🔔', desc: 'Manage notification recipients and alerts' },
+  support:               { label: 'User Support',         icon: '🎧', desc: 'Answer user support tickets and chat' },
 }
 
 interface Props {

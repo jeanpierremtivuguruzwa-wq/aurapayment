@@ -441,3 +441,182 @@ export const notifyOnNewOrder = onDocumentCreated(
     console.log(`[newOrder] Email sent to ${toEmails.join(', ')}, order ${orderId}`);
   }
 );
+
+// ─── Email user when their order is completed or cancelled ─────────────────────
+// Fires on every order document update. When status transitions to 'completed'
+// or 'cancelled', sends a confirmation email directly to the client's email
+// address via Gmail (Nodemailer), using the same GMAIL_USER / GMAIL_PASS secrets.
+export const notifyUserOnOrderComplete = onDocumentUpdated(
+  { document: 'orders/{orderId}', secrets: ['GMAIL_USER', 'GMAIL_PASS'] },
+  async (event) => {
+    const before = event.data?.before.data();
+    const after  = event.data?.after.data();
+
+    if (!before || !after) return;
+    if (before.status === after.status) return;
+    if (after.status !== 'completed' && after.status !== 'cancelled') return;
+
+    const userEmail = after.userEmail;
+    if (!userEmail) {
+      console.log('[orderComplete] No userEmail on order – skipping.');
+      return;
+    }
+
+    const orderId     = event.params.orderId;
+    const isCompleted = after.status === 'completed';
+
+    // Resolve account owner name — prefer the value stored on the order,
+    // otherwise look it up from the users collection via userId or email.
+    let ownerName = after.senderName || after.fullName || '';
+    if (!ownerName) {
+      try {
+        let userSnap = null;
+        if (after.userId) {
+          userSnap = await db.collection('users').doc(after.userId).get();
+        }
+        if (!userSnap?.exists && userEmail) {
+          const q = await db.collection('users').where('email', '==', userEmail).limit(1).get();
+          if (!q.empty) userSnap = q.docs[0];
+        }
+        if (userSnap?.exists) {
+          const u = userSnap.data();
+          ownerName = u.fullName || u.full_name || u.displayName || '';
+        }
+      } catch (e) {
+        console.warn('[orderComplete] Could not fetch user profile:', e.message);
+      }
+    }
+
+    const sendAmount      = after.sendAmount    ?? after.amount         ?? '?';
+    const sendCurrency    = after.sendCurrency  ?? '';
+    const receiveAmount   = after.receiveAmount ?? after.amountReceived ?? '?';
+    const receiveCurrency = after.receiveCurrency ?? '';
+    const paymentMethod   = after.paymentMethod || '—';
+    const deliveryMethod  = after.deliveryMethod || '—';
+    const historyLink     = 'https://aura-payment.web.app/history.html';
+    const supportLink     = 'https://aura-payment.web.app/support.html';
+
+    const completedHtml = `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a202c;">
+        <div style="background:#0b1b3a;padding:24px 32px;border-radius:12px 12px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Aura Payment</h1>
+          <p style="color:#90cdf4;margin:4px 0 0;font-size:14px;">Transaction Notification</p>
+        </div>
+        <div style="background:#f7fafc;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;">
+          <div style="background:#f0fff4;border:1px solid #9ae6b4;border-radius:10px;padding:20px 24px;margin-bottom:28px;">
+            <h2 style="margin:0;color:#276749;font-size:20px;">✅ Transaction Completed!</h2>
+            <p style="margin:6px 0 0;color:#48bb78;font-size:14px;">Your money is on its way</p>
+          </div>
+          <p style="color:#4a5568;">
+            Hi${ownerName ? ' ' + ownerName : ''},<br>
+            Great news! Your transaction has been <strong style="color:#276749;">successfully completed</strong>.
+            Your funds have been processed and sent. Here is a summary of your order:
+          </p>
+          <table style="width:100%;border-collapse:collapse;margin:24px 0;">
+            <tr style="background:#edf2f7;">
+              <td style="padding:12px 16px;font-weight:600;width:45%;">Order ID</td>
+              <td style="padding:12px 16px;font-family:monospace;font-size:13px;">${orderId}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 16px;font-weight:600;">You Sent</td>
+              <td style="padding:12px 16px;font-size:17px;font-weight:700;color:#0b1b3a;">${sendAmount} ${sendCurrency}</td>
+            </tr>
+            <tr style="background:#edf2f7;">
+              <td style="padding:12px 16px;font-weight:600;">You Receive</td>
+              <td style="padding:12px 16px;font-size:17px;font-weight:700;color:#276749;">${receiveAmount} ${receiveCurrency}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 16px;font-weight:600;">Payment Method</td>
+              <td style="padding:12px 16px;">${paymentMethod}</td>
+            </tr>
+            <tr style="background:#edf2f7;">
+              <td style="padding:12px 16px;font-weight:600;">Delivery Method</td>
+              <td style="padding:12px 16px;">${deliveryMethod}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 16px;font-weight:600;">Status</td>
+              <td style="padding:12px 16px;">
+                <span style="background:#c6f6d5;color:#276749;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;">✓ Completed</span>
+              </td>
+            </tr>
+          </table>
+          <a href="${historyLink}" style="display:inline-block;background:#276749;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            View Transaction History →
+          </a>
+          <p style="margin-top:28px;font-size:13px;color:#718096;">
+            If you have any questions, visit our <a href="${supportLink}" style="color:#0b1b3a;">support page</a>.
+            Thank you for using Aura Payment! 🎉
+          </p>
+        </div>
+      </div>`;
+
+    const cancelledHtml = `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a202c;">
+        <div style="background:#0b1b3a;padding:24px 32px;border-radius:12px 12px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Aura Payment</h1>
+          <p style="color:#90cdf4;margin:4px 0 0;font-size:14px;">Transaction Notification</p>
+        </div>
+        <div style="background:#f7fafc;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;">
+          <div style="background:#fff5f5;border:1px solid #feb2b2;border-radius:10px;padding:20px 24px;margin-bottom:28px;">
+            <h2 style="margin:0;color:#c53030;font-size:20px;">❌ Transaction Cancelled</h2>
+            <p style="margin:6px 0 0;color:#fc8181;font-size:14px;">Your order has been cancelled</p>
+          </div>
+          <p style="color:#4a5568;">
+            Hi${ownerName ? ' ' + ownerName : ''},<br>
+            We are writing to inform you that your transaction has been <strong style="color:#c53030;">cancelled</strong>.
+            If you believe this was a mistake or need assistance, please contact our support team.
+          </p>
+          <table style="width:100%;border-collapse:collapse;margin:24px 0;">
+            <tr style="background:#edf2f7;">
+              <td style="padding:12px 16px;font-weight:600;width:45%;">Order ID</td>
+              <td style="padding:12px 16px;font-family:monospace;font-size:13px;">${orderId}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 16px;font-weight:600;">Amount Sent</td>
+              <td style="padding:12px 16px;font-size:17px;font-weight:700;color:#0b1b3a;">${sendAmount} ${sendCurrency}</td>
+            </tr>
+            <tr style="background:#edf2f7;">
+              <td style="padding:12px 16px;font-weight:600;">Was to Receive</td>
+              <td style="padding:12px 16px;font-size:17px;font-weight:700;color:#4a5568;">${receiveAmount} ${receiveCurrency}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 16px;font-weight:600;">Status</td>
+              <td style="padding:12px 16px;">
+                <span style="background:#fed7d7;color:#c53030;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;">✗ Cancelled</span>
+              </td>
+            </tr>
+          </table>
+          <a href="${supportLink}" style="display:inline-block;background:#c53030;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            Contact Support →
+          </a>
+          <p style="margin-top:28px;font-size:13px;color:#718096;">
+            To place a new order visit <a href="https://aura-payment.web.app/send-money.html" style="color:#0b1b3a;">aura-payment.web.app</a>.
+            We apologise for any inconvenience.
+          </p>
+        </div>
+      </div>`;
+
+    const subject = isCompleted
+      ? `✅ Transaction Completed – Order ${orderId}`
+      : `❌ Transaction Cancelled – Order ${orderId}`;
+    const html = isCompleted ? completedHtml : cancelledHtml;
+
+    const user = process.env.GMAIL_USER;
+    const pass = process.env.GMAIL_PASS;
+
+    if (!user || !pass) {
+      console.error('[orderComplete] GMAIL_USER or GMAIL_PASS secret not available – cannot send email.');
+      return;
+    }
+
+    const transporter = createTransporter(user, pass);
+    await transporter.sendMail({
+      from: `"Aura Payment" <${user}>`,
+      to: userEmail,
+      subject,
+      html,
+    });
+
+    console.log(`[orderComplete] Email sent → ${userEmail}, order ${orderId}, status: ${after.status}`);
+  }
+);

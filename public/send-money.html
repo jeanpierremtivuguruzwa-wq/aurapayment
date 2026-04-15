@@ -377,6 +377,7 @@
             <a href="send-money.html" class="active" data-i18n="nav_send">Send Money</a>
             <a href="history.html" data-i18n="nav_history">History</a>
             <a href="profile.html" data-i18n="nav_profile">Profile</a>
+            <a href="support.html" data-i18n="nav_support">Support</a>
         </div>
         <div class="user-profile" id="userProfile">
             <span class="user-name" id="displayName">Loading...</span>
@@ -481,6 +482,29 @@
             <div class="button-group">
                 <button class="secondary" onclick="prevStep(3)" data-i18n="send_back">Back</button>
                 <button class="primary" id="submitBtn" onclick="completeTransaction()" data-i18n="send_submit">Submit &amp; Complete</button>
+            </div>
+        </div>
+
+        <!-- Success Screen (shown after proof uploaded) -->
+        <div id="successScreen" class="card" style="display: none; text-align: center; padding: 2.5rem 2rem;">
+            <div style="font-size: 3.5rem; margin-bottom: 1rem;">✅</div>
+            <h2 style="color: #0b1b3a; margin-bottom: 0.5rem;" data-i18n="send_success_title">Payment Submitted!</h2>
+            <p style="color: #718096; margin-bottom: 1.75rem; font-size: 0.95rem;" data-i18n="send_success_sub">Your proof of payment has been received. Our team will process your transaction shortly.</p>
+
+            <div style="background: #f0f4f8; border-radius: 14px; padding: 1.25rem; margin-bottom: 1.75rem; text-align: left;">
+                <p style="font-size: 0.8rem; color: #718096; margin-bottom: 0.25rem;">Order Reference</p>
+                <p style="font-weight: 700; color: #0b1b3a; font-size: 1rem; font-family: monospace;" id="successOrderRef">—</p>
+            </div>
+
+            <p style="color: #718096; font-size: 0.88rem; margin-bottom: 1.5rem;">Is it taking too long? Our support team is here to help.</p>
+
+            <div style="display: flex; gap: 0.75rem; flex-direction: column;">
+                <a href="support.html" style="display: block; width: 100%; padding: 0.85rem; background: #0b1b3a; color: white; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 0.95rem; text-align: center;">
+                    💬 Contact Support
+                </a>
+                <a href="history.html" style="display: block; width: 100%; padding: 0.85rem; background: white; color: #4a5568; border: 1.5px solid #e2e8f0; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 0.95rem; text-align: center;">
+                    View Transaction History
+                </a>
             </div>
         </div>
     </main>
@@ -1309,11 +1333,31 @@
                 
                 return Promise.all(updates);
             }).then(() => {
-                alert(t('send_success'));
-                window.location.href = 'history.html';
+                // Show success screen with link to support
+                showSuccessScreen();
             }).catch(err => {
                 alert('Error: ' + err.message);
             });
+        }
+
+        function showSuccessScreen() {
+            // Hide all steps and step indicator
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById('step' + i);
+                if (el) el.style.display = 'none';
+            }
+            const indicator = document.getElementById('stepIndicator');
+            if (indicator) indicator.style.display = 'none';
+
+            // Show success card
+            const screen = document.getElementById('successScreen');
+            if (screen) screen.style.display = 'block';
+
+            // Fill in order ref
+            const refEl = document.getElementById('successOrderRef');
+            if (refEl && transactionData.orderId) {
+                refEl.textContent = '#' + transactionData.orderId.slice(0, 8).toUpperCase();
+            }
         }
 
         function copyToClipboard(text, button) {

@@ -122,7 +122,7 @@ const AdminDashboard: React.FC = () => {
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [pairsLoading, setPairsLoading] = useState(true)
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set())
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all' | 'active'>('active')
   const [ticker, setTicker] = useState(0)
 
   // Tick every second for live timestamps
@@ -165,10 +165,11 @@ const AdminDashboard: React.FC = () => {
     return () => unsub()
   }, [])
 
-  const filteredOrders = useMemo(() =>
-    statusFilter === 'all' ? orders : orders.filter(o => o.status === statusFilter),
-    [orders, statusFilter, ticker]
-  )
+  const filteredOrders = useMemo(() => {
+    if (statusFilter === 'all') return orders
+    if (statusFilter === 'active') return orders.filter(o => o.status === 'pending' || o.status === 'uploaded')
+    return orders.filter(o => o.status === statusFilter)
+  }, [orders, statusFilter, ticker])
 
   const stats = useMemo(() => ({
     total:     orders.length,
@@ -222,7 +223,7 @@ const AdminDashboard: React.FC = () => {
             <h2 className="font-semibold text-slate-800 text-lg">Incoming Orders</h2>
             {/* Filter pills */}
             <div className="flex gap-1.5 flex-wrap">
-              {(['all', 'pending', 'uploaded', 'completed', 'cancelled'] as const).map(f => (
+              {(["active", "all", "pending", "uploaded", "completed", "cancelled"] as const).map(f => (
                 <button
                   key={f}
                   onClick={() => setStatusFilter(f)}
@@ -232,7 +233,7 @@ const AdminDashboard: React.FC = () => {
                       : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
                   }`}
                 >
-                  {f === 'all' ? `All (${stats.total})` : f === 'pending' ? `Pending (${stats.pending})` : f === 'uploaded' ? `Uploaded (${stats.uploaded})` : f === 'completed' ? `Done (${stats.completed})` : `Cancelled (${stats.cancelled})`}
+                  {f === 'active' ? `🟡 Active (${stats.pending + stats.uploaded})` : f === 'all' ? `All (${stats.total})` : f === 'pending' ? `Pending (${stats.pending})` : f === 'uploaded' ? `Uploaded (${stats.uploaded})` : f === 'completed' ? `Done (${stats.completed})` : `Cancelled (${stats.cancelled})`}
                 </button>
               ))}
             </div>
@@ -250,7 +251,7 @@ const AdminDashboard: React.FC = () => {
           ) : filteredOrders.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
               <div className="text-4xl mb-3">📭</div>
-              <p className="text-slate-500">No orders {statusFilter !== 'all' ? `with status "${statusFilter}"` : 'yet'}</p>
+              <p className="text-slate-500">No orders {statusFilter === 'active' ? 'in progress — all done!' : statusFilter !== 'all' ? `with status "${statusFilter}"` : 'yet'}</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-[78vh] overflow-y-auto pr-1">

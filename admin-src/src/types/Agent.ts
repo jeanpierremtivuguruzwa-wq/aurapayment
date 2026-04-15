@@ -11,6 +11,7 @@ export type AgentPermission =
   | 'wallet'
   | 'currency-assignments'
   | 'notifications'
+  | 'support'
 
 export interface Agent {
   id: string

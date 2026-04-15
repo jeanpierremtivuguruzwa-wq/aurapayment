@@ -340,16 +340,18 @@ const LiveActivity: React.FC = () => {
     const userMap: Record<string, string> = {}
     users.forEach(u => { userMap[u.id] = u.fullName || u.email || u.id })
 
-    const orderEvents: FeedEvent[] = orders.map(o => ({
-      id: o.id,
-      kind: 'order',
-      userId: o.userId || '',
-      userName: userMap[o.userId] || o.userEmail || o.senderName || 'Unknown',
-      label: `Order — ${o.sendAmount} ${o.sendCurrency} → ${o.receiveCurrency}`,
-      detail: `To: ${o.recipientName || '—'} · via ${o.provider || o.deliveryMethod || '—'}`,
-      status: o.status,
-      ts: o.createdAt,
-    }))
+    const orderEvents: FeedEvent[] = orders
+      .filter(o => o.status !== 'completed' && o.status !== 'cancelled')
+      .map(o => ({
+        id: o.id,
+        kind: 'order',
+        userId: o.userId || '',
+        userName: userMap[o.userId] || o.userEmail || o.senderName || 'Unknown',
+        label: `Order — ${o.sendAmount} ${o.sendCurrency} → ${o.receiveCurrency}`,
+        detail: `To: ${o.recipientName || '—'} · via ${o.provider || o.deliveryMethod || '—'}`,
+        status: o.status,
+        ts: o.createdAt,
+      }))
 
     const txEvents: FeedEvent[] = transactions.map(tx => ({
       id: tx.id,

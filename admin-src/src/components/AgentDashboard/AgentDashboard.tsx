@@ -17,6 +17,7 @@ import AuraWallet from '../AuraWallet/AuraWallet'
 import CurrencyCardholderAssignments from '../CurrencyAssignments/CurrencyCardholderAssignments'
 import NotificationRecipients from '../Notifications/NotificationRecipients'
 import AgentProfile from './AgentProfile'
+import AgentSupportView from './AgentSupportView'
 import { Agent, AgentPermission } from '../../types/Agent'
 
 type AgentSection =
@@ -33,6 +34,7 @@ type AgentSection =
   | 'wallet'
   | 'currency-assignments'
   | 'notifications'
+  | 'support'
   | 'profile'
 
 /** Maps a section to its required permission (null = always allowed) */
@@ -50,6 +52,7 @@ const SECTION_PERMISSION: Record<AgentSection, AgentPermission | null> = {
   wallet:                'wallet',
   'currency-assignments':'currency-assignments',
   notifications:         'notifications',
+  support:               'support',
   profile:               null,
 }
 
@@ -125,6 +128,8 @@ const AgentDashboard: React.FC<Props> = ({ agent, requestPermission, getPermissi
         return <CurrencyCardholderAssignments />
       case 'notifications':
         return <NotificationRecipients />
+      case 'support':
+        return <AgentSupportView agent={agent} />
       case 'profile':
         return <AgentProfile agent={agent} />
       default:
