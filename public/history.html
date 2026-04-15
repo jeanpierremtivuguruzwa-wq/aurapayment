@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Transaction History - Aura payment</title>
+    <script src="js/i18n.js"></script>
     <!-- Firebase SDKs (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -342,36 +343,37 @@
     <nav class="navbar">
         <div class="logo">Aura payment</div>
         <div class="nav-menu">
-            <a href="dashboard.html">Dashboard</a>
-            <a href="send-money.html">Send Money</a>
-            <a href="history.html" class="active">History</a>
-            <a href="profile.html">Profile</a>
+            <a href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
+            <a href="send-money.html" data-i18n="nav_send">Send Money</a>
+            <a href="history.html" class="active" data-i18n="nav_history">History</a>
+            <a href="profile.html" data-i18n="nav_profile">Profile</a>
         </div>
         <div class="user-profile" id="userProfile">
             <span class="user-name" id="displayName">Loading...</span>
             <div class="avatar" id="userInitials">...</div>
-            <button class="logout-btn" onclick="handleLogout()">⏻ Log out</button>
+            <span id="langPickerNav"></span>
+            <button class="logout-btn" onclick="handleLogout()" data-i18n="nav_logout">⏻ Log out</button>
         </div>
     </nav>
 
     <!-- Main Content -->
     <main class="main-content">
         <div class="page-header">
-            <h1>Transaction History</h1>
-            <p style="color: #718096; font-size: 0.95rem;">View all your transactions and their status</p>
+            <h1 data-i18n="hist_title">Transaction History</h1>
+            <p style="color: #718096; font-size: 0.95rem;" data-i18n="hist_subtitle">View all your transactions and their status</p>
         </div>
 
         <!-- Filter Tabs -->
         <div class="filter-tabs">
-            <button class="filter-btn active" onclick="filterOrders('all')">All Orders</button>
-            <button class="filter-btn" onclick="filterOrders('completed')">✓ Completed</button>
-            <button class="filter-btn" onclick="filterOrders('pending')">⏳ Pending</button>
-            <button class="filter-btn" onclick="filterOrders('cancelled')">✕ Cancelled</button>
+            <button class="filter-btn active" onclick="filterOrders('all')" data-i18n="hist_all">All Orders</button>
+            <button class="filter-btn" onclick="filterOrders('completed')" data-i18n="hist_completed">✓ Completed</button>
+            <button class="filter-btn" onclick="filterOrders('pending')" data-i18n="hist_pending">⏳ Pending</button>
+            <button class="filter-btn" onclick="filterOrders('cancelled')" data-i18n="hist_cancelled">✕ Cancelled</button>
         </div>
 
         <!-- Orders List -->
         <div class="orders-container" id="ordersContainer">
-            <div class="loading">Loading your orders...</div>
+            <div class="loading" data-i18n="hist_loading">Loading your orders...</div>
         </div>
     </main>
 
@@ -405,6 +407,13 @@
             loadUserDisplay();
             loadOrders(user.uid);
         });
+
+        // Language picker + initial translation
+        renderLangPickerLight(document.getElementById('langPickerNav'), () => {
+            applyLanguage();
+            displayOrders(); // re-render order cards in new language
+        });
+        applyLanguage();
 
         function handleLogout() {
             localStorage.removeItem('currentUser');
@@ -472,8 +481,8 @@
                     document.getElementById('ordersContainer').innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">⚠️</div>
-                            <div class="empty-state-text">Could not load orders. Please refresh the page.</div>
-                            <button class="btn btn-primary" style="margin-top:1rem;" onclick="location.reload()">Try Again</button>
+                            <div class="empty-state-text">${t('hist_error_load')}</div>
+                            <button class="btn btn-primary" style="margin-top:1rem;" onclick="location.reload()">${t('hist_try_again')}</button>
                         </div>
                     `;
                 });
@@ -504,8 +513,8 @@
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📭</div>
-                        <div class="empty-state-text">No ${currentFilter !== 'all' ? currentFilter : ''} orders yet</div>
-                        <a href="send-money.html" style="color: #0b1b3a; text-decoration: none; font-weight: 500;">Start sending money →</a>
+                        <div class="empty-state-text">${t('hist_empty')}</div>
+                        <a href="send-money.html" style="color: #0b1b3a; text-decoration: none; font-weight: 500;">${t('hist_empty_start')}</a>
                     </div>
                 `;
                 return;
@@ -517,10 +526,10 @@
         function createOrderCard(order) {
             const status = order.status || 'pending';
             const statusLabel = {
-                completed: '✓ Completed',
-                pending: '⏳ Pending',
-                uploaded: '📤 Proof Uploaded',
-                cancelled: '✕ Cancelled'
+                completed: t('hist_status_completed'),
+                pending:   t('hist_status_pending'),
+                uploaded:  t('hist_status_uploaded'),
+                cancelled: t('hist_status_cancelled')
             }[status] || status;
 
             let createdAt = 'N/A';
@@ -540,7 +549,7 @@
                 <div class="order-card ${status}">
                     <div class="order-header">
                         <div class="order-info">
-                            <div class="order-id">Order #${order.id.substring(0, 8).toUpperCase()}</div>
+                            <div class="order-id">${t('hist_order')}${order.id.substring(0, 8).toUpperCase()}</div>
                             <div class="order-amount">${sendAmount.toFixed(2)} ${order.sendCurrency || ''}</div>
                             <span class="order-status status-${status}">${statusLabel}</span>
                         </div>
@@ -551,40 +560,40 @@
 
                     <div class="order-details">
                         <div class="detail-row">
-                            <div class="detail-label">Recipient Name</div>
+                            <div class="detail-label">${t('hist_recipient')}</div>
                             <div class="detail-value">${order.recipientName || 'N/A'}</div>
                         </div>
                         <div class="detail-row">
-                            <div class="detail-label">Recipient Gets</div>
+                            <div class="detail-label">${t('hist_gets')}</div>
                             <div class="detail-value">${receiveAmount} ${order.receiveCurrency || ''}</div>
                         </div>
                         <div class="detail-row">
-                            <div class="detail-label">Delivery Method</div>
-                            <div class="detail-value">${order.deliveryMethod === 'bank' ? '🏦 Bank' : '📱 Mobile Money'}</div>
+                            <div class="detail-label">${t('hist_delivery')}</div>
+                            <div class="detail-value">${order.deliveryMethod === 'bank' ? t('send_bank') : t('send_mobile')}</div>
                         </div>
                         <div class="detail-row">
-                            <div class="detail-label">Provider</div>
+                            <div class="detail-label">${t('hist_provider')}</div>
                             <div class="detail-value">${order.provider || 'N/A'}</div>
                         </div>
                         <div class="detail-row">
-                            <div class="detail-label">Exchange Rate</div>
+                            <div class="detail-label">${t('hist_rate')}</div>
                             <div class="detail-value">${rate ? `1 ${order.sendCurrency} = ${rate.toFixed(2)} ${order.receiveCurrency}` : 'N/A'}</div>
                         </div>
                         <div class="detail-row">
-                            <div class="detail-label">Order Status</div>
+                            <div class="detail-label">${t('hist_status')}</div>
                             <div class="detail-value">${statusLabel}</div>
                         </div>
                     </div>
 
                     <div class="order-actions">
                         ${status === 'pending' ? `
-                            <button class="btn btn-primary" onclick="continuePayment('${order.id}')">Continue Payment</button>
-                            <button class="btn btn-secondary" onclick="cancelOrder('${order.id}')">Cancel Order</button>
+                            <button class="btn btn-primary" onclick="continuePayment('${order.id}')">${t('hist_continue_btn')}</button>
+                            <button class="btn btn-secondary" onclick="cancelOrder('${order.id}')">${t('hist_cancel_btn')}</button>
                         ` : ''}
                         ${status === 'completed' ? `
-                            <button class="btn btn-secondary" onclick="downloadReceipt('${order.id}')">Download Receipt</button>
+                            <button class="btn btn-secondary" onclick="downloadReceipt('${order.id}')">${t('hist_download')}</button>
                         ` : ''}
-                        <button class="btn btn-secondary" onclick="viewDetails('${order.id}')">View Details</button>
+                        <button class="btn btn-secondary" onclick="viewDetails('${order.id}')">${t('hist_details')}</button>
                     </div>
                 </div>
             `;
@@ -602,7 +611,7 @@
         }
 
         function cancelOrder(orderId) {
-            if (confirm('Are you sure you want to cancel this order?')) {
+            if (confirm(t('hist_cancel_confirm'))) {
                 db.collection('orders').doc(orderId).update({
                     status: 'cancelled',
                     cancelledAt: firebase.firestore.Timestamp.now()
@@ -615,7 +624,7 @@
         }
 
         function downloadReceipt(orderId) {
-            alert('Receipt download feature coming soon');
+            alert(t('hist_receipt_soon'));
         }
 
         function viewDetails(orderId) {

@@ -89,9 +89,9 @@ const EditMethodForm: React.FC<Props> = ({ method, onClose, onSaved }) => {
                   className="input-base w-full"
                   disabled
                 >
-                  <option value="bank">🏦 Bank Transfer</option>
-                  <option value="mobile">📱 Mobile Money</option>
-                  <option value="cash">💵 Cash Pickup</option>
+                  <option value="bank">Bank Transfer</option>
+                  <option value="mobile">Mobile Money</option>
+                  <option value="cash">Cash Pickup</option>
                 </select>
                 <p className="text-xs text-slate-500 mt-1">Type cannot be changed</p>
               </div>
@@ -131,7 +131,7 @@ const EditMethodForm: React.FC<Props> = ({ method, onClose, onSaved }) => {
           {/* Bank-specific fields */}
           {formData.type === 'bank' && (
             <div className="space-y-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-lg text-blue-900">🏦 Bank Account Details</h3>
+              <h3 className="font-semibold text-lg text-blue-900">Bank Account Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-600 uppercase block mb-2">Account Holder Name</label>
@@ -160,7 +160,7 @@ const EditMethodForm: React.FC<Props> = ({ method, onClose, onSaved }) => {
           {/* Mobile Money-specific fields */}
           {formData.type === 'mobile' && (
             <div className="space-y-4 bg-purple-50 border border-purple-200 rounded-lg p-4">
-              <h3 className="font-semibold text-lg text-purple-900">📱 Mobile Money Details</h3>
+              <h3 className="font-semibold text-lg text-purple-900">Mobile Money Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-600 uppercase block mb-2">Account Holder Name</label>

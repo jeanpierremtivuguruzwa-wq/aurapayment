@@ -22,8 +22,11 @@ import CurrencyCardholderAssignments from './components/CurrencyAssignments/Curr
 import NotificationRecipients from './components/Notifications/NotificationRecipients'
 import CardholderActivity from './components/Cardholders/CardholderActivity'
 import UserDashboard from './components/UserDashboard/UserDashboard'
+import AppSettings from './components/AppSettings/AppSettings'
+import DeliveryOptions from './components/DeliveryOptions/DeliveryOptions'
+import { LanguageProvider } from './context/LanguageContext'
 
-type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'user-dashboard' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet' | 'public-dashboard'
+type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'user-dashboard' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet' | 'public-dashboard' | 'settings' | 'delivery-options'
 type AuthState = 'loading' | 'admin' | 'agent' | 'unauthenticated' | 'unauthorized'
 
 // The primary admin email — always has admin access
@@ -217,22 +220,26 @@ function App() {
       case 'chat': return <AuraChat />
       case 'wallet': return <AuraWallet />
       case 'public-dashboard': return <UserDashboard />
+      case 'settings': return <AppSettings />
+      case 'delivery-options': return <DeliveryOptions />
       default: return null
     }
   }
 
   return (
-    <AdminLayout 
-      activeSection={activeSection} 
-      onSectionChange={(section: string) => {
-        if (section !== 'user-dashboard') setViewingUserId(null)
-        setActiveSection(section as Section)
-      }}
-    >
-      <ErrorBoundary key={activeSection}>
-        {renderSection()}
-      </ErrorBoundary>
-    </AdminLayout>
+    <LanguageProvider>
+      <AdminLayout 
+        activeSection={activeSection} 
+        onSectionChange={(section: string) => {
+          if (section !== 'user-dashboard') setViewingUserId(null)
+          setActiveSection(section as Section)
+        }}
+      >
+        <ErrorBoundary key={activeSection}>
+          {renderSection()}
+        </ErrorBoundary>
+      </AdminLayout>
+    </LanguageProvider>
   )
 }
 

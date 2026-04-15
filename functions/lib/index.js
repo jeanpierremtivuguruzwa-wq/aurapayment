@@ -91,6 +91,103 @@ export const notifyOnProofUpload = firestoreTriggers.onDocumentUpdated("orders/{
     console.log(`Email queued for ${toEmails.length} recipient(s) for order ${orderId}`);
     return null;
 });
+// ─── Email notification on NEW order ──────────────────────────────────────────
+// Fires when a new order document is created. Sends an email to every active
+// recipient in the notificationRecipients collection.
+export const notifyOnNewOrder = firestoreTriggers.onDocumentCreated("orders/{orderId}", async (event) => {
+    var _a, _b, _c, _d, _e, _f, _g;
+    const order = (_a = event.data) === null || _a === void 0 ? void 0 : _a.data();
+    if (!order)
+        return null;
+    const orderId = event.params.orderId;
+    const db = admin.firestore();
+    // Gather active notification recipient emails
+    const recipientsSnap = await db
+        .collection("notificationRecipients")
+        .where("active", "==", true)
+        .get();
+    if (recipientsSnap.empty) {
+        console.log("[newOrder] No active notification recipients – skipping.");
+        return null;
+    }
+    const toEmails = recipientsSnap.docs.map((d) => d.data().email);
+    // Order details
+    const userEmail = order.userEmail || order.userId || "unknown";
+    const senderName = order.senderName || order.recipientName || "";
+    const sendAmount = (_c = (_b = order.sendAmount) !== null && _b !== void 0 ? _b : order.amount) !== null && _c !== void 0 ? _c : "?";
+    const sendCurrency = (_d = order.sendCurrency) !== null && _d !== void 0 ? _d : "";
+    const receiveAmount = (_f = (_e = order.receiveAmount) !== null && _e !== void 0 ? _e : order.amountReceived) !== null && _f !== void 0 ? _f : "?";
+    const receiveCurrency = (_g = order.receiveCurrency) !== null && _g !== void 0 ? _g : "";
+    const paymentMethod = order.paymentMethod || order.provider || "—";
+    const deliveryMethod = order.deliveryMethod || "—";
+    const adminLink = "https://aura-payment.web.app/admin/";
+    const subject = `🆕 New Order Received – ${sendAmount} ${sendCurrency}`;
+    const html = `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a202c;">
+        <div style="background:#0b1b3a;padding:24px 32px;border-radius:12px 12px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Aura Payment</h1>
+          <p style="color:#90cdf4;margin:4px 0 0;font-size:14px;">New Order Notification</p>
+        </div>
+        <div style="background:#f7fafc;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;">
+          <h2 style="margin-top:0;color:#0b1b3a;">A new order has just been placed</h2>
+          <p style="color:#4a5568;">Review it in the admin dashboard and begin processing.</p>
+
+          <table style="width:100%;border-collapse:collapse;margin:24px 0;">
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;width:40%;">Order ID</td>
+              <td style="padding:10px 14px;font-family:monospace;font-size:13px;">${orderId}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;font-weight:600;">Client Email</td>
+              <td style="padding:10px 14px;">${userEmail}</td>
+            </tr>
+            ${senderName ? `<tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;">Sender Name</td>
+              <td style="padding:10px 14px;">${senderName}</td>
+            </tr>` : ""}
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;">Sending</td>
+              <td style="padding:10px 14px;font-size:16px;font-weight:700;color:#0b1b3a;">${sendAmount} ${sendCurrency}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;font-weight:600;">Receiving</td>
+              <td style="padding:10px 14px;font-size:16px;font-weight:700;color:#276749;">${receiveAmount} ${receiveCurrency}</td>
+            </tr>
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;">Payment Method</td>
+              <td style="padding:10px 14px;">${paymentMethod}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;font-weight:600;">Delivery Method</td>
+              <td style="padding:10px 14px;">${deliveryMethod}</td>
+            </tr>
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;">Status</td>
+              <td style="padding:10px 14px;">
+                <span style="background:#ebf8ff;color:#2b6cb0;padding:3px 10px;border-radius:20px;font-size:13px;font-weight:600;">Pending</span>
+              </td>
+            </tr>
+          </table>
+
+          <a href="${adminLink}" style="display:inline-block;background:#0b1b3a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            Open Admin Dashboard →
+          </a>
+
+          <p style="margin-top:32px;font-size:13px;color:#718096;">
+            Go to <strong>Orders</strong> in the admin dashboard to process this order.
+            The client is waiting for you to provide payment instructions.
+          </p>
+        </div>
+      </div>
+    `;
+    await db.collection("mail").add({
+        to: toEmails,
+        message: { subject, html },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    console.log(`[newOrder] Email queued for ${toEmails.length} recipient(s), order ${orderId}`);
+    return null;
+});
 /**
  * Checks if the calling user has admin privileges.
  * @param {functions.CallableRequest} context - The callable function context.

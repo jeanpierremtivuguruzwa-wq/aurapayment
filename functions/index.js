@@ -8,6 +8,7 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall } from 'firebase-functions/v2/https';
+import nodemailer from 'nodemailer';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { defineSecret } from 'firebase-functions/params';
 
@@ -27,8 +28,17 @@ console.log("Firebase client initialized");
 admin.initializeApp({ projectId: "aura-payment" });
 const db = getFirestore();
 
-// ---------- Secret for Gemini API ----------
+// ---------- Secrets ----------
 const geminiApiKey = defineSecret('GEMINI_API_KEY');
+// GMAIL_USER and GMAIL_PASS are read at runtime via process.env (Gen 2 secret injection)
+
+// ---------- Nodemailer helper ----------
+function createTransporter(user, pass) {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
+  });
+}
 
 // ---------- Express API (mounted as a Cloud Function) ----------
 const apiApp = express();
@@ -326,3 +336,108 @@ export const notifyOnProofUpload = onDocumentUpdated('orders/{orderId}', async (
 
   console.log(`Email queued for ${toEmails.length} recipient(s) for order ${orderId}`);
 });
+
+// ─── Email notification on NEW order ─────────────────────────────────────────
+export const notifyOnNewOrder = onDocumentCreated(
+  { document: 'orders/{orderId}', secrets: ['GMAIL_USER', 'GMAIL_PASS'] },
+  async (event) => {
+    const order = event.data?.data();
+    if (!order) return;
+
+    const orderId = event.params.orderId;
+
+    // Gather active notification recipient emails
+    const recipientsSnap = await db.collection('notificationRecipients')
+      .where('active', '==', true)
+      .get();
+
+    if (recipientsSnap.empty) {
+      console.log('[newOrder] No active notification recipients – skipping.');
+      return;
+    }
+
+    const toEmails = recipientsSnap.docs.map(d => d.data().email);
+
+    const userEmail       = order.userEmail     || order.userId         || 'unknown';
+    const senderName      = order.senderName    || order.recipientName  || '';
+    const sendAmount      = order.sendAmount    ?? order.amount         ?? '?';
+    const sendCurrency    = order.sendCurrency  ?? '';
+    const receiveAmount   = order.receiveAmount ?? order.amountReceived ?? '?';
+    const receiveCurrency = order.receiveCurrency ?? '';
+    const paymentMethod   = order.paymentMethod || order.provider       || '—';
+    const deliveryMethod  = order.deliveryMethod                        || '—';
+    const adminLink       = 'https://aura-payment.web.app/admin/';
+
+    const subject = `New Order Received - ${sendAmount} ${sendCurrency}`;
+    const html = `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a202c;">
+        <div style="background:#0b1b3a;padding:24px 32px;border-radius:12px 12px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Aura Payment</h1>
+          <p style="color:#90cdf4;margin:4px 0 0;font-size:14px;">New Order Notification</p>
+        </div>
+        <div style="background:#f7fafc;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;">
+          <h2 style="margin-top:0;color:#0b1b3a;">A new order has been placed</h2>
+          <p style="color:#4a5568;">Review it in the admin dashboard and begin processing.</p>
+          <table style="width:100%;border-collapse:collapse;margin:24px 0;">
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;width:40%;">Order ID</td>
+              <td style="padding:10px 14px;font-family:monospace;font-size:13px;">${orderId}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;font-weight:600;">Client Email</td>
+              <td style="padding:10px 14px;">${userEmail}</td>
+            </tr>
+            ${senderName ? '<tr style="background:#edf2f7;"><td style="padding:10px 14px;font-weight:600;">Sender Name</td><td style="padding:10px 14px;">' + senderName + '</td></tr>' : ''}
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;">Sending</td>
+              <td style="padding:10px 14px;font-size:16px;font-weight:700;color:#0b1b3a;">${sendAmount} ${sendCurrency}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;font-weight:600;">Receiving</td>
+              <td style="padding:10px 14px;font-size:16px;font-weight:700;color:#276749;">${receiveAmount} ${receiveCurrency}</td>
+            </tr>
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;">Payment Method</td>
+              <td style="padding:10px 14px;">${paymentMethod}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;font-weight:600;">Delivery Method</td>
+              <td style="padding:10px 14px;">${deliveryMethod}</td>
+            </tr>
+            <tr style="background:#edf2f7;">
+              <td style="padding:10px 14px;font-weight:600;">Status</td>
+              <td style="padding:10px 14px;">
+                <span style="background:#ebf8ff;color:#2b6cb0;padding:3px 10px;border-radius:20px;font-size:13px;font-weight:600;">Pending</span>
+              </td>
+            </tr>
+          </table>
+          <a href="${adminLink}" style="display:inline-block;background:#0b1b3a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            Open Admin Dashboard
+          </a>
+          <p style="margin-top:32px;font-size:13px;color:#718096;">
+            Go to <strong>Orders</strong> in the admin dashboard to process this order.
+          </p>
+        </div>
+      </div>
+    `;
+
+    const user = process.env.GMAIL_USER;
+    const pass = process.env.GMAIL_PASS;
+
+    if (!user || !pass) {
+      console.error('[newOrder] GMAIL_USER or GMAIL_PASS secret not available');
+      return;
+    }
+
+    const transporter = createTransporter(user, pass);
+
+    await transporter.sendMail({
+      from: `"Aura Payment" <${user}>`,
+      to: toEmails.join(','),
+      subject,
+      html,
+    });
+
+    console.log(`[newOrder] Email sent to ${toEmails.join(', ')}, order ${orderId}`);
+  }
+);

@@ -228,20 +228,21 @@
     <nav class="navbar">
         <div class="logo">Aura payment</div>
         <div class="nav-menu">
-            <a href="dashboard.html">Dashboard</a>
-            <a href="send-money.html">Send Money</a>
-            <a href="history.html">History</a>
-            <a href="profile.html" class="active">Profile</a>
+            <a href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
+            <a href="send-money.html" data-i18n="nav_send">Send Money</a>
+            <a href="history.html" data-i18n="nav_history">History</a>
+            <a href="profile.html" class="active" data-i18n="nav_profile">Profile</a>
         </div>
         <div class="user-profile" id="userProfile">
+            <span id="langPickerNav"></span>
             <span class="user-name" id="displayName">Loading...</span>
             <div class="avatar" id="userInitials">...</div>
-            <button class="logout-btn" onclick="handleLogout()">⏻ Log out</button>
+            <button class="logout-btn" onclick="handleLogout()" data-i18n="nav_logout">⏻ Log out</button>
         </div>
     </nav>
 
     <div class="main-content">
-        <h1>My Profile</h1>
+        <h1 data-i18n="prof_title">My Profile</h1>
 
         <!-- Photo upload -->
         <div class="photo-section">
@@ -256,30 +257,33 @@
                     Change
                 </div>
             </div>
-            <button class="photo-upload-btn" onclick="document.getElementById('photoInput').click()">📷 Upload photo</button>
+            <button class="photo-upload-btn" onclick="document.getElementById('photoInput').click()" data-i18n="prof_upload">📷 Upload photo</button>
             <div class="upload-progress" id="uploadProgress"></div>
             <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
         </div>
         <div id="profileInfo" style="margin-bottom: 2rem;">
             <div style="padding: 1.5rem; background: #f7fafc; border-radius: 12px;">
                 <div style="margin-bottom: 1.5rem;">
-                    <label style="margin-top: 0; color: #718096; font-weight: 400; font-size: 0.9rem;">Full Name</label>
+                    <label style="margin-top: 0; color: #718096; font-weight: 400; font-size: 0.9rem;" data-i18n="prof_fullname">Full Name</label>
                     <div style="font-size: 1.1rem; font-weight: 500; color: #0b1b3a; margin-top: 0.5rem;" id="displayFullName">Loading...</div>
                 </div>
                 <div style="margin-bottom: 1.5rem;">
-                    <label style="margin-top: 0; color: #718096; font-weight: 400; font-size: 0.9rem;">Email</label>
+                    <label style="margin-top: 0; color: #718096; font-weight: 400; font-size: 0.9rem;" data-i18n="prof_email">Email</label>
                     <div style="font-size: 1.1rem; font-weight: 500; color: #0b1b3a; margin-top: 0.5rem;" id="displayEmail">Loading...</div>
                 </div>
                 <div>
-                    <label style="margin-top: 0; color: #718096; font-weight: 400; font-size: 0.9rem;">Account Status</label>
-                    <div style="font-size: 1.1rem; font-weight: 500; color: #059669; margin-top: 0.5rem;">✓ Active</div>
+                    <label style="margin-top: 0; color: #718096; font-weight: 400; font-size: 0.9rem;" data-i18n="prof_status">Account Status</label>
+                    <div style="font-size: 1.1rem; font-weight: 500; color: #059669; margin-top: 0.5rem;" data-i18n="prof_active">✓ Active</div>
                 </div>
             </div>
         </div>
 
         <div id="message" class="message"></div>
-        <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+        <a href="dashboard.html" class="back-link" data-i18n="prof_back">← Back to Dashboard</a>
     </div>
+
+    <!-- i18n -->
+    <script src="js/i18n.js"></script>
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -308,6 +312,13 @@
 
         // Load user on page load
         document.addEventListener('DOMContentLoaded', () => {
+            // Language picker
+            const langNav = document.getElementById('langPickerNav');
+            if (langNav && typeof renderLangPickerLight === 'function') {
+                renderLangPickerLight(langNav, () => applyLanguage());
+            }
+            if (typeof applyLanguage === 'function') applyLanguage();
+
             loadUserProfile();
         });
 
@@ -378,11 +389,11 @@
             const file = event.target.files[0];
             if (!file) return;
             if (!file.type.startsWith('image/')) {
-                showMessage('Please select an image file.', 'error');
+                showMessage(t('prof_err_type'), 'error');
                 return;
             }
             if (file.size > 5 * 1024 * 1024) {
-                showMessage('Image must be under 5 MB.', 'error');
+                showMessage(t('prof_err_size'), 'error');
                 return;
             }
             uploadPhoto(file);
@@ -413,7 +424,7 @@
 
                 setPhotoUI(url);
                 progress.textContent = '';
-                showMessage('Photo updated!', 'success');
+                showMessage(t('prof_saved'), 'success');
             } catch (err) {
                 console.error('Upload error:', err);
                 // If storage auth fails, save as data URL in localStorage instead
@@ -425,7 +436,7 @@
                     if (currentUser.uid) localStorage.setItem('aura_avatar_' + currentUser.uid, dataUrl);
                     setPhotoUI(dataUrl);
                     progress.textContent = '';
-                    showMessage('Photo saved locally!', 'success');
+                    showMessage(t('prof_saved_local'), 'success');
                 };
                 reader.readAsDataURL(file);
             }

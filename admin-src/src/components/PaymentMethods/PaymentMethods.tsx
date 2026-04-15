@@ -11,9 +11,9 @@ import EditMethodForm from './EditMethodForm'
 type FilterTab = 'all' | 'bank' | 'mobile' | 'cash'
 
 const ICONS: Record<string, string> = {
-  bank: '🏦',
-  mobile: '📱',
-  cash: '💵',
+  bank: '',
+  mobile: '',
+  cash: '',
 }
 
 const PaymentMethods: React.FC = () => {

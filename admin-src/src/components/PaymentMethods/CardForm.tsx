@@ -176,9 +176,9 @@ const CardForm: React.FC<CardFormProps> = ({ onClose }) => {
               onChange={(e) => setType(e.target.value as any)}
               className="input-base w-full"
             >
-              <option value="bank">\ud83c\udfe6 Bank Transfer</option>
-              <option value="mobile">\ud83d\udcf1 Mobile Money</option>
-              <option value="cash">\ud83d\udcb5 Cash Pickup</option>
+              <option value="bank">Bank Transfer</option>
+              <option value="mobile">Mobile Money</option>
+              <option value="cash">Cash Pickup</option>
             </select>
           </div>
 
@@ -210,7 +210,7 @@ const CardForm: React.FC<CardFormProps> = ({ onClose }) => {
         {/* Bank fields */}
         {type === 'bank' && (
           <div className="space-y-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-semibold text-blue-900">\ud83c\udfe6 Bank Account Details</h3>
+            <h3 className="font-semibold text-blue-900">Bank Account Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-slate-600 uppercase block mb-2">Account Holder</label>
@@ -239,7 +239,7 @@ const CardForm: React.FC<CardFormProps> = ({ onClose }) => {
         {/* Mobile Money fields */}
         {type === 'mobile' && (
           <div className="space-y-4 bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <h3 className="font-semibold text-purple-900">\ud83d\udcf1 Mobile Money Details</h3>
+            <h3 className="font-semibold text-purple-900">Mobile Money Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-slate-600 uppercase block mb-2">Account Holder</label>
@@ -268,7 +268,7 @@ const CardForm: React.FC<CardFormProps> = ({ onClose }) => {
         {/* Cash fields */}
         {type === 'cash' && (
           <div className="space-y-4 bg-green-50 border border-green-200 rounded-lg p-4">
-            <h3 className="font-semibold text-green-900">\ud83d\udcb5 Cash Pickup Details</h3>
+            <h3 className="font-semibold text-green-900">Cash Pickup Details</h3>
             <div>
               <label className="text-xs font-semibold text-slate-600 uppercase block mb-2">Location / Instructions</label>
               <textarea

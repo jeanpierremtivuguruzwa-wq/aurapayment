@@ -1,26 +1,32 @@
 import React from 'react'
+import { useLanguage } from '../../context/LanguageContext'
+
 interface Props {
   activeSection: string
   onSectionChange: (section: string) => void
 }
 
 const Sidebar: React.FC<Props> = ({ activeSection, onSectionChange }) => {
+  const { t } = useLanguage()
+
   const navItems = [
-    { id: 'live', label: 'Dashboard', icon: '🏠' },
-    { id: 'pairs', label: 'Currency Pairs', icon: '💱' },
-    { id: 'methods', label: 'Payment Methods', icon: '💳' },
-    { id: 'cardholders', label: 'Cardholders', icon: '👥' },
-    { id: 'cardholder-activity', label: 'Cardholder Activity', icon: '📈' },
-    { id: 'orders', label: 'Orders', icon: '📦' },
-    { id: 'transactions', label: 'All Transactions', icon: '📊' },
-    { id: 'users',    label: 'User Management',   icon: '👤' },
-    { id: 'agents',   label: 'Agent Management',  icon: '🕵️' },
-    { id: 'chat',     label: 'AuraChat',           icon: '💬' },
-    { id: 'wallet',   label: 'AuraWallet',          icon: '💰' },
-    { id: 'currency-assignments', label: 'Currency Assignments', icon: '🏦' },
-    { id: 'notifications', label: 'Notifications',       icon: '🔔' },
-    { id: 'public-dashboard', label: 'User Dashboard',   icon: '🌐' },
-    { id: 'profile',  label: 'My Profile',         icon: '🛡' },
+    { id: 'live',                 label: t('dashboard'),            icon: '🏠' },
+    { id: 'pairs',                label: t('currencyPairs'),        icon: '💱' },
+    { id: 'methods',              label: t('paymentMethods'),       icon: '💳' },
+    { id: 'cardholders',          label: t('cardholders'),          icon: '👥' },
+    { id: 'cardholder-activity',  label: t('cardholderActivity'),   icon: '📈' },
+    { id: 'orders',               label: t('orders'),               icon: '📦' },
+    { id: 'transactions',         label: t('allTransactions'),      icon: '📊' },
+    { id: 'users',                label: t('userManagement'),       icon: '👤' },
+    { id: 'agents',               label: t('agentManagement'),      icon: '🕵️' },
+    { id: 'chat',                 label: t('auraChat'),             icon: '💬' },
+    { id: 'wallet',               label: t('auraWallet'),           icon: '💰' },
+    { id: 'currency-assignments', label: t('currencyAssignments'),  icon: '🏦' },
+    { id: 'notifications',        label: t('notifications'),        icon: '🔔' },
+    { id: 'delivery-options',     label: t('deliveryOptions'),      icon: '🚚' },
+    { id: 'public-dashboard',     label: t('userDashboard'),        icon: '🌐' },
+    { id: 'profile',              label: t('myProfile'),            icon: '🛡' },
+    { id: 'settings',             label: t('settings'),             icon: '⚙️' },
   ]
 
   const isUserDashboard = activeSection === 'user-dashboard'

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Dashboard - Aura payment</title>
+    <script src="js/i18n.js"></script>
     <style>
         * {
             margin: 0;
@@ -439,35 +440,36 @@
     <nav class="navbar">
         <div class="logo">Aura payment</div>
         <div class="nav-menu">
-            <a href="#" class="active">Dashboard</a>
-            <a href="send-money.html">Send Money</a>
-            <a href="history.html">History</a>
-            <a href="profile.html">Profile</a>
+            <a href="#" class="active" data-i18n="nav_dashboard">Dashboard</a>
+            <a href="send-money.html" data-i18n="nav_send">Send Money</a>
+            <a href="history.html" data-i18n="nav_history">History</a>
+            <a href="profile.html" data-i18n="nav_profile">Profile</a>
         </div>
         <div class="user-profile" id="userProfile">
             <span class="user-name" id="displayName">Loading...</span>
             <div class="avatar" id="userInitials">...</div>
-            <button class="logout-btn" onclick="handleLogout()">⏻ Log out</button>
+            <span id="langPickerNav"></span>
+            <button class="logout-btn" onclick="handleLogout()" data-i18n="nav_logout">⏻ Log out</button>
         </div>
     </nav>
 
     <main class="main-content">
         <div id="no-pairs-msg" style="display:none; text-align:center; padding:2.5rem 1.5rem; background:white; border-radius:24px; box-shadow:0 4px 12px rgba(0,0,0,0.05); margin-bottom:20px;">
             <div style="font-size:2.5rem; margin-bottom:0.75rem;">🚫</div>
-            <h3 style="color:#0b1b3a; margin-bottom:0.5rem;">No exchange rates available</h3>
-            <p style="color:#718096; font-size:0.9rem;">No active currency pairs have been configured yet. Please check back later or contact support.</p>
+            <h3 style="color:#0b1b3a; margin-bottom:0.5rem;" data-i18n="dash_no_pairs_title">No exchange rates available</h3>
+            <p style="color:#718096; font-size:0.9rem;" data-i18n="dash_no_pairs_desc">No active currency pairs have been configured yet. Please check back later or contact support.</p>
         </div>
 
         <div id="calculator-card-main" class="calculator-card" style="display:none;">
             <div class="timestamp">
-                <span>Last updated: <span id="current-time"></span></span>
-                <span class="live-badge" id="rate-badge">LIVE</span>
+                <span><span data-i18n="dash_last_updated">Last updated:</span> <span id="current-time"></span></span>
+                <span class="live-badge" id="rate-badge" data-i18n="dash_live">LIVE</span>
 
             </div>
 
             <div class="swap-container">
                 <div class="input-row">
-                    <span>You send</span>
+                    <span data-i18n="dash_you_send">You send</span>
                     <div class="currency-input-group">
                         <div class="currency-select" onclick="openDropdown('send')">
                             <span id="send-flag">🇷🇺</span>
@@ -482,7 +484,7 @@
                 <div class="swap-icon" id="swapIcon" onclick="swapCurrencies()">↓↑</div>
 
                 <div class="input-row">
-                    <span>Recipient</span>
+                    <span data-i18n="dash_recipient">Recipient</span>
                     <div class="currency-input-group">
                         <div class="currency-select" onclick="openDropdown('receive')">
                             <span id="receive-flag">🌍</span>
@@ -499,23 +501,23 @@
 
             <div class="rate-row">
                 <div class="rate-info">
-                    <span>Exchange rate</span>
+                    <span data-i18n="dash_exchange_rate">Exchange rate</span>
                     <span class="source-badge" id="rate-source">LIVE</span>
                 </div>
                 <span id="exchange-rate">1 RUB = -- CFA</span>
             </div>
             <div class="rate-row">
                 <div class="rate-info">
-                    <span>Inverse rate</span>
+                    <span data-i18n="dash_inverse_rate">Inverse rate</span>
                 </div>
                 <span id="inverse-rate">1 CFA = -- RUB</span>
             </div>
             <div class="rate-row">
-                <span>Total fee</span>
+                <span data-i18n="dash_total_fee">Total fee</span>
                 <span id="total-fee">₮ 100.00</span>
             </div>
 
-            <button class="continue-btn" id="continue-btn" onclick="goToSendMoney()">
+            <button class="continue-btn" id="continue-btn" onclick="goToSendMoney()" data-i18n="dash_continue">
                 Continue to Send Money
             </button>
 
@@ -528,7 +530,7 @@
     <div class="dropdown-overlay" id="dropdownOverlay" onclick="closeDropdown()"></div>
     <div class="currency-dropdown" id="currencyDropdown">
         <div class="dropdown-header">
-            <span>Select country</span>
+            <span data-i18n="dash_select_country">Select country</span>
             <span class="close-btn" onclick="closeDropdown()">✕</span>
         </div>
         <div class="currency-list" id="currencyList"></div>
@@ -691,7 +693,7 @@
             const receiveSymbol = getSymbol(receiveCurrency);
 
             if (!rate) {
-                exchangeRateSpan.textContent = `No rate available`;
+                exchangeRateSpan.textContent = t('dash_no_rate');
                 inverseRateSpan.textContent = '';
                 receiveAmountSpan.value = '';
                 const feeEl = document.getElementById('total-fee');
@@ -717,7 +719,7 @@
             if (feeEl) feeEl.textContent = `${sendSymbol} ${fee.toFixed(2)}`;
 
             const savings = amount * 0.02 * rate;
-            if (savingsBadge) savingsBadge.textContent = `🔗 YOU SAVE ${receiveSymbol} ${savings.toFixed(2)}`;
+            if (savingsBadge) savingsBadge.textContent = `🔗 ${t('dash_you_save')} ${receiveSymbol} ${savings.toFixed(2)}`;
 
             rateBadge.className = 'live-badge';
             rateBadge.textContent = selectedPair.urgent ? 'URGENT' : 'LIVE';
@@ -731,7 +733,7 @@
             if (activeField === 'receive') {
                 const receivePairs = firestorePairs.filter(p => p.from === sendCurrency);
                 if (!receivePairs.length) {
-                    currencyList.innerHTML = '<div style="padding:16px;color:#666;text-align:center;">No destinations available</div>';
+                    currencyList.innerHTML = `<div style="padding:16px;color:#666;text-align:center;">${t('send_no_pairs')}</div>`;
                     return;
                 }
                 // Group by to-currency
@@ -743,7 +745,7 @@
                 Object.entries(byCurrency).forEach(([currency, pairs]) => {
                     const title = document.createElement('div');
                     title.className = 'section-title';
-                    title.textContent = currency + ' COUNTRIES';
+                    title.textContent = currency + ' ' + t('dash_select_country').toUpperCase();
                     currencyList.appendChild(title);
                     pairs.forEach(pair => currencyList.appendChild(buildPairItem(pair)));
                 });
@@ -752,7 +754,7 @@
                 // zone currencies (XOF/XAF): one entry per sending country.
                 const title = document.createElement('div');
                 title.className = 'section-title';
-                title.textContent = 'SEND FROM';
+                title.textContent = t('send_send_from');
                 currencyList.appendChild(title);
                 const seenKeys = new Set();
                 firestorePairs.forEach(pair => {
@@ -1015,6 +1017,15 @@
 
         init();
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDropdown(); });
+
+        // Language picker
+        renderLangPickerLight(document.getElementById('langPickerNav'), () => {
+            applyLanguage();
+            // Re-render dynamic text that depends on t()
+            updateDisplay();
+            renderCurrencyDropdown();
+        });
+        applyLanguage();
     </script>
 </body>
 </html>

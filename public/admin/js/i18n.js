@@ -1,0 +1,792 @@
+/**
+ * Aura Payment – Public i18n
+ * Language stored in localStorage under 'aura_lang'
+ * Supported: en, ru, fr, pt
+ *
+ * Usage:
+ *   - Add data-i18n="key" to any element.
+ *   - Call applyLanguage() once DOM is ready.
+ *   - Call setLanguage('ru') to switch.
+ */
+
+const AURA_TRANSLATIONS = {
+  en: {
+    // Nav
+    nav_dashboard:    'Dashboard',
+    nav_send:         'Send Money',
+    nav_history:      'History',
+    nav_profile:      'Profile',
+    nav_logout:       '⏻ Log out',
+    nav_signin:       'Sign In',
+    nav_get_started:  'Get Started',
+
+    // Landing (index.html)
+    hero_title:       'World wide transactions,\nsimplified',
+    hero_subtitle:    'Swift, safe, and low‑cost transfers to 24 African countries. Get real‑time quotes and fast local deposits.',
+    hero_cta:         'Start sending now →',
+    stat_countries:   'African countries',
+    stat_customers:   'Happy customers',
+    stat_delivery:    'delivery rate',
+    how_title:        'How it works in 4 simple steps',
+    step1_title:      'Create account',
+    step1_desc:       'Sign up in 30 seconds – no paperwork.',
+    step2_title:      'Enter amount',
+    step2_desc:       'Choose your send & receive currency, see live rate.',
+    step3_title:      'Add recipient',
+    step3_desc:       'Bank account or mobile money details.',
+    step4_title:      'Pay & track',
+    step4_desc:       'Upload payment proof, track status in real time.',
+    why_title:        'Why choose Aura?',
+    feat1_title:      'Fast',
+    feat1_desc:       'Transfers completed within 24 hours.',
+    feat2_title:      'Secure',
+    feat2_desc:       'Bank‑grade encryption & fraud monitoring.',
+    feat3_title:      'Low fees',
+    feat3_desc:       'No hidden charges – transparent pricing.',
+    feat4_title:      'Easy tracking',
+    feat4_desc:       'Real‑time status from your dashboard.',
+    footer_rights:    '© 2026 Aura Payment. All rights reserved.',
+    footer_support:   'Questions?',
+    lang_label:       'Language',
+
+    // Dashboard
+    dash_no_pairs_title:  'No exchange rates available',
+    dash_no_pairs_desc:   'No active currency pairs have been configured yet. Please check back later or contact support.',
+    dash_you_send:        'You send',
+    dash_recipient:       'Recipient',
+    dash_live:            'LIVE',
+    dash_exchange_rate:   'Exchange rate',
+    dash_inverse_rate:    'Inverse rate',
+    dash_total_fee:       'Total fee',
+    dash_continue:        'Continue to Send Money',
+    dash_select_country:  'Select country',
+    dash_last_updated:    'Last updated:',
+
+    // History
+    hist_title:       'Transaction History',
+    hist_subtitle:    'View all your transactions and their status',
+    hist_all:         'All Orders',
+    hist_completed:   '✓ Completed',
+    hist_pending:     '⏳ Pending',
+    hist_cancelled:   '✕ Cancelled',
+    hist_loading:     'Loading your orders...',
+    hist_empty:       'No orders yet',
+    hist_empty_start: 'Start sending money →',
+    hist_order:       'Order #',
+    hist_recipient:   'Recipient Name',
+    hist_gets:        'Recipient Gets',
+    hist_delivery:    'Delivery Method',
+    hist_provider:    'Provider',
+    hist_rate:        'Exchange Rate',
+    hist_status:      'Order Status',
+    hist_continue_btn: 'Continue Payment',
+    hist_cancel_btn:  'Cancel Order',
+    hist_download:    'Download Receipt',
+    hist_details:     'View Details',
+    hist_status_completed: '✓ Completed',
+    hist_status_pending:   '⏳ Pending',
+    hist_status_uploaded:  '📤 Proof Uploaded',
+    hist_status_cancelled: '✕ Cancelled',
+    hist_cancel_confirm:   'Are you sure you want to cancel this order?',
+    hist_receipt_soon:     'Receipt download feature coming soon',
+    hist_try_again:        'Try Again',
+    hist_error_load:       'Could not load orders. Please refresh the page.',
+
+    // Send Money steps
+    send_step1:       'Amount',
+    send_step2:       'Recipient',
+    send_step3:       'Payment',
+    send_step4:       'Proof',
+    send_amount_to:   'Amount to send',
+    send_fee:         'Fee',
+    send_rate:        'Rate',
+    send_gets:        'Recipient gets',
+    send_choose_delivery: 'Choose Delivery Method',
+    send_continue:    'Continue',
+    send_back:        'Back',
+    send_recipient_title: 'Recipient Details',
+    send_fullname:    'Full Name',
+    send_fullname_ph: 'Enter recipient\'s full name',
+    send_provider:    'Provider',
+    send_phone:       'Phone Number',
+    send_phone_ph:    'Enter phone number',
+    send_account:     'Account Number',
+    send_account_ph:  'Enter account number',
+    send_payment_title: 'Make Payment',
+    send_payment_select: 'Select your payment method',
+    send_payment_continue: 'Continue to Upload Proof',
+    send_proof_title: 'Upload Payment Proof',
+    send_proof_drag:  'Drag and drop or click to upload',
+    send_proof_hint:  'Supported: JPG, PNG, PDF (Max 10MB)',
+    send_choose_file: 'Choose File',
+    send_submit:      'Submit & Complete',
+    send_creating_order: 'Creating order...',
+    send_rate_updated: 'The exchange rate has been updated. Please review the new rate below before continuing.',
+    send_delivery_mobile: 'Mobile Money',
+    send_delivery_mobile_desc: 'Fastest option',
+    send_delivery_bank: 'Bank Account',
+    send_delivery_bank_desc: 'Transfer to a bank account',
+    send_delivery_cash: 'Cash Pickup',
+    send_delivery_cash_desc: 'Pick up at agent',
+    send_recommended: 'Recommended',
+    send_validate_delivery: 'Please select a delivery method',
+    send_validate_name: 'Please enter recipient name',
+    send_validate_provider: 'Please select a provider',
+    send_validate_phone: 'Please enter phone number',
+    send_validate_account: 'Please enter account number',
+    send_validate_payment: 'Please select a payment method',
+    send_validate_proof: 'Please upload payment proof',
+    send_file_too_big: 'File size must be less than 10MB',
+    send_success:     'Transaction submitted successfully',
+    send_error_order: 'Error creating order. Please check your details and try again.',
+    send_saving:      'Saving...',
+    send_copy:        'Copy',
+    send_copied:      'Copied!',
+    send_copy_fail:   'Failed to copy',
+    send_cardholder:  'Cardholder',
+    send_method_type: 'Method Type',
+    send_currency:    'Currency',
+    send_processing:  'Processing Time',
+    send_acct_holder: 'Account Holder',
+    send_acct_number: 'Account Number',
+    send_phone_num:   'Phone Number',
+    send_no_method:   'No payment methods available for this currency',
+    send_loading_methods: 'Loading payment methods...',
+    send_bank:        'Bank Transfer',
+    send_mobile:      'Mobile Money',
+    send_cash:        'Cash',
+    send_no_pairs:      'No destinations available',
+    send_send_from:     'SEND FROM',
+    send_destination:   'Destination',
+    send_mobile_provider: 'Mobile Money Provider',
+    send_bank_label:    'Bank',
+    send_select_provider: 'Select provider',
+    send_select_bank:   'Select bank',
+    send_none:          'None',
+    dash_no_rate:       'No rate available',
+    dash_you_save:      'YOU SAVE',
+    prof_title:       'My Profile',
+    prof_upload:      '📷 Upload photo',
+    prof_uploading:   'Uploading…',
+    prof_fullname:    'Full Name',
+    prof_email:       'Email',
+    prof_status:      'Account Status',
+    prof_active:      '✓ Active',
+    prof_back:        '← Back to Dashboard',
+    prof_saved:       'Photo updated!',
+    prof_saved_local: 'Photo saved locally!',
+    prof_err_type:    'Please select an image file.',
+    prof_err_size:    'Image must be under 5 MB.',
+  },
+
+  ru: {
+    nav_dashboard:    'Главная',
+    nav_send:         'Отправить',
+    nav_history:      'История',
+    nav_profile:      'Профиль',
+    nav_logout:       '⏻ Выйти',
+    nav_signin:       'Войти',
+    nav_get_started:  'Начать',
+
+    hero_title:       'World wide transactions,\nупрощённо',
+    hero_subtitle:    'Быстрые, безопасные и дешёвые переводы в 24 африканские страны.',
+    hero_cta:         'Начать отправку →',
+    stat_countries:   'Африканских стран',
+    stat_customers:   'Довольных клиентов',
+    stat_delivery:    'доставка',
+    how_title:        'Как это работает за 4 шага',
+    step1_title:      'Создать аккаунт',
+    step1_desc:       'Зарегистрируйтесь за 30 секунд.',
+    step2_title:      'Введите сумму',
+    step2_desc:       'Выберите валюту и посмотрите курс.',
+    step3_title:      'Укажите получателя',
+    step3_desc:       'Банковский счёт или мобильные деньги.',
+    step4_title:      'Оплата и отслеживание',
+    step4_desc:       'Загрузите подтверждение оплаты.',
+    why_title:        'Почему Aura?',
+    feat1_title:      'Быстро',
+    feat1_desc:       'Переводы выполняются в течение 24 часов.',
+    feat2_title:      'Безопасно',
+    feat2_desc:       'Шифрование банковского уровня.',
+    feat3_title:      'Низкие комиссии',
+    feat3_desc:       'Никаких скрытых платежей.',
+    feat4_title:      'Лёгкое отслеживание',
+    feat4_desc:       'Статус в реальном времени.',
+    footer_rights:    '© 2026 Aura Payment. Все права защищены.',
+    footer_support:   'Вопросы?',
+    lang_label:       'Язык',
+
+    dash_no_pairs_title:  'Нет доступных курсов',
+    dash_no_pairs_desc:   'Активные валютные пары ещё не настроены. Зайдите позже.',
+    dash_you_send:        'Вы отправляете',
+    dash_recipient:       'Получатель',
+    dash_live:            'LIVE',
+    dash_exchange_rate:   'Курс обмена',
+    dash_inverse_rate:    'Обратный курс',
+    dash_total_fee:       'Комиссия',
+    dash_continue:        'Перейти к отправке',
+    dash_select_country:  'Выберите страну',
+    dash_last_updated:    'Обновлено:',
+
+    hist_title:       'История транзакций',
+    hist_subtitle:    'Все ваши транзакции и их статусы',
+    hist_all:         'Все заказы',
+    hist_completed:   '✓ Завершён',
+    hist_pending:     '⏳ Ожидает',
+    hist_cancelled:   '✕ Отменён',
+    hist_loading:     'Загрузка заказов...',
+    hist_empty:       'Заказов нет',
+    hist_empty_start: 'Начать отправку →',
+    hist_order:       'Заказ #',
+    hist_recipient:   'Имя получателя',
+    hist_gets:        'Получатель получает',
+    hist_delivery:    'Метод доставки',
+    hist_provider:    'Провайдер',
+    hist_rate:        'Курс обмена',
+    hist_status:      'Статус заказа',
+    hist_continue_btn: 'Продолжить оплату',
+    hist_cancel_btn:  'Отменить заказ',
+    hist_download:    'Скачать квитанцию',
+    hist_details:     'Подробнее',
+    hist_status_completed: '✓ Завершён',
+    hist_status_pending:   '⏳ Ожидает',
+    hist_status_uploaded:  '📤 Загружено',
+    hist_status_cancelled: '✕ Отменён',
+    hist_cancel_confirm:   'Вы уверены, что хотите отменить этот заказ?',
+    hist_receipt_soon:     'Скоро появится возможность скачать квитанцию',
+    hist_try_again:        'Попробовать снова',
+    hist_error_load:       'Не удалось загрузить заказы. Обновите страницу.',
+
+    send_step1:       'Сумма',
+    send_step2:       'Получатель',
+    send_step3:       'Оплата',
+    send_step4:       'Подтверждение',
+    send_amount_to:   'Сумма к отправке',
+    send_fee:         'Комиссия',
+    send_rate:        'Курс',
+    send_gets:        'Получатель получает',
+    send_choose_delivery: 'Выберите способ доставки',
+    send_continue:    'Продолжить',
+    send_back:        'Назад',
+    send_recipient_title: 'Данные получателя',
+    send_fullname:    'Полное имя',
+    send_fullname_ph: 'Введите имя получателя',
+    send_provider:    'Провайдер',
+    send_phone:       'Телефон',
+    send_phone_ph:    'Введите номер телефона',
+    send_account:     'Номер счёта',
+    send_account_ph:  'Введите номер счёта',
+    send_payment_title: 'Оплата',
+    send_payment_select: 'Выберите способ оплаты',
+    send_payment_continue: 'Перейти к загрузке подтверждения',
+    send_proof_title: 'Загрузите подтверждение оплаты',
+    send_proof_drag:  'Перетащите или нажмите для загрузки',
+    send_proof_hint:  'Поддерживается: JPG, PNG, PDF (Макс. 10МБ)',
+    send_choose_file: 'Выбрать файл',
+    send_submit:      'Отправить',
+    send_creating_order: 'Создание заказа...',
+    send_rate_updated: 'Курс обмена обновился. Проверьте новый курс ниже.',
+    send_delivery_mobile: 'Мобильные деньги',
+    send_delivery_mobile_desc: 'Самый быстрый вариант',
+    send_delivery_bank: 'Банковский счёт',
+    send_delivery_bank_desc: 'Перевод на банковский счёт',
+    send_delivery_cash: 'Выдача наличных',
+    send_delivery_cash_desc: 'Получение у агента',
+    send_recommended: 'Рекомендуется',
+    send_validate_delivery: 'Выберите способ доставки',
+    send_validate_name: 'Введите имя получателя',
+    send_validate_provider: 'Выберите провайдера',
+    send_validate_phone: 'Введите номер телефона',
+    send_validate_account: 'Введите номер счёта',
+    send_validate_payment: 'Выберите способ оплаты',
+    send_validate_proof: 'Загрузите подтверждение оплаты',
+    send_file_too_big: 'Размер файла должен быть менее 10МБ',
+    send_success:     'Транзакция успешно отправлена',
+    send_error_order: 'Ошибка создания заказа. Проверьте данные.',
+    send_saving:      'Сохранение...',
+    send_copy:        'Копировать',
+    send_copied:      'Скопировано!',
+    send_copy_fail:   'Не удалось скопировать',
+    send_cardholder:  'Держатель карты',
+    send_method_type: 'Тип метода',
+    send_currency:    'Валюта',
+    send_processing:  'Время обработки',
+    send_acct_holder: 'Владелец счёта',
+    send_acct_number: 'Номер счёта',
+    send_phone_num:   'Номер телефона',
+    send_no_method:   'Нет доступных методов оплаты для этой валюты',
+    send_loading_methods: 'Загрузка методов оплаты...',
+    send_bank:        'Банковский перевод',
+    send_mobile:      'Мобильные деньги',
+    send_cash:        'Наличные',
+    send_no_pairs:      'Направления недоступны',
+    send_send_from:     'ОТПРАВИТЬ ИЗ',
+    send_destination:   'Назначение',
+    send_mobile_provider: 'Провайдер мобильных денег',
+    send_bank_label:    'Банк',
+    send_select_provider: 'Выберите провайдера',
+    send_select_bank:   'Выберите банк',
+    send_none:          'Нет',
+    dash_no_rate:       'Курс недоступен',
+    dash_you_save:      'ВЫ ЭКОНОМИТЕ',
+    prof_title:       'Мой профиль',
+    prof_upload:      '📷 Загрузить фото',
+    prof_uploading:   'Загрузка…',
+    prof_fullname:    'Полное имя',
+    prof_email:       'Email',
+    prof_status:      'Статус аккаунта',
+    prof_active:      '✓ Активен',
+    prof_back:        '← Назад на главную',
+    prof_saved:       'Фото обновлено!',
+    prof_saved_local: 'Фото сохранено локально!',
+    prof_err_type:    'Выберите файл изображения.',
+    prof_err_size:    'Изображение должно быть меньше 5 МБ.',
+  },
+
+  fr: {
+    nav_dashboard:    'Tableau de bord',
+    nav_send:         'Envoyer',
+    nav_history:      'Historique',
+    nav_profile:      'Profil',
+    nav_logout:       '⏻ Déconnexion',
+    nav_signin:       'Connexion',
+    nav_get_started:  'Commencer',
+
+    hero_title:       'World wide transactions,\nsimplifiées',
+    hero_subtitle:    'Transferts rapides, sûrs et peu coûteux vers 24 pays africains.',
+    hero_cta:         'Commencer à envoyer →',
+    stat_countries:   'Pays africains',
+    stat_customers:   'Clients satisfaits',
+    stat_delivery:    'livraison',
+    how_title:        'Comment ça marche en 4 étapes',
+    step1_title:      'Créer un compte',
+    step1_desc:       'Inscrivez-vous en 30 secondes.',
+    step2_title:      'Entrez le montant',
+    step2_desc:       'Choisissez la devise et voyez le taux en direct.',
+    step3_title:      'Ajoutez le bénéficiaire',
+    step3_desc:       'Compte bancaire ou mobile money.',
+    step4_title:      'Payez et suivez',
+    step4_desc:       'Téléchargez la preuve de paiement.',
+    why_title:        'Pourquoi choisir Aura ?',
+    feat1_title:      'Rapide',
+    feat1_desc:       'Transferts effectués en 24 heures.',
+    feat2_title:      'Sécurisé',
+    feat2_desc:       'Chiffrement de niveau bancaire.',
+    feat3_title:      'Frais réduits',
+    feat3_desc:       'Aucuns frais cachés.',
+    feat4_title:      'Suivi facile',
+    feat4_desc:       'Statut en temps réel.',
+    footer_rights:    '© 2026 Aura Payment. Tous droits réservés.',
+    footer_support:   'Questions ?',
+    lang_label:       'Langue',
+
+    dash_no_pairs_title:  'Aucun taux disponible',
+    dash_no_pairs_desc:   'Aucune paire de devises active n\'a été configurée.',
+    dash_you_send:        'Vous envoyez',
+    dash_recipient:       'Bénéficiaire',
+    dash_live:            'EN DIRECT',
+    dash_exchange_rate:   'Taux de change',
+    dash_inverse_rate:    'Taux inverse',
+    dash_total_fee:       'Frais total',
+    dash_continue:        'Continuer vers l\'envoi',
+    dash_select_country:  'Sélectionner le pays',
+    dash_last_updated:    'Dernière mise à jour :',
+
+    hist_title:       'Historique des transactions',
+    hist_subtitle:    'Toutes vos transactions et leurs statuts',
+    hist_all:         'Toutes les commandes',
+    hist_completed:   '✓ Complétées',
+    hist_pending:     '⏳ En attente',
+    hist_cancelled:   '✕ Annulées',
+    hist_loading:     'Chargement...',
+    hist_empty:       'Aucune commande',
+    hist_empty_start: 'Commencer à envoyer →',
+    hist_order:       'Commande #',
+    hist_recipient:   'Nom du bénéficiaire',
+    hist_gets:        'Le bénéficiaire reçoit',
+    hist_delivery:    'Méthode de livraison',
+    hist_provider:    'Prestataire',
+    hist_rate:        'Taux de change',
+    hist_status:      'Statut',
+    hist_continue_btn: 'Continuer le paiement',
+    hist_cancel_btn:  'Annuler la commande',
+    hist_download:    'Télécharger le reçu',
+    hist_details:     'Voir les détails',
+    hist_status_completed: '✓ Complétée',
+    hist_status_pending:   '⏳ En attente',
+    hist_status_uploaded:  '📤 Preuve téléchargée',
+    hist_status_cancelled: '✕ Annulée',
+    hist_cancel_confirm:   'Êtes-vous sûr de vouloir annuler cette commande ?',
+    hist_receipt_soon:     'Téléchargement du reçu bientôt disponible',
+    hist_try_again:        'Réessayer',
+    hist_error_load:       'Impossible de charger les commandes. Veuillez actualiser.',
+
+    send_step1:       'Montant',
+    send_step2:       'Bénéficiaire',
+    send_step3:       'Paiement',
+    send_step4:       'Preuve',
+    send_amount_to:   'Montant à envoyer',
+    send_fee:         'Frais',
+    send_rate:        'Taux',
+    send_gets:        'Le bénéficiaire reçoit',
+    send_choose_delivery: 'Choisir la méthode de livraison',
+    send_continue:    'Continuer',
+    send_back:        'Retour',
+    send_recipient_title: 'Détails du bénéficiaire',
+    send_fullname:    'Nom complet',
+    send_fullname_ph: 'Entrez le nom du bénéficiaire',
+    send_provider:    'Prestataire',
+    send_phone:       'Numéro de téléphone',
+    send_phone_ph:    'Entrez le numéro de téléphone',
+    send_account:     'Numéro de compte',
+    send_account_ph:  'Entrez le numéro de compte',
+    send_payment_title: 'Effectuer le paiement',
+    send_payment_select: 'Sélectionnez votre méthode de paiement',
+    send_payment_continue: 'Continuer vers le téléchargement',
+    send_proof_title: 'Télécharger la preuve de paiement',
+    send_proof_drag:  'Glissez-déposez ou cliquez pour télécharger',
+    send_proof_hint:  'Supporté : JPG, PNG, PDF (Max 10 Mo)',
+    send_choose_file: 'Choisir un fichier',
+    send_submit:      'Soumettre et terminer',
+    send_creating_order: 'Création de la commande...',
+    send_rate_updated: 'Le taux de change a été mis à jour. Veuillez vérifier le nouveau taux.',
+    send_delivery_mobile: 'Mobile Money',
+    send_delivery_mobile_desc: 'Option la plus rapide',
+    send_delivery_bank: 'Compte bancaire',
+    send_delivery_bank_desc: 'Virement bancaire',
+    send_delivery_cash: 'Retrait en espèces',
+    send_delivery_cash_desc: 'Retrait chez un agent',
+    send_recommended: 'Recommandé',
+    send_validate_delivery: 'Veuillez sélectionner une méthode de livraison',
+    send_validate_name: 'Veuillez entrer le nom du bénéficiaire',
+    send_validate_provider: 'Veuillez sélectionner un prestataire',
+    send_validate_phone: 'Veuillez entrer le numéro de téléphone',
+    send_validate_account: 'Veuillez entrer le numéro de compte',
+    send_validate_payment: 'Veuillez sélectionner une méthode de paiement',
+    send_validate_proof: 'Veuillez télécharger la preuve de paiement',
+    send_file_too_big: 'La taille du fichier doit être inférieure à 10 Mo',
+    send_success:     'Transaction soumise avec succès',
+    send_error_order: 'Erreur lors de la création de la commande.',
+    send_saving:      'Enregistrement...',
+    send_copy:        'Copier',
+    send_copied:      'Copié !',
+    send_copy_fail:   'Échec de la copie',
+    send_cardholder:  'Titulaire de la carte',
+    send_method_type: 'Type de méthode',
+    send_currency:    'Devise',
+    send_processing:  'Délai de traitement',
+    send_acct_holder: 'Titulaire du compte',
+    send_acct_number: 'Numéro de compte',
+    send_phone_num:   'Numéro de téléphone',
+    send_no_method:   'Aucune méthode de paiement disponible pour cette devise',
+    send_loading_methods: 'Chargement des méthodes de paiement...',
+    send_bank:        'Virement bancaire',
+    send_mobile:      'Mobile Money',
+    send_cash:        'Espèces',
+    send_no_pairs:      'Aucune destination disponible',
+    send_send_from:     'ENVOYER DEPUIS',
+    send_destination:   'Destination',
+    send_mobile_provider: 'Fournisseur de Mobile Money',
+    send_bank_label:    'Banque',
+    send_select_provider: 'Choisir un fournisseur',
+    send_select_bank:   'Choisir une banque',
+    send_none:          'Aucun',
+    dash_no_rate:       'Taux indisponible',
+    dash_you_save:      'VOUS ÉCONOMISEZ',
+    prof_title:       'Mon profil',
+    prof_upload:      '📷 Télécharger une photo',
+    prof_uploading:   'Envoi en cours…',
+    prof_fullname:    'Nom complet',
+    prof_email:       'Email',
+    prof_status:      'Statut du compte',
+    prof_active:      '✓ Actif',
+    prof_back:        '← Retour au tableau de bord',
+    prof_saved:       'Photo mise à jour !',
+    prof_saved_local: 'Photo enregistrée localement !',
+    prof_err_type:    'Veuillez sélectionner un fichier image.',
+    prof_err_size:    'L’image doit être inférieure à 5 Mo.',
+  },
+
+  pt: {
+    nav_dashboard:    'Painel',
+    nav_send:         'Enviar',
+    nav_history:      'Histórico',
+    nav_profile:      'Perfil',
+    nav_logout:       '⏻ Sair',
+    nav_signin:       'Entrar',
+    nav_get_started:  'Começar',
+
+    hero_title:       'World wide transactions,\nsimplificadas',
+    hero_subtitle:    'Transferências rápidas, seguras e de baixo custo para 24 países africanos.',
+    hero_cta:         'Começar a enviar →',
+    stat_countries:   'Países africanos',
+    stat_customers:   'Clientes satisfeitos',
+    stat_delivery:    'entrega',
+    how_title:        'Como funciona em 4 passos simples',
+    step1_title:      'Criar conta',
+    step1_desc:       'Registe-se em 30 segundos.',
+    step2_title:      'Inserir valor',
+    step2_desc:       'Escolha a moeda e veja o câmbio ao vivo.',
+    step3_title:      'Adicionar destinatário',
+    step3_desc:       'Conta bancária ou dinheiro móvel.',
+    step4_title:      'Pagar e rastrear',
+    step4_desc:       'Carregue o comprovante e acompanhe em tempo real.',
+    why_title:        'Porquê escolher Aura?',
+    feat1_title:      'Rápido',
+    feat1_desc:       'Transferências realizadas em 24 horas.',
+    feat2_title:      'Seguro',
+    feat2_desc:       'Encriptação de nível bancário.',
+    feat3_title:      'Taxas baixas',
+    feat3_desc:       'Sem taxas ocultas.',
+    feat4_title:      'Fácil rastreamento',
+    feat4_desc:       'Estado em tempo real.',
+    footer_rights:    '© 2026 Aura Payment. Todos os direitos reservados.',
+    footer_support:   'Dúvidas?',
+    lang_label:       'Idioma',
+
+    dash_no_pairs_title:  'Sem taxas disponíveis',
+    dash_no_pairs_desc:   'Nenhum par de moedas ativo foi configurado.',
+    dash_you_send:        'Você envia',
+    dash_recipient:       'Destinatário',
+    dash_live:            'AO VIVO',
+    dash_exchange_rate:   'Taxa de câmbio',
+    dash_inverse_rate:    'Taxa inversa',
+    dash_total_fee:       'Taxa total',
+    dash_continue:        'Continuar para envio',
+    dash_select_country:  'Selecionar país',
+    dash_last_updated:    'Última atualização:',
+
+    hist_title:       'Histórico de transações',
+    hist_subtitle:    'Todas as suas transações e seus estados',
+    hist_all:         'Todos os pedidos',
+    hist_completed:   '✓ Concluídos',
+    hist_pending:     '⏳ Pendentes',
+    hist_cancelled:   '✕ Cancelados',
+    hist_loading:     'A carregar os pedidos...',
+    hist_empty:       'Sem pedidos',
+    hist_empty_start: 'Começar a enviar →',
+    hist_order:       'Pedido #',
+    hist_recipient:   'Nome do destinatário',
+    hist_gets:        'O destinatário recebe',
+    hist_delivery:    'Método de entrega',
+    hist_provider:    'Provedor',
+    hist_rate:        'Taxa de câmbio',
+    hist_status:      'Estado do pedido',
+    hist_continue_btn: 'Continuar pagamento',
+    hist_cancel_btn:  'Cancelar pedido',
+    hist_download:    'Descarregar recibo',
+    hist_details:     'Ver detalhes',
+    hist_status_completed: '✓ Concluído',
+    hist_status_pending:   '⏳ Pendente',
+    hist_status_uploaded:  '📤 Comprovante enviado',
+    hist_status_cancelled: '✕ Cancelado',
+    hist_cancel_confirm:   'Tem certeza que deseja cancelar este pedido?',
+    hist_receipt_soon:     'Download do recibo em breve',
+    hist_try_again:        'Tentar novamente',
+    hist_error_load:       'Não foi possível carregar os pedidos. Por favor, atualize.',
+
+    send_step1:       'Valor',
+    send_step2:       'Destinatário',
+    send_step3:       'Pagamento',
+    send_step4:       'Comprovante',
+    send_amount_to:   'Valor a enviar',
+    send_fee:         'Taxa',
+    send_rate:        'Câmbio',
+    send_gets:        'O destinatário recebe',
+    send_choose_delivery: 'Escolher método de entrega',
+    send_continue:    'Continuar',
+    send_back:        'Voltar',
+    send_recipient_title: 'Dados do destinatário',
+    send_fullname:    'Nome completo',
+    send_fullname_ph: 'Introduza o nome do destinatário',
+    send_provider:    'Provedor',
+    send_phone:       'Número de telefone',
+    send_phone_ph:    'Introduza o número de telefone',
+    send_account:     'Número de conta',
+    send_account_ph:  'Introduza o número de conta',
+    send_payment_title: 'Efetuar pagamento',
+    send_payment_select: 'Selecione o seu método de pagamento',
+    send_payment_continue: 'Continuar para carregar comprovante',
+    send_proof_title: 'Carregar comprovante de pagamento',
+    send_proof_drag:  'Arraste e solte ou clique para carregar',
+    send_proof_hint:  'Suportado: JPG, PNG, PDF (Máx. 10MB)',
+    send_choose_file: 'Escolher ficheiro',
+    send_submit:      'Submeter e concluir',
+    send_creating_order: 'A criar pedido...',
+    send_rate_updated: 'A taxa de câmbio foi atualizada. Por favor, reveja abaixo.',
+    send_delivery_mobile: 'Dinheiro Móvel',
+    send_delivery_mobile_desc: 'Opção mais rápida',
+    send_delivery_bank: 'Conta bancária',
+    send_delivery_bank_desc: 'Transferência bancária',
+    send_delivery_cash: 'Levantamento em dinheiro',
+    send_delivery_cash_desc: 'Levantamento em agente',
+    send_recommended: 'Recomendado',
+    send_validate_delivery: 'Por favor selecione um método de entrega',
+    send_validate_name: 'Por favor introduza o nome do destinatário',
+    send_validate_provider: 'Por favor selecione um provedor',
+    send_validate_phone: 'Por favor introduza o número de telefone',
+    send_validate_account: 'Por favor introduza o número de conta',
+    send_validate_payment: 'Por favor selecione um método de pagamento',
+    send_validate_proof: 'Por favor carregue o comprovante de pagamento',
+    send_file_too_big: 'O tamanho do ficheiro deve ser inferior a 10MB',
+    send_success:     'Transação submetida com sucesso',
+    send_error_order: 'Erro ao criar pedido. Verifique os seus dados.',
+    send_saving:      'A guardar...',
+    send_copy:        'Copiar',
+    send_copied:      'Copiado!',
+    send_copy_fail:   'Falha ao copiar',
+    send_cardholder:  'Titular do cartão',
+    send_method_type: 'Tipo de método',
+    send_currency:    'Moeda',
+    send_processing:  'Tempo de processamento',
+    send_acct_holder: 'Titular da conta',
+    send_acct_number: 'Número de conta',
+    send_phone_num:   'Número de telefone',
+    send_no_method:   'Sem métodos de pagamento disponíveis para esta moeda',
+    send_loading_methods: 'A carregar métodos de pagamento...',
+    send_bank:        'Transferência bancária',
+    send_mobile:      'Dinheiro Móvel',
+    send_cash:        'Dinheiro',
+    send_no_pairs:      'Sem destinos disponíveis',
+    send_send_from:     'ENVIAR DE',
+    send_destination:   'Destino',
+    send_mobile_provider: 'Provedor de Mobile Money',
+    send_bank_label:    'Banco',
+    send_select_provider: 'Selecionar provedor',
+    send_select_bank:   'Selecionar banco',
+    send_none:          'Nenhum',
+    dash_no_rate:       'Taxa indisponível',
+    dash_you_save:      'VOCÊ ECONOMIZA',
+    prof_title:       'Meu perfil',
+    prof_upload:      '📷 Carregar foto',
+    prof_uploading:   'Carregando…',
+    prof_fullname:    'Nome completo',
+    prof_email:       'Email',
+    prof_status:      'Status da conta',
+    prof_active:      '✓ Ativo',
+    prof_back:        '← Voltar ao painel',
+    prof_saved:       'Foto atualizada!',
+    prof_saved_local: 'Foto salva localmente!',
+    prof_err_type:    'Selecione um arquivo de imagem.',
+    prof_err_size:    'A imagem deve ter menos de 5 MB.',
+  }
+};
+
+const AURA_LANGUAGES = [
+  { code: 'en', label: 'English',    nativeLabel: 'English',   flag: '🇬🇧' },
+  { code: 'ru', label: 'Russian',    nativeLabel: 'Русский',   flag: '🇷🇺' },
+  { code: 'fr', label: 'French',     nativeLabel: 'Français',  flag: '🇫🇷' },
+  { code: 'pt', label: 'Portuguese', nativeLabel: 'Português', flag: '🇵🇹' },
+];
+
+const AURA_LANG_KEY = 'aura_lang';
+
+function getAuraLang() {
+  const stored = localStorage.getItem(AURA_LANG_KEY);
+  return (stored && AURA_TRANSLATIONS[stored]) ? stored : 'en';
+}
+
+function setAuraLang(code) {
+  if (!AURA_TRANSLATIONS[code]) return;
+  localStorage.setItem(AURA_LANG_KEY, code);
+}
+
+/** Translate a key in the current language, falling back to English */
+function t(key) {
+  const lang = getAuraLang();
+  return (AURA_TRANSLATIONS[lang] && AURA_TRANSLATIONS[lang][key])
+    || AURA_TRANSLATIONS['en'][key]
+    || key;
+}
+
+/**
+ * Apply translations to all elements with data-i18n="key".
+ * Also handles data-i18n-placeholder and data-i18n-html.
+ */
+function applyLanguage() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    // Preserve newlines in hero title
+    if (el.tagName === 'H1' || el.hasAttribute('data-i18n-newline')) {
+      el.innerHTML = val.replace(/\n/g, '<br>');
+    } else {
+      el.textContent = val;
+    }
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    el.innerHTML = t(el.getAttribute('data-i18n-html'));
+  });
+  // Update html lang attribute
+  document.documentElement.lang = getAuraLang();
+}
+
+/**
+ * Render a language picker <select> into a container element.
+ * @param {HTMLElement} container
+ * @param {function} [onChange] optional callback(code)
+ */
+function renderLangPicker(container, onChange) {
+  const current = getAuraLang();
+  const select = document.createElement('select');
+  select.style.cssText = `
+    background: transparent;
+    border: 1.5px solid rgba(255,255,255,0.35);
+    color: inherit;
+    padding: 0.3rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    outline: none;
+  `;
+  AURA_LANGUAGES.forEach(lang => {
+    const opt = document.createElement('option');
+    opt.value = lang.code;
+    opt.textContent = `${lang.flag} ${lang.nativeLabel}`;
+    if (lang.code === current) opt.selected = true;
+    select.appendChild(opt);
+  });
+  select.addEventListener('change', () => {
+    setAuraLang(select.value);
+    applyLanguage();
+    if (onChange) onChange(select.value);
+  });
+  container.appendChild(select);
+  return select;
+}
+
+/**
+ * Render a language picker for light backgrounds (nav on dashboard/send/history pages).
+ */
+function renderLangPickerLight(container, onChange) {
+  const current = getAuraLang();
+  const select = document.createElement('select');
+  select.style.cssText = `
+    background: #f7fafc;
+    border: 1.5px solid #e2e8f0;
+    color: #0b1b3a;
+    padding: 0.3rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    outline: none;
+    font-weight: 500;
+  `;
+  AURA_LANGUAGES.forEach(lang => {
+    const opt = document.createElement('option');
+    opt.value = lang.code;
+    opt.textContent = `${lang.flag} ${lang.nativeLabel}`;
+    if (lang.code === current) opt.selected = true;
+    select.appendChild(opt);
+  });
+  select.addEventListener('change', () => {
+    setAuraLang(select.value);
+    applyLanguage();
+    if (onChange) onChange(select.value);
+  });
+  container.appendChild(select);
+  return select;
+}

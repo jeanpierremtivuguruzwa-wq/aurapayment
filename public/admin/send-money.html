@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Send Money - Aura payment</title>
+    <script src="js/i18n.js"></script>
     <!-- Firebase SDKs (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -372,15 +373,16 @@
     <nav class="navbar">
         <div class="logo">Aura payment</div>
         <div class="nav-menu">
-            <a href="dashboard.html">Dashboard</a>
-            <a href="send-money.html" class="active">Send Money</a>
-            <a href="history.html">History</a>
-            <a href="profile.html">Profile</a>
+            <a href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
+            <a href="send-money.html" class="active" data-i18n="nav_send">Send Money</a>
+            <a href="history.html" data-i18n="nav_history">History</a>
+            <a href="profile.html" data-i18n="nav_profile">Profile</a>
         </div>
         <div class="user-profile" id="userProfile">
             <span class="user-name" id="displayName">Loading...</span>
             <div class="avatar" id="userInitials">...</div>
-            <button class="logout-btn" onclick="handleLogout()">⏻ Log out</button>
+            <span id="langPickerNav"></span>
+            <button class="logout-btn" onclick="handleLogout()" data-i18n="nav_logout">⏻ Log out</button>
         </div>
     </nav>
 
@@ -388,97 +390,97 @@
     <main class="main-content">
         <!-- Step Indicator -->
         <div class="step-indicator" id="stepIndicator">
-            <div class="step active"><span class="step-number">1</span><span>Amount</span></div>
-            <div class="step"><span class="step-number">2</span><span>Recipient</span></div>
-            <div class="step"><span class="step-number">3</span><span>Payment</span></div>
-            <div class="step"><span class="step-number">4</span><span>Proof</span></div>
+            <div class="step active"><span class="step-number">1</span><span data-i18n="send_step1">Amount</span></div>
+            <div class="step"><span class="step-number">2</span><span data-i18n="send_step2">Recipient</span></div>
+            <div class="step"><span class="step-number">3</span><span data-i18n="send_step3">Payment</span></div>
+            <div class="step"><span class="step-number">4</span><span data-i18n="send_step4">Proof</span></div>
         </div>
 
         <!-- Rate changed banner -->
         <div id="rate-changed-banner" style="display:none; background:#fef9c3; border:1px solid #fbbf24; color:#92400e; border-radius:12px; padding:0.85rem 1.25rem; margin-bottom:16px; display:none; align-items:center; gap:0.75rem; font-size:0.9rem;">
             <span style="font-size:1.2rem;">⚠️</span>
-            <span id="rate-changed-text">The exchange rate has been updated. Please review the new rate below before continuing.</span>
+            <span id="rate-changed-text" data-i18n="send_rate_updated">The exchange rate has been updated. Please review the new rate below before continuing.</span>
             <button onclick="dismissRateBanner()" style="margin-left:auto;background:none;border:none;font-size:1rem;cursor:pointer;color:#92400e;">✕</button>
         </div>
 
         <!-- Step 1: Amount & Delivery Method -->
         <div id="step1" class="card">
-            <h2>Send Money</h2>
+            <h2 data-i18n="nav_send">Send Money</h2>
             <div class="amount-display">
-                <p>Amount to send</p>
+                <p data-i18n="send_amount_to">Amount to send</p>
                 <strong><span id="displayAmount">0</span> <span id="displayCurrency">RUB</span></strong>
                 <div id="feeBreakdown" style="margin-top:0.75rem; font-size:0.85rem; color:#4a5568; display:none;">
                     <div style="display:flex;justify-content:space-between;margin-top:4px;">
-                        <span>Fee</span>
+                        <span data-i18n="send_fee">Fee</span>
                         <span id="displayFee">—</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;margin-top:4px;">
-                        <span>Rate</span>
+                        <span data-i18n="send_rate">Rate</span>
                         <span id="displayRate">—</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;margin-top:4px;border-top:1px solid #e2e8f0;padding-top:4px;">
-                        <span><strong>Recipient gets</strong></span>
+                        <span><strong data-i18n="send_gets">Recipient gets</strong></span>
                         <span><strong id="displayReceive">—</strong></span>
                     </div>
                     <div id="displayCountry" style="margin-top:4px;color:#718096;"></div>
                 </div>
             </div>
-            <h3 style="color: #0b1b3a; margin-bottom: 1rem;">Choose Delivery Method</h3>
+            <h3 style="color: #0b1b3a; margin-bottom: 1rem;" data-i18n="send_choose_delivery">Choose Delivery Method</h3>
             <div id="deliveryOptions" class="grid"></div>
-            <button class="primary" onclick="nextStep(2)">Continue</button>
+            <button class="primary" onclick="nextStep(2)" data-i18n="send_continue">Continue</button>
         </div>
 
         <!-- Step 2: Recipient Details -->
         <div id="step2" class="card" style="display: none;">
-            <h2>Recipient Details</h2>
+            <h2 data-i18n="send_recipient_title">Recipient Details</h2>
             <div class="form-group">
-                <label>Full Name</label>
-                <input id="recipientName" placeholder="Enter recipient's full name" required>
+                <label data-i18n="send_fullname">Full Name</label>
+                <input id="recipientName" data-i18n-placeholder="send_fullname_ph" placeholder="Enter recipient's full name" required>
             </div>
             <div class="form-group">
-                <label id="providerLabel">Provider</label>
+                <label id="providerLabel" data-i18n="send_provider">Provider</label>
                 <select id="provider" required></select>
             </div>
             <div id="phoneGroup" class="form-group">
-                <label>Phone Number</label>
-                <input id="phoneNumber" placeholder="Enter phone number" type="tel">
+                <label data-i18n="send_phone">Phone Number</label>
+                <input id="phoneNumber" data-i18n-placeholder="send_phone_ph" placeholder="Enter phone number" type="tel">
             </div>
             <div id="accountGroup" class="form-group" style="display: none;">
-                <label>Account Number</label>
-                <input id="accountNumber" placeholder="Enter account number">
+                <label data-i18n="send_account">Account Number</label>
+                <input id="accountNumber" data-i18n-placeholder="send_account_ph" placeholder="Enter account number">
             </div>
             <div class="button-group">
-                <button class="secondary" onclick="prevStep(1)">Back</button>
-                <button class="primary" onclick="nextStep(3)">Continue</button>
+                <button class="secondary" onclick="prevStep(1)" data-i18n="send_back">Back</button>
+                <button class="primary" onclick="nextStep(3)" data-i18n="send_continue">Continue</button>
             </div>
         </div>
 
         <!-- Step 3: Payment Method -->
         <div id="step3" class="card" style="display: none;">
-            <h2>Make Payment</h2>
-            <p style="color: #718096; margin-bottom: 1rem;">Select your payment method</p>
+            <h2 data-i18n="send_payment_title">Make Payment</h2>
+            <p style="color: #718096; margin-bottom: 1rem;" data-i18n="send_payment_select">Select your payment method</p>
             <div id="paymentOptions" class="grid"></div>
             <div id="paymentDetails" style="margin-top: 1.5rem;"></div>
             <div class="button-group">
-                <button class="secondary" onclick="prevStep(2)">Back</button>
-                <button class="primary" onclick="nextStep(4)">Continue to Upload Proof</button>
+                <button class="secondary" onclick="prevStep(2)" data-i18n="send_back">Back</button>
+                <button class="primary" onclick="nextStep(4)" data-i18n="send_payment_continue">Continue to Upload Proof</button>
             </div>
         </div>
 
         <!-- Step 4: Upload Proof -->
         <div id="step4" class="card" style="display: none;">
-            <h2>Upload Payment Proof</h2>
+            <h2 data-i18n="send_proof_title">Upload Payment Proof</h2>
             <div style="border: 2px dashed #e2e8f0; border-radius: 16px; padding: 40px 20px; text-align: center; margin-bottom: 1rem;">
                 <div style="font-size: 3rem; margin-bottom: 12px;">📎</div>
-                <h3 style="margin-bottom: 8px;">Drag and drop or click to upload</h3>
-                <p style="color: #718096; margin-bottom: 16px;">Supported: JPG, PNG, PDF (Max 10MB)</p>
+                <h3 style="margin-bottom: 8px;" data-i18n="send_proof_drag">Drag and drop or click to upload</h3>
+                <p style="color: #718096; margin-bottom: 16px;" data-i18n="send_proof_hint">Supported: JPG, PNG, PDF (Max 10MB)</p>
                 <input type="file" accept="image/*,.pdf" style="display: none;" id="fileInput">
-                <button class="primary" style="width: auto; padding: 10px 20px; margin-top: 0;" onclick="document.getElementById('fileInput').click()">Choose File</button>
+                <button class="primary" style="width: auto; padding: 10px 20px; margin-top: 0;" onclick="document.getElementById('fileInput').click()" data-i18n="send_choose_file">Choose File</button>
                 <div id="selectedFileName" style="margin-top: 12px; font-size: 0.85rem; color: #0b1b3a;"></div>
             </div>
             <div class="button-group">
-                <button class="secondary" onclick="prevStep(3)">Back</button>
-                <button class="primary" id="submitBtn" onclick="completeTransaction()">Submit & Complete</button>
+                <button class="secondary" onclick="prevStep(3)" data-i18n="send_back">Back</button>
+                <button class="primary" id="submitBtn" onclick="completeTransaction()" data-i18n="send_submit">Submit &amp; Complete</button>
             </div>
         </div>
     </main>
@@ -605,7 +607,7 @@
             feeEl.textContent     = fee > 0 ? `${sc} ${fee.toFixed(2)}` : 'None';
             rateEl.textContent    = `1 ${sc} = ${effectiveRate.toFixed(4)} ${rc}`;
             receiveEl.textContent = `${receiveAmount.toLocaleString(undefined, {maximumFractionDigits: 2})} ${rc}`;
-            if (countryEl && pair.country) countryEl.textContent = `${pair.flag || ''} Destination: ${pair.country}`;
+            if (countryEl && pair.country) countryEl.textContent = `${pair.flag || ''} ${t('send_destination')}: ${pair.country}`;
             if (breakdownEl) breakdownEl.style.display = 'block';
         }
 
@@ -705,23 +707,23 @@
             if (selectedPair) {
                 const symbol = receiveCurrency;
                 document.getElementById('displayFee').textContent =
-                    fee > 0 ? `${sendCurrency} ${fee.toFixed(2)}` : 'None';
+                    fee > 0 ? `${sendCurrency} ${fee.toFixed(2)}` : t('send_none');
                 document.getElementById('displayRate').textContent =
                     `1 ${sendCurrency} = ${effectiveRate.toFixed(4)} ${receiveCurrency}`;
                 document.getElementById('displayReceive').textContent =
                     `${receiveAmount.toLocaleString(undefined, {maximumFractionDigits: 2})} ${receiveCurrency}`;
                 if (selectedPair.country) {
                     document.getElementById('displayCountry').textContent =
-                        `${selectedPair.flag || ''} Destination: ${selectedPair.country}`;
+                        `${selectedPair.flag || ''} ${t('send_destination')}: ${selectedPair.country}`;
                 }
                 document.getElementById('feeBreakdown').style.display = 'block';
             }
         }
 
         const DELIVERY_META = {
-            mobile: { label: 'Mobile Money', desc: 'Fastest option', badge: 'Recommended' },
-            bank:   { label: 'Bank Account',  desc: 'Transfer to a bank account', badge: null },
-            cash:   { label: 'Cash Pickup',   desc: 'Pick up at agent', badge: null }
+            mobile: { labelKey: 'send_delivery_mobile', descKey: 'send_delivery_mobile_desc', badge: 'send_recommended' },
+            bank:   { labelKey: 'send_delivery_bank',   descKey: 'send_delivery_bank_desc',   badge: null },
+            cash:   { labelKey: 'send_delivery_cash',   descKey: 'send_delivery_cash_desc',   badge: null }
         };
 
         function renderDeliveryOptions() {
@@ -736,14 +738,16 @@
 
             container.innerHTML = '';
             methods.forEach((method, i) => {
-                const meta = DELIVERY_META[method] || { label: method, desc: '', badge: null };
+                const meta = DELIVERY_META[method] || { labelKey: null, descKey: null, badge: null };
+                const label = meta.labelKey ? t(meta.labelKey) : method;
+                const desc  = meta.descKey  ? t(meta.descKey)  : '';
                 const div = document.createElement('div');
                 div.className = 'option' + (i === 0 ? ' selected' : '');
                 div.setAttribute('data-delivery', method);
                 div.innerHTML = `
-                    ${meta.badge && i === 0 ? `<span style="background:#d1fae5;color:#059669;padding:2px 8px;border-radius:20px;font-size:0.75rem;">${meta.badge}</span>` : ''}
-                    <h3>${meta.label}</h3>
-                    <p>${meta.desc}</p>`;
+                    ${meta.badge && i === 0 ? `<span style="background:#d1fae5;color:#059669;padding:2px 8px;border-radius:20px;font-size:0.75rem;">${t(meta.badge)}</span>` : ''}
+                    <h3>${label}</h3>
+                    <p>${desc}</p>`;
                 container.appendChild(div);
             });
 
@@ -770,9 +774,9 @@
             const accountGroup = document.getElementById('accountGroup');
 
             if (deliveryType === 'mobile') {
-                providerLabel.textContent = 'Mobile Money Provider';
+                providerLabel.textContent = t('send_mobile_provider');
                 providerSelect.innerHTML = `
-                    <option value="">Select provider</option>
+                    <option value="">${t('send_select_provider')}</option>
                     <option value="mtn">MTN Momo</option>
                     <option value="airtel">Airtel Money</option>
                     <option value="orange">Orange Money</option>
@@ -780,9 +784,9 @@
                 phoneGroup.style.display = 'block';
                 accountGroup.style.display = 'none';
             } else {
-                providerLabel.textContent = 'Bank';
+                providerLabel.textContent = t('send_bank_label');
                 providerSelect.innerHTML = `
-                    <option value="">Select bank</option>
+                    <option value="">${t('send_select_bank')}</option>
                     <option value="sber">Sber Bank</option>
                     <option value="tinkoff">Tinkoff Bank</option>
                     <option value="alfa">Alfa Bank</option>
@@ -796,7 +800,7 @@
             const container = document.getElementById('paymentOptions');
             const detailsDiv = document.getElementById('paymentDetails');
 
-            container.innerHTML = '<p style="text-align: center; color: #718096;">Loading payment methods...</p>';
+            container.innerHTML = `<p style="text-align: center; color: #718096;">${t('send_loading_methods')}</p>`;
 
             // Fetch active payment methods from Firestore
             db.collection('paymentMethods')
@@ -805,7 +809,7 @@
                 .get()
                 .then(snapshot => {
                     if (snapshot.empty) {
-                        container.innerHTML = '<p style="color: #e53e3e;">No payment methods available for this currency</p>';
+                        container.innerHTML = `<p style="color: #e53e3e;">${t('send_no_method')}</p>`;
                         return;
                     }
 
@@ -900,7 +904,7 @@
                 })
                 .catch(err => {
                     console.error('Error loading payment methods:', err);
-                    container.innerHTML = '<p style="color: #e53e3e;">Error loading payment methods</p>';
+                    container.innerHTML = `<p style="color: #e53e3e;">${t('send_error_order')}</p>`;
                 });
         }
 
@@ -939,22 +943,22 @@
                             <h4 style="margin-bottom: 1rem; color: #0b1b3a;">💳 ${method.name} - ${cardholder.displayName}</h4>
                             
                             <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">
-                                <span>Cardholder</span>
+                                <span>${t('send_cardholder')}</span>
                                 <span><strong>${cardholder.displayName}</strong></span>
                             </div>
                             
                             <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">
-                                <span>Method Type</span>
-                                <span><strong>${method.type === 'bank' ? '🏦 Bank Transfer' : method.type === 'mobile' ? '📱 Mobile Money' : '💵 Cash'}</strong></span>
+                                <span>${t('send_method_type')}</span>
+                                <span><strong>${method.type === 'bank' ? `🏦 ${t('send_bank')}` : method.type === 'mobile' ? `📱 ${t('send_mobile')}` : `💵 ${t('send_cash')}`}</strong></span>
                             </div>
                             
                             <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">
-                                <span>Currency</span>
+                                <span>${t('send_currency')}</span>
                                 <span><strong>${method.currency}</strong></span>
                             </div>
                             
                             <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">
-                                <span>Processing Time</span>
+                                <span>${t('send_processing')}</span>
                                 <span><strong>${processingTime}</strong></span>
                             </div>`;
 
@@ -963,18 +967,18 @@
                         detailsHTML += `
                             <div style="padding: 1rem; background: white; border-radius: 8px; margin-top: 1rem; border: 2px solid #e2e8f0;">
                                 <div style="margin-bottom: 0.75rem;">
-                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">Account Holder</label>
+                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">${t('send_acct_holder')}</label>
                                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                                         <input type="text" value="${accountHolder}" readonly style="border: none; background: transparent; font-weight: 600; color: #0b1b3a; flex: 1; padding: 0;">
-                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${accountHolder}', this)">Copy</button>
+                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${accountHolder}', this)">${t('send_copy')}</button>
                                     </div>
                                 </div>
                                 
                                 <div style="margin-bottom: 0.75rem;">
-                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">Account Number</label>
+                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">${t('send_acct_number')}</label>
                                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                                         <input type="text" value="${accountNumber}" readonly style="border: none; background: transparent; font-weight: 600; color: #0b1b3a; flex: 1; padding: 0; font-family: monospace;">
-                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${accountNumber}', this)">Copy</button>
+                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${accountNumber}', this)">${t('send_copy')}</button>
                                     </div>
                                 </div>
                             </div>`;
@@ -982,18 +986,18 @@
                         detailsHTML += `
                             <div style="padding: 1rem; background: white; border-radius: 8px; margin-top: 1rem; border: 2px solid #e2e8f0;">
                                 <div style="margin-bottom: 0.75rem;">
-                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">Account Holder</label>
+                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">${t('send_acct_holder')}</label>
                                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                                         <input type="text" value="${accountHolder}" readonly style="border: none; background: transparent; font-weight: 600; color: #0b1b3a; flex: 1; padding: 0;">
-                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${accountHolder}', this)">Copy</button>
+                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${accountHolder}', this)">${t('send_copy')}</button>
                                     </div>
                                 </div>
                                 
                                 <div style="margin-bottom: 0.75rem;">
-                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">Phone Number</label>
+                                    <label style="font-size: 0.85rem; color: #718096; display: block; margin-bottom: 0.5rem;">${t('send_phone_num')}</label>
                                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                                         <input type="text" value="${phoneNumber}" readonly style="border: none; background: transparent; font-weight: 600; color: #0b1b3a; flex: 1; padding: 0; font-family: monospace;">
-                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${phoneNumber}', this)">Copy</button>
+                                        <button style="background: none; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; color: #0b1b3a;" onclick="copyToClipboard('${phoneNumber}', this)">${t('send_copy')}</button>
                                     </div>
                                 </div>
                             </div>`;
@@ -1019,7 +1023,7 @@
                 // Show loading state
                 const btn = event.target;
                 const originalText = btn.textContent;
-                btn.textContent = 'Creating order...';
+                btn.textContent = t('send_creating_order');
                 btn.disabled = true;
                 
                 // Save order to database before proceeding
@@ -1033,7 +1037,7 @@
                     console.error('Error creating order:', err);
                     btn.textContent = originalText;
                     btn.disabled = false;
-                    alert('Error creating order. Please check your details and try again.');
+                    alert(t('send_error_order'));
                 });
                 return;
             } else if (step === 4) {
@@ -1042,7 +1046,7 @@
                 if (transactionData.orderId && transactionData.paymentMethod) {
                     const btn = event.target;
                     const originalText = btn.textContent;
-                    btn.textContent = 'Saving...';
+                    btn.textContent = t('send_saving');
                     btn.disabled = true;
                     db.collection('orders').doc(transactionData.orderId).update({
                         paymentMethod: transactionData.paymentMethod
@@ -1086,7 +1090,7 @@
 
         function validateStep1() {
             if (!selectedDelivery) {
-                alert('Please select a delivery method');
+                alert(t('send_validate_delivery'));
                 return false;
             }
             return true;
@@ -1097,11 +1101,11 @@
             const provider = document.getElementById('provider').value;
 
             if (!name) {
-                alert('Please enter recipient name');
+                alert(t('send_validate_name'));
                 return false;
             }
             if (!provider) {
-                alert('Please select a provider');
+                alert(t('send_validate_provider'));
                 return false;
             }
 
@@ -1111,14 +1115,14 @@
             if (selectedDelivery === 'mobile') {
                 const phone = document.getElementById('phoneNumber').value.trim();
                 if (!phone) {
-                    alert('Please enter phone number');
+                    alert(t('send_validate_phone'));
                     return false;
                 }
                 transactionData.phoneNumber = phone;
             } else {
                 const account = document.getElementById('accountNumber').value.trim();
                 if (!account) {
-                    alert('Please enter account number');
+                    alert(t('send_validate_account'));
                     return false;
                 }
                 transactionData.accountNumber = account;
@@ -1129,7 +1133,7 @@
 
         function validateStep3() {
             if (!selectedPayment) {
-                alert('Please select a payment method');
+                alert(t('send_validate_payment'));
                 return false;
             }
             return true;
@@ -1138,13 +1142,13 @@
         function completeTransaction() {
             const fileInput = document.getElementById('fileInput');
             if (!fileInput.files[0]) {
-                alert('Please upload payment proof');
+                alert(t('send_validate_proof'));
                 return;
             }
 
             const file = fileInput.files[0];
             if (file.size > 10 * 1024 * 1024) {
-                alert('File size must be less than 10MB');
+                alert(t('send_file_too_big'));
                 return;
             }
 
@@ -1272,7 +1276,7 @@
                 
                 return Promise.all(updates);
             }).then(() => {
-                alert('Transaction submitted successfully');
+                alert(t('send_success'));
                 window.location.href = 'history.html';
             }).catch(err => {
                 alert('Error: ' + err.message);
@@ -1282,16 +1286,16 @@
         function copyToClipboard(text, button) {
             navigator.clipboard.writeText(text).then(() => {
                 const originalText = button.textContent;
-                button.textContent = 'Copied!';
+                button.textContent = t('send_copied');
                 button.style.background = '#d1fae5';
                 button.style.color = '#059669';
                 setTimeout(() => {
-                    button.textContent = originalText;
+                    button.textContent = t('send_copy');
                     button.style.background = '';
                     button.style.color = '#0b1b3a';
                 }, 2000);
             }).catch(() => {
-                alert('Failed to copy');
+                alert(t('send_copy_fail'));
             });
         }
 
@@ -1302,6 +1306,19 @@
         // Set first step as active on load
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.step')[0].classList.add('active');
+
+            // Language picker
+            const langNav = document.getElementById('langPickerNav');
+            if (langNav && typeof renderLangPickerLight === 'function') {
+                renderLangPickerLight(langNav, () => {
+                    applyLanguage();
+                    // Re-render all dynamic JS-built sections in the new language
+                    renderDeliveryOptions();
+                    if (selectedDelivery) updateRecipientForm(selectedDelivery);
+                    renderPaymentOptions();
+                });
+            }
+            if (typeof applyLanguage === 'function') applyLanguage();
         });
     </script>
 </body>

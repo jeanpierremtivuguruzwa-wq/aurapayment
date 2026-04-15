@@ -126,7 +126,7 @@ function AddCardholderModal({
               {['bank', 'mobile', 'cash'].map(type => {
                 const group = paymentMethods.filter(m => m.type === type)
                 if (group.length === 0) return null
-                const groupLabel = type === 'bank' ? '🏦 Bank Transfer' : type === 'mobile' ? '📱 Mobile Money' : '💵 Cash'
+                const groupLabel = type === 'bank' ? '🏦 Bank Transfer' : type === 'mobile' ? '📱 Mobile Money' : 'Cash'
                 return (
                   <optgroup key={type} label={groupLabel}>
                     {group.map(m => (
@@ -143,7 +143,7 @@ function AddCardholderModal({
               <p className="text-xs mt-1.5 text-gray-500">
                 {selectedMethod.type === 'bank' && '🏦 Bank — enter account number below'}
                 {selectedMethod.type === 'mobile' && '📱 Mobile Money — enter phone number below'}
-                {selectedMethod.type === 'cash' && '💵 Cash — no account details needed'}
+                {selectedMethod.type === 'cash' && 'Cash — no account details needed'}
               </p>
             )}
           </div>
@@ -227,7 +227,7 @@ const CardholdersList: React.FC = () => {
 
   const getMethod = (id: string) => paymentMethods.find(m => m.id === id)
   const methodIcon = (type?: string) =>
-    type === 'bank' ? '🏦' : type === 'mobile' ? '📱' : type === 'cash' ? '💵' : '💳'
+    type === 'bank' ? '🏦' : type === 'mobile' ? '📱' : type === 'cash' ? '' : '💳'
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 

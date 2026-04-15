@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Aura Payment – Africa transfers simplified</title>
+    <title>Aura Payment – World wide transactions simplified</title>
+    <script src="js/i18n.js"></script>
     <style>
         * {
             margin: 0;
@@ -208,24 +209,24 @@
     <nav>
         <div class="logo">AURA ✦</div>
         <div class="nav-buttons">
-            <a href="signin.html" class="btn-outline">Sign In</a>
-            <a href="signup.html" class="btn-primary">Get Started</a>
+            <span id="langPickerContainer"></span>
+            <a href="signin.html" class="btn-outline" data-i18n="nav_signin">Sign In</a>
+            <a href="signup.html" class="btn-primary" data-i18n="nav_get_started">Get Started</a>
         </div>
     </nav>
 
     <div class="hero">
         <div class="hero-text">
-            <h1>Africa transfers,<br>simplified</h1>
-            <p>Swift, safe, and low‑cost transfers to 24 African countries. Get real‑time quotes and fast local deposits.</p>
-            <a href="signup.html" class="btn-primary" style="display: inline-block;">Start sending now →</a>
+            <h1 data-i18n="hero_title" data-i18n-newline>World wide transactions,<br>simplified</h1>
+            <p data-i18n="hero_subtitle">Swift, safe, and low‑cost transfers to 24 African countries. Get real‑time quotes and fast local deposits.</p>
+            <a href="signup.html" class="btn-primary" style="display: inline-block;" data-i18n="hero_cta">Start sending now →</a>
             <div class="hero-stats">
-                <div class="stat"><div class="stat-number">10+</div><div class="stat-label">African countries</div></div>
-                <div class="stat"><div class="stat-number">1k+</div><div class="stat-label">Happy customers</div></div>
-                <div class="stat"><div class="stat-number">99%</div><div class="stat-label">delivery rate</div></div>
+                <div class="stat"><div class="stat-number">10+</div><div class="stat-label" data-i18n="stat_countries">African countries</div></div>
+                <div class="stat"><div class="stat-number">1k+</div><div class="stat-label" data-i18n="stat_customers">Happy customers</div></div>
+                <div class="stat"><div class="stat-number">99%</div><div class="stat-label" data-i18n="stat_delivery">delivery rate</div></div>
             </div>
         </div>
         <div class="hero-image">
-            <!-- Placeholder illustration – you can replace with your own image -->
             <div style="background: linear-gradient(135deg, #0b1b3a, #1e3a5f); border-radius: 32px; padding: 2rem; color: white; text-align: center;">
                 💸 <span style="font-size: 3rem;">RUB → XOF</span><br>
                 <span style="font-size: 1.2rem;">Best rates, no hidden fees</span>
@@ -234,29 +235,44 @@
     </div>
 
     <div class="steps">
-        <div class="section-title">How it works in 4 simple steps</div>
+        <div class="section-title" data-i18n="how_title">How it works in 4 simple steps</div>
         <div class="step-grid">
-            <div class="step-card"><div class="step-number">1</div><h3>Create account</h3><p>Sign up in 30 seconds – no paperwork.</p></div>
-            <div class="step-card"><div class="step-number">2</div><h3>Enter amount</h3><p>Choose your send & receive currency, see live rate.</p></div>
-            <div class="step-card"><div class="step-number">3</div><h3>Add recipient</h3><p>Bank account or mobile money details.</p></div>
-            <div class="step-card"><div class="step-number">4</div><h3>Pay & track</h3><p>Upload payment proof, track status in real time.</p></div>
+            <div class="step-card"><div class="step-number">1</div><h3 data-i18n="step1_title">Create account</h3><p data-i18n="step1_desc">Sign up in 30 seconds – no paperwork.</p></div>
+            <div class="step-card"><div class="step-number">2</div><h3 data-i18n="step2_title">Enter amount</h3><p data-i18n="step2_desc">Choose your send & receive currency, see live rate.</p></div>
+            <div class="step-card"><div class="step-number">3</div><h3 data-i18n="step3_title">Add recipient</h3><p data-i18n="step3_desc">Bank account or mobile money details.</p></div>
+            <div class="step-card"><div class="step-number">4</div><h3 data-i18n="step4_title">Pay & track</h3><p data-i18n="step4_desc">Upload payment proof, track status in real time.</p></div>
         </div>
     </div>
 
     <div class="features">
-        <div class="section-title">Why choose Aura?</div>
+        <div class="section-title" data-i18n="why_title">Why choose Aura?</div>
         <div class="feature-grid">
-            <div class="feature"><div class="feature-icon">⚡</div><h3>Fast</h3><p>Transfers completed within 24 hours.</p></div>
-            <div class="feature"><div class="feature-icon">🔒</div><h3>Secure</h3><p>Bank‑grade encryption & fraud monitoring.</p></div>
-            <div class="feature"><div class="feature-icon">💸</div><h3>Low fees</h3><p>No hidden charges – transparent pricing.</p></div>
-            <div class="feature"><div class="feature-icon">📱</div><h3>Easy tracking</h3><p>Real‑time status from your dashboard.</p></div>
+            <div class="feature"><div class="feature-icon">⚡</div><h3 data-i18n="feat1_title">Fast</h3><p data-i18n="feat1_desc">Transfers completed within 24 hours.</p></div>
+            <div class="feature"><div class="feature-icon">🔒</div><h3 data-i18n="feat2_title">Secure</h3><p data-i18n="feat2_desc">Bank‑grade encryption & fraud monitoring.</p></div>
+            <div class="feature"><div class="feature-icon">💸</div><h3 data-i18n="feat3_title">Low fees</h3><p data-i18n="feat3_desc">No hidden charges – transparent pricing.</p></div>
+            <div class="feature"><div class="feature-icon">📱</div><h3 data-i18n="feat4_title">Easy tracking</h3><p data-i18n="feat4_desc">Real‑time status from your dashboard.</p></div>
         </div>
     </div>
 
     <footer>
-        <p>&copy; 2026 Aura Payment. All rights reserved.</p>
-        <p style="margin-top: 0.5rem;">Questions? <a href="mailto:support@aurapayment.com" style="color:#0b1b3a;">support@aurapayment.com</a></p>
+        <p data-i18n="footer_rights">&copy; 2026 Aura Payment. All rights reserved.</p>
+        <p style="margin-top: 0.5rem;"><span data-i18n="footer_support">Questions?</span> <a href="mailto:support@aurapayment.com" style="color:#0b1b3a;">support@aurapayment.com</a></p>
     </footer>
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const container = document.getElementById('langPickerContainer');
+        if (container && typeof renderLangPickerLight === 'function') {
+            const sel = renderLangPickerLight(container, () => {
+                applyLanguage();
+            });
+            // Round pill style to match the nav buttons
+            sel.style.borderRadius = '20px';
+            sel.style.fontWeight = '600';
+            sel.style.fontSize = '0.85rem';
+        }
+        if (typeof applyLanguage === 'function') applyLanguage();
+    });
+</script>
 </body>
 </html>
