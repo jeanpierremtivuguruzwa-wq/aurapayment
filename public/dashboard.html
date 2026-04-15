@@ -104,70 +104,6 @@
             padding: 0 1rem;
         }
 
-        /* ── Stat cards (replaces step-indicator sticker section) ── */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .stat-card {
-            background: white;
-            border: 1px solid #f0f4f8;
-            border-radius: 14px;
-            padding: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-            transition: box-shadow 0.2s;
-        }
-
-        .stat-card.clickable {
-            cursor: pointer;
-        }
-
-        .stat-card.clickable:hover {
-            box-shadow: 0 4px 14px rgba(0,0,0,0.09);
-        }
-
-        .stat-icon {
-            font-size: 1.4rem;
-            width: 44px;
-            height: 44px;
-            background: #f8fafc;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .stat-info {
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-        }
-
-        .stat-label {
-            font-size: 0.68rem;
-            color: #94a3b8;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-        }
-
-        .stat-value {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #0b1b3a;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-top: 0.15rem;
-        }
-
         .calculator-card {
             background: white;
             border-radius: 24px;
@@ -185,16 +121,6 @@
             justify-content: space-between;
             align-items: center;
             gap: 0.5rem;
-        }
-
-        .refresh-btn {
-            background: none;
-            border: none;
-            color: #0b1b3a;
-            cursor: pointer;
-            font-size: 0.75rem;
-            text-decoration: underline;
-            padding: 0.3rem 0.5rem;
         }
 
         .live-badge {
@@ -494,9 +420,6 @@
                 width: auto;
                 min-width: 180px;
             }
-            .stats-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
             .calculator-card {
                 padding: 2rem;
             }
@@ -505,9 +428,6 @@
         @media (max-width: 480px) {
             .user-name {
                 font-size: 0.8rem;
-            }
-            .stat-value {
-                font-size: 0.82rem;
             }
         }
     </style>
@@ -532,38 +452,6 @@
     </nav>
 
     <main class="main-content">
-        <!-- ── Stat cards ─────────────────────────────────────────────── -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">👋</div>
-                <div class="stat-info">
-                    <span class="stat-label">Welcome back</span>
-                    <span class="stat-value" id="welcome-name">...</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">💱</div>
-                <div class="stat-info">
-                    <span class="stat-label">Active Rates</span>
-                    <span class="stat-value" id="stat-pairs-count">—</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📈</div>
-                <div class="stat-info">
-                    <span class="stat-label">Best Rate</span>
-                    <span class="stat-value" id="stat-best-rate">—</span>
-                </div>
-            </div>
-            <div class="stat-card clickable" onclick="window.location.href='history.html'">
-                <div class="stat-icon">📋</div>
-                <div class="stat-info">
-                    <span class="stat-label">My Transactions</span>
-                    <span class="stat-value">View History →</span>
-                </div>
-            </div>
-        </div>
-
         <div id="no-pairs-msg" style="display:none; text-align:center; padding:2.5rem 1.5rem; background:white; border-radius:24px; box-shadow:0 4px 12px rgba(0,0,0,0.05); margin-bottom:20px;">
             <div style="font-size:2.5rem; margin-bottom:0.75rem;">🚫</div>
             <h3 style="color:#0b1b3a; margin-bottom:0.5rem;">No exchange rates available</h3>
@@ -574,7 +462,7 @@
             <div class="timestamp">
                 <span>Last updated: <span id="current-time"></span></span>
                 <span class="live-badge" id="rate-badge">LIVE</span>
-                <button class="refresh-btn" onclick="refreshRates()">↻ Refresh</button>
+
             </div>
 
             <div class="swap-container">
@@ -1034,11 +922,40 @@
             try {
                 const userData = JSON.parse(localStorage.getItem('currentUser'));
                 if (!userData) { window.location.href = 'signin.html'; return; }
+
+                // Redirect admin email to admin dashboard
+                const emailLower = (userData.email || '').toLowerCase();
+                if (emailLower === 'johnpion2000@gmail.com') {
+                    window.location.href = 'admin/index.html';
+                    return;
+                }
+
+                // Check if this user has admin/agent role in Firestore and redirect them
+                if (userData.uid) {
+                    db.collection('users').doc(userData.uid).get().then(userDoc => {
+                        if (userDoc.exists) {
+                            const role = userDoc.data().role;
+                            if (role === 'admin' || role === 'agent') {
+                                window.location.href = 'admin/index.html';
+                                return;
+                            }
+                        }
+                        // Fallback: check agents collection by email
+                        db.collection('agents').where('email', '==', emailLower).get().then(snap => {
+                            if (!snap.empty) { window.location.href = 'admin/index.html'; }
+                        }).catch(() => {});
+                    }).catch(() => {
+                        // Fallback: check agents collection
+                        db.collection('agents').where('email', '==', emailLower).get().then(snap => {
+                            if (!snap.empty) { window.location.href = 'admin/index.html'; }
+                        }).catch(() => {});
+                    });
+                }
+
                 const fullName = userData.fullName || userData.full_name || 'User';
                 const displayName = userData.displayName || userData.display_name || fullName.split(' ')[0];
                 document.getElementById('displayName').textContent = displayName;
-                const welcomeEl = document.getElementById('welcome-name');
-                if (welcomeEl) welcomeEl.textContent = displayName;
+
                 const avatarEl = document.getElementById('userInitials');
                 const photoURL = userData.photoURL || localStorage.getItem('aura_avatar_' + userData.uid);
                 if (photoURL) {
@@ -1075,23 +992,11 @@
                 if (!hasData) {
                     calculatorEl.style.display = 'none';
                     noPairsEl.style.display = 'block';
-                    const pairsCountEl = document.getElementById('stat-pairs-count');
-                    if (pairsCountEl) pairsCountEl.textContent = '0 pairs';
                     return;
                 }
 
                 calculatorEl.style.display = 'block';
                 noPairsEl.style.display = 'none';
-
-                // Update stat cards
-                const pairsCountEl = document.getElementById('stat-pairs-count');
-                if (pairsCountEl) pairsCountEl.textContent = firestorePairs.length + ' pair' + (firestorePairs.length !== 1 ? 's' : '');
-                const bestRateEl = document.getElementById('stat-best-rate');
-                if (bestRateEl && firestorePairs.length) {
-                    const p = firestorePairs[0];
-                    const r = p.rate * (1 + (p.margin || 0) / 100);
-                    bestRateEl.textContent = '1 ' + p.from + ' = ' + r.toFixed(2) + ' ' + p.to;
-                }
 
                 selectedPair = getDefaultPair();
                 if (selectedPair) {

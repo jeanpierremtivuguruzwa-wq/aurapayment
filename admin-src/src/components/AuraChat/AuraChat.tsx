@@ -15,7 +15,7 @@ interface ChatMessage {
   senderName: string
   senderRole: 'admin' | 'agent'
   createdAt: Timestamp | null
-  pinnedRef?: string // optional: orderId or transactionId
+  pinnedRef?: string
   pinnedLabel?: string
   type: 'text' | 'system'
   read: boolean
@@ -29,6 +29,11 @@ interface ChatRoom {
   lastMessage?: string
   lastAt?: Timestamp | null
   unreadAdmin?: number
+}
+
+interface Props {
+  /** Pass the Agent object when rendered inside AgentDashboard; omit for admin */
+  viewerAgent?: Agent
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -49,7 +54,10 @@ function formatDay(ts: Timestamp | null): string {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-const AuraChat: React.FC = () => {
+const AuraChat: React.FC<Props> = ({ viewerAgent }) => {
+  const isAgentViewer = !!viewerAgent   // true = agent is using this chat
+  const viewerRole: 'admin' | 'agent' = isAgentViewer ? 'agent' : 'admin'
+  const viewerName = isAgentViewer ? (viewerAgent!.name || 'Agent') : 'Admin'
   const [agents, setAgents] = useState<Agent[]>([])
   const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
@@ -89,8 +97,11 @@ const AuraChat: React.FC = () => {
           }
         })
         setRooms(merged)
-        if (!selectedRoom && merged.length) {
-          // auto-select first
+
+        // If agent is viewing — auto-select their own room
+        if (isAgentViewer && viewerAgent) {
+          const myRoom = merged.find(r => r.agentId === viewerAgent.id)
+          if (myRoom) setSelectedRoom(myRoom)
         }
       })
     })
@@ -137,9 +148,9 @@ const AuraChat: React.FC = () => {
       const msgData: Omit<ChatMessage, 'id'> = {
         roomId: selectedRoom.id,
         text: text.trim(),
-        senderUid: adminUser?.uid ?? 'admin',
-        senderName: 'Admin',
-        senderRole: 'admin',
+        senderUid: adminUser?.uid ?? viewerRole,
+        senderName: viewerName,
+        senderRole: viewerRole,
         createdAt: serverTimestamp() as unknown as Timestamp,
         type: 'text',
         read: false,
@@ -192,8 +203,8 @@ const AuraChat: React.FC = () => {
   return (
     <div className="flex h-[calc(100vh-160px)] min-h-[500px] bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
 
-      {/* ── Sidebar: agent list ── */}
-      <div className="w-72 border-r border-slate-100 flex flex-col bg-slate-50">
+      {/* ── Sidebar: agent list (admin only) ── */}
+      {!isAgentViewer && <div className="w-72 border-r border-slate-100 flex flex-col bg-slate-50">
         <div className="px-5 py-4 border-b border-slate-200">
           <h2 className="text-lg font-bold text-slate-800">💬 AuraChat</h2>
           <p className="text-xs text-slate-400 mt-0.5">Direct messages with agents</p>
@@ -233,7 +244,7 @@ const AuraChat: React.FC = () => {
             )
           })}
         </div>
-      </div>
+      </div>}
 
       {/* ── Main chat area ── */}
       {!selectedRoom ? (
@@ -284,21 +295,26 @@ const AuraChat: React.FC = () => {
                   {msgs.map(msg => {
                     const isAdmin = msg.senderRole === 'admin'
                     return (
-                      <div key={msg.id} className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[70%] ${isAdmin ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                          {!isAdmin && (
-                            <span className="text-xs font-semibold text-slate-500 px-1">{msg.senderName}</span>
-                          )}
+                      <div key={msg.id} className={`flex ${isAdmin ? 'justify-start' : 'justify-end'}`}>
+                        <div className={`max-w-[70%] flex flex-col gap-1 ${isAdmin ? 'items-start' : 'items-end'}`}>
+                          <span className="text-xs font-semibold px-1" style={{ color: isAdmin ? '#1d4ed8' : '#15803d' }}>
+                            {isAdmin ? (msg.senderName || 'Admin') : msg.senderName}
+                          </span>
                           {msg.pinnedRef && (
-                            <div className={`text-xs px-3 py-1.5 rounded-lg border font-medium flex items-center gap-1.5 ${isAdmin ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                            <div
+                              className="text-xs px-3 py-1.5 rounded-lg border font-medium flex items-center gap-1.5"
+                              style={isAdmin
+                                ? { background: '#eff6ff', borderColor: '#bfdbfe', color: '#1d4ed8' }
+                                : { background: '#f0fdf4', borderColor: '#86efac', color: '#15803d' }
+                              }
+                            >
                               📌 {msg.pinnedLabel || msg.pinnedRef}
                             </div>
                           )}
-                          <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words ${
-                            isAdmin
-                              ? 'bg-sky-600 text-white rounded-br-sm'
-                              : 'bg-white text-slate-800 border border-slate-200 rounded-bl-sm shadow-sm'
-                          }`}>
+                          <div
+                            className={`px-4 py-2.5 text-sm leading-relaxed break-words text-white ${isAdmin ? 'rounded-2xl rounded-tl-sm' : 'rounded-2xl rounded-tr-sm'}`}
+                            style={{ background: isAdmin ? '#2563eb' : '#16a34a' }}
+                          >
                             {msg.text}
                           </div>
                           <span className="text-[10px] text-slate-400 px-1">{formatTime(msg.createdAt)}</span>
@@ -351,7 +367,7 @@ const AuraChat: React.FC = () => {
             <button
               onClick={sendMessage}
               disabled={!text.trim() || sending}
-              className="px-4 py-2.5 bg-sky-600 text-white rounded-xl text-sm font-semibold hover:bg-sky-700 disabled:opacity-50 transition-all flex-shrink-0 flex items-center gap-1.5"
+              className="px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-all flex-shrink-0 flex items-center gap-1.5"
             >
               {sending ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" /> : '↗'}
               Send

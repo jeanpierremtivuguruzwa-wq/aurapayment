@@ -297,7 +297,7 @@
 
         <div id="feedbackMessage" style="display: none; padding: 1rem; border-radius: 12px; margin-bottom: 1rem; text-align: center;"></div>
 
-        <form id="signinForm">
+        <form id="signinForm" action="#" onsubmit="return false;">
             <div class="form-group">
                 <label>Email</label>
                 <input type="email" id="email" placeholder="hello@aura.com" required autocomplete="email">
@@ -312,7 +312,7 @@
                 <a href="#" id="forgotPasswordBtn">Forgot password?</a>
             </div>
 
-            <button type="submit" class="signin-btn" id="submitBtn">
+            <button type="button" class="signin-btn" id="submitBtn">
                 Sign In
             </button>
 
@@ -351,7 +351,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
     // Firebase configuration (must match your project)
     const firebaseConfig = {
@@ -376,8 +376,7 @@
     const feedbackDiv = document.getElementById('feedbackMessage');
 
     // Sign in handler
-    signinForm.addEventListener('submit', async (event) => {
-        event.preventDefault();
+    submitBtn.addEventListener('click', async () => {
         
         const email = emailInput.value.trim();
         const password = passwordInput.value;
@@ -404,21 +403,64 @@
             const fullName = user.displayName || email.split('@')[0];
             const displayName = user.displayName || email.split('@')[0];
 
-            // Upsert Firestore user doc — creates it if missing, leaves existing fields intact
+            // Determine role and redirect before writing user doc
+            const emailLower = user.email ? user.email.toLowerCase() : '';
+            let userRole = 'user';
+            let redirectUrl = 'dashboard.html';
+
+            if (emailLower === 'johnpion2000@gmail.com') {
+                userRole = 'admin';
+                redirectUrl = 'admin/index.html';
+            } else {
+                // Check Firestore role first — read once and reuse for both routing and upsert
+                let firestoreRole = null;
+                try {
+                    const userSnap = await getDoc(doc(db, 'users', user.uid));
+                    if (userSnap.exists()) {
+                        firestoreRole = userSnap.data().role || 'user';
+                        if (firestoreRole === 'admin') {
+                            userRole = 'admin';
+                            redirectUrl = 'admin/index.html';
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Role check skipped:', e.message);
+                }
+                // If not admin, check agents collection
+                if (userRole !== 'admin') {
+                    try {
+                        const agentSnap = await getDocs(
+                            query(collection(db, 'agents'), where('email', '==', emailLower))
+                        );
+                        if (!agentSnap.empty) {
+                            userRole = 'agent';
+                            redirectUrl = 'admin/index.html';
+                        }
+                    } catch (e) {
+                        console.warn('Agent check skipped:', e.message);
+                    }
+                }
+                // Never downgrade a privileged role — if Firestore says admin/agent, keep it
+                if (firestoreRole === 'admin' || firestoreRole === 'agent') {
+                    userRole = firestoreRole;
+                }
+            }
+
+            // Upsert Firestore user doc — never overwrite an existing admin/agent role
             try {
                 await setDoc(doc(db, 'users', user.uid), {
                     uid:         user.uid,
                     email:       user.email,
                     fullName:    fullName,
                     displayName: displayName,
-                    role:        'user',
+                    role:        userRole,
                     status:      'active',
                     createdAt:   serverTimestamp(),
                 }, { merge: true });
             } catch (fsErr) {
                 console.warn('Firestore upsert skipped:', fsErr.message);
             }
-            
+
             const userData = {
                 uid: user.uid,
                 email: user.email,
@@ -441,14 +483,9 @@
             feedbackDiv.style.background = '#c6f6d5';
             feedbackDiv.style.color = '#22543d';
             feedbackDiv.innerHTML = '✅ Sign in successful! Redirecting...';
-            
+
             setTimeout(() => {
-                // Admin email goes straight to the admin dashboard
-                if (user.email && user.email.toLowerCase() === 'johnpion2000@gmail.com') {
-                    window.location.href = 'admin/index.html';
-                } else {
-                    window.location.href = 'dashboard.html';
-                }
+                window.location.href = redirectUrl;
             }, 1200);
             
         } catch (error) {
@@ -469,6 +506,11 @@
         }
     });
     
+    // Allow Enter key to submit
+    [emailInput, passwordInput].forEach(el => {
+        el.addEventListener('keydown', e => { if (e.key === 'Enter') submitBtn.click(); });
+    });
+
     // ---------- Password Reset Modal ----------
     const resetModal = document.getElementById('resetModal');
     const resetEmailInput = document.getElementById('resetEmail');

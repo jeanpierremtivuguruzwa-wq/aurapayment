@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, query, where, addDoc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { auth, db } from './services/firebase'
+import { Agent, AgentPermission, PermissionRequest } from './types/Agent'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import AdminLayout from './components/Layout/AdminLayout'
-import LiveActivity from './components/LiveActivity/LiveActivity'
+import AgentDashboard from './components/AgentDashboard/AgentDashboard'
+import AdminDashboard from './components/AdminDashboard/AdminDashboard'
 import CurrencyPairs from './components/CurrencyPairs/CurrencyPairs'
 import PaymentMethods from './components/PaymentMethods/PaymentMethods'
 import CardholdersList from './components/Cardholders/CardholdersList'
@@ -22,51 +24,116 @@ import CardholderActivity from './components/Cardholders/CardholderActivity'
 import UserDashboard from './components/UserDashboard/UserDashboard'
 
 type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'user-dashboard' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet' | 'public-dashboard'
-type AuthState = 'loading' | 'admin' | 'unauthenticated' | 'unauthorized'
+type AuthState = 'loading' | 'admin' | 'agent' | 'unauthenticated' | 'unauthorized'
 
-// The one and only authorised admin email
+// The primary admin email — always has admin access
 const ADMIN_EMAIL = 'johnpion2000@gmail.com'
 
 function App() {
   const [activeSection, setActiveSection] = useState<Section>('live')
   const [authState, setAuthState] = useState<AuthState>('loading')
   const [viewingUserId, setViewingUserId] = useState<string | null>(null)
+  const [agentData, setAgentData] = useState<Agent | null>(null)
+  const [permissionRequests, setPermissionRequests] = useState<PermissionRequest[]>([])
 
   useEffect(() => {
+    let reqUnsub: (() => void) | undefined
+
     const unsub = onAuthStateChanged(auth, async (user) => {
+      // Clean up any previous permission-request listener
+      if (reqUnsub) { reqUnsub(); reqUnsub = undefined }
+
       if (!user) {
         setAuthState('unauthenticated')
         return
       }
 
-      // Only the designated admin email is allowed in
-      if (user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-        setAuthState('unauthorized')
+      // Check if user is the designated admin (by email)
+      if (user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        // Ensure a Firestore profile doc exists with admin role
+        try {
+          const userRef = doc(db, 'users', user.uid)
+          const userDoc = await getDoc(userRef)
+          if (!userDoc.exists() || userDoc.data()?.role !== 'admin') {
+            await setDoc(userRef, {
+              uid:       user.uid,
+              email:     user.email,
+              fullName:  user.displayName || user.email.split('@')[0] || 'Admin',
+              role:      'admin',
+              status:    'active',
+              createdAt: serverTimestamp(),
+            }, { merge: true })
+          }
+        } catch { /* not critical */ }
+        setAuthState('admin')
         return
       }
 
-      // Ensure a Firestore profile doc exists with admin role
+      // Also check if this user has been granted admin role in Firestore
       try {
         const userRef = doc(db, 'users', user.uid)
         const userDoc = await getDoc(userRef)
-        if (!userDoc.exists() || userDoc.data()?.role !== 'admin') {
-          await setDoc(userRef, {
-            uid:       user.uid,
-            email:     user.email,
-            fullName:  user.displayName || user.email.split('@')[0] || 'Admin',
-            role:      'admin',
-            status:    'active',
-            createdAt: serverTimestamp(),
-          }, { merge: true })
+        if (userDoc.exists() && userDoc.data()?.role === 'admin') {
+          setAuthState('admin')
+          return
         }
-        setAuthState('admin')
+      } catch { /* not critical */ }
+
+      // Not admin — check if user is a registered agent
+      try {
+        const agentSnap = await getDocs(
+          query(collection(db, 'agents'), where('email', '==', user.email!.toLowerCase()))
+        )
+        if (!agentSnap.empty) {
+          const agentDoc = agentSnap.docs[0]
+          const agent = { id: agentDoc.id, ...agentDoc.data() } as Agent
+          setAgentData(agent)
+          setAuthState('agent')
+
+          // Ensure users/{uid} has role='agent' so Firestore rules grant access
+          try {
+            await setDoc(doc(db, 'users', user.uid), { role: 'agent' }, { merge: true })
+          } catch { /* not critical */ }
+
+          // Subscribe to this agent's permission requests in real time
+          reqUnsub = onSnapshot(
+            query(collection(db, 'permissionRequests'), where('agentId', '==', agent.id)),
+            (snap) => {
+              const reqs = snap.docs.map(d => ({ id: d.id, ...d.data() })) as PermissionRequest[]
+              setPermissionRequests(reqs)
+            }
+          )
+        } else {
+          setAuthState('unauthorized')
+        }
       } catch {
-        // Still grant access even if Firestore write fails — email check is the gate
-        setAuthState('admin')
+        setAuthState('unauthorized')
       }
     })
-    return unsub
+
+    return () => { unsub(); if (reqUnsub) reqUnsub() }
   }, [])
+
+  const requestPermission = useCallback(async (permission: AgentPermission) => {
+    if (!agentData) return
+    const existing = permissionRequests.find(r => r.permission === permission && r.status === 'pending')
+    if (existing) return
+    await addDoc(collection(db, 'permissionRequests'), {
+      agentId:    agentData.id,
+      agentName:  agentData.name,
+      agentEmail: agentData.email,
+      permission,
+      status:     'pending',
+      requestedAt: Timestamp.now(),
+    })
+  }, [agentData, permissionRequests])
+
+  const getPermissionRequestStatus = useCallback((permission: AgentPermission): 'none' | 'pending' | 'approved' | 'denied' => {
+    const req = permissionRequests
+      .filter(r => r.permission === permission)
+      .sort((a, b) => (b.requestedAt?.seconds ?? 0) - (a.requestedAt?.seconds ?? 0))[0]
+    return req ? req.status : 'none'
+  }, [permissionRequests])
 
   if (authState === 'loading') {
     return (
@@ -109,6 +176,17 @@ function App() {
     )
   }
 
+  // Agent users get their own dashboard view
+  if (authState === 'agent' && agentData) {
+    return (
+      <AgentDashboard
+        agent={agentData}
+        requestPermission={requestPermission}
+        getPermissionRequestStatus={getPermissionRequestStatus}
+      />
+    )
+  }
+
   const handleViewUserDashboard = (userId: string) => {
     setViewingUserId(userId)
     setActiveSection('user-dashboard')
@@ -121,7 +199,7 @@ function App() {
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'live': return <LiveActivity />
+      case 'live': return <AdminDashboard />
       case 'pairs': return <CurrencyPairs />
       case 'methods': return <PaymentMethods />
       case 'cardholders': return <CardholdersList />

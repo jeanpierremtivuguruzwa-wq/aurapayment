@@ -6,7 +6,7 @@ interface Props {
 
 const Sidebar: React.FC<Props> = ({ activeSection, onSectionChange }) => {
   const navItems = [
-    { id: 'live', label: 'Live Activity', icon: '📋' },
+    { id: 'live', label: 'Dashboard', icon: '🏠' },
     { id: 'pairs', label: 'Currency Pairs', icon: '💱' },
     { id: 'methods', label: 'Payment Methods', icon: '💳' },
     { id: 'cardholders', label: 'Cardholders', icon: '👥' },

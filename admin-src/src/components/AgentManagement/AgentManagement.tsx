@@ -3,12 +3,17 @@ import { useAgents } from '../../hooks/useAgents'
 import { AgentPermission } from '../../types/Agent'
 
 const ALL_PERMISSIONS: { key: AgentPermission; label: string; desc: string; icon: string; default?: boolean }[] = [
-  { key: 'transactions', label: 'Transactions',    desc: 'View & manage transactions',     icon: '📊', default: true },
-  { key: 'orders',       label: 'Orders',          desc: 'View, complete & cancel orders', icon: '📦' },
-  { key: 'users',        label: 'User Management', desc: 'View registered users',          icon: '👤' },
-  { key: 'currency',     label: 'Currency Pairs',  desc: 'View & edit currency rates',     icon: '💱' },
-  { key: 'payments',     label: 'Payment Methods', desc: 'View & edit payment methods',    icon: '💳' },
-  { key: 'cardholders',  label: 'Cardholders',     desc: 'View & manage cardholders',      icon: '👥' },
+  { key: 'transactions',        label: 'Transactions',          desc: 'View & manage transactions',            icon: '📊', default: true },
+  { key: 'orders',              label: 'Orders',                desc: 'View, complete & cancel orders',        icon: '📦' },
+  { key: 'users',               label: 'User Management',       desc: 'View registered users',                 icon: '👤' },
+  { key: 'currency',            label: 'Currency Pairs',        desc: 'View & edit currency rates',            icon: '💱' },
+  { key: 'payments',            label: 'Payment Methods',       desc: 'View & edit payment methods',           icon: '💳' },
+  { key: 'cardholders',         label: 'Cardholders',           desc: 'View & manage cardholders',             icon: '👥' },
+  { key: 'cardholder-activity', label: 'Cardholder Activity',   desc: 'View cardholder transaction activity',  icon: '📈' },
+  { key: 'chat',                label: 'AuraChat',              desc: 'Access the internal chat system',       icon: '💬' },
+  { key: 'wallet',              label: 'AuraWallet',            desc: 'View & manage Aura wallet records',     icon: '💰' },
+  { key: 'currency-assignments',label: 'Currency Assignments',  desc: 'Manage cardholder currency assignments', icon: '🏦' },
+  { key: 'notifications',       label: 'Notifications',         desc: 'Manage notification recipients',        icon: '🔔' },
 ]
 
 const AgentManagement: React.FC = () => {
@@ -20,13 +25,42 @@ const AgentManagement: React.FC = () => {
   const [formEmail, setFormEmail] = React.useState('')
   const [formSubmitting, setFormSubmitting] = React.useState(false)
 
-  // Permission editing
+  // Permission editing (modal)
   const [editingAgent, setEditingAgent] = React.useState<string | null>(null)
   const [editPerms, setEditPerms] = React.useState<AgentPermission[]>([])
   const [savingPerms, setSavingPerms] = React.useState(false)
 
+  // Inline permission editing
+  const [inlineDropdown, setInlineDropdown] = React.useState<string | null>(null)
+  const [inlineSaving, setInlineSaving] = React.useState<string | null>(null) // agentId being saved
+
   // Action loading
   const [actionLoading, setActionLoading] = React.useState<string | null>(null)
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    if (!inlineDropdown) return
+    const handler = () => setInlineDropdown(null)
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [inlineDropdown])
+
+  const inlineRemovePerm = async (agentId: string, perms: AgentPermission[], perm: AgentPermission) => {
+    const next = perms.filter(p => p !== perm)
+    setInlineSaving(agentId)
+    try { await updatePermissions(agentId, next) }
+    catch (e) { alert('Error: ' + (e as Error).message) }
+    finally { setInlineSaving(null) }
+  }
+
+  const inlineAddPerm = async (agentId: string, perms: AgentPermission[], perm: AgentPermission) => {
+    const next = [...perms, perm]
+    setInlineDropdown(null)
+    setInlineSaving(agentId)
+    try { await updatePermissions(agentId, next) }
+    catch (e) { alert('Error: ' + (e as Error).message) }
+    finally { setInlineSaving(null) }
+  }
 
   const pendingRequests = permissionRequests.filter(r => r.status === 'pending')
 
@@ -54,11 +88,6 @@ const AgentManagement: React.FC = () => {
     } finally {
       setFormSubmitting(false)
     }
-  }
-
-  const startEditPerms = (agentId: string, current: AgentPermission[]) => {
-    setEditingAgent(agentId)
-    setEditPerms([...current])
   }
 
   const togglePerm = (perm: AgentPermission) => {
@@ -343,20 +372,65 @@ const AgentManagement: React.FC = () => {
                       {/* Email */}
                       <td className="px-4 py-4 text-slate-600 text-sm">{agent.email}</td>
 
-                      {/* Permissions */}
+                      {/* Permissions — inline edit */}
                       <td className="px-4 py-4">
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-1.5 items-center">
                           {perms.map(perm => {
                             const p = ALL_PERMISSIONS.find(x => x.key === perm)
+                            const saving = inlineSaving === agent.id
                             return (
                               <span
                                 key={perm}
-                                className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 text-xs font-medium px-2 py-0.5 rounded-full"
+                                className="inline-flex items-center gap-1 bg-sky-50 text-sky-700 border border-sky-200 text-xs font-medium pl-2 pr-1 py-0.5 rounded-full group"
                               >
                                 {p?.icon} {p?.label || perm}
+                                <button
+                                  disabled={saving}
+                                  onClick={() => inlineRemovePerm(agent.id, perms, perm)}
+                                  className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full text-sky-400 hover:text-white hover:bg-red-500 transition-colors disabled:opacity-40"
+                                  title={`Remove ${p?.label || perm}`}
+                                >
+                                  ×
+                                </button>
                               </span>
                             )
                           })}
+                          {/* Add permission dropdown */}
+                          {(() => {
+                            const available = ALL_PERMISSIONS.filter(p => !perms.includes(p.key))
+                            if (available.length === 0) return null
+                            const isOpen = inlineDropdown === agent.id
+                            return (
+                              <div className="relative" onMouseDown={e => e.stopPropagation()}>
+                                <button
+                                  onClick={() => setInlineDropdown(isOpen ? null : agent.id)}
+                                  disabled={inlineSaving === agent.id}
+                                  className="inline-flex items-center gap-0.5 bg-slate-100 hover:bg-sky-100 text-slate-500 hover:text-sky-700 border border-dashed border-slate-300 hover:border-sky-400 text-xs font-medium px-2 py-0.5 rounded-full transition-colors disabled:opacity-40"
+                                  title="Add permission"
+                                >
+                                  ＋ Add
+                                </button>
+                                {isOpen && (
+                                  <div className="absolute left-0 top-7 z-50 bg-white rounded-xl shadow-xl border border-slate-200 py-1 min-w-[200px]">
+                                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide px-3 pt-2 pb-1">Grant permission</p>
+                                    {available.map(p => (
+                                      <button
+                                        key={p.key}
+                                        onClick={() => inlineAddPerm(agent.id, perms, p.key)}
+                                        className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs hover:bg-sky-50 text-slate-700 hover:text-sky-800 transition-colors"
+                                      >
+                                        <span>{p.icon}</span>
+                                        <span className="font-medium">{p.label}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })()}
+                          {inlineSaving === agent.id && (
+                            <span className="text-xs text-slate-400 italic">saving…</span>
+                          )}
                         </div>
                       </td>
 
@@ -379,12 +453,6 @@ const AgentManagement: React.FC = () => {
                       {/* Actions */}
                       <td className="px-4 py-4">
                         <div className="flex gap-1.5 items-center flex-wrap">
-                          <button
-                            onClick={() => startEditPerms(agent.id, perms)}
-                            className="bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors"
-                          >
-                            🔑 Permissions
-                          </button>
                           {status === 'suspended' ? (
                             <button
                               disabled={isLoading}
