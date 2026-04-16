@@ -3,6 +3,7 @@ import { useUsers } from '../../hooks/useUsers'
 import { useRealtimeOrders } from '../../hooks/useRealtimeOrders'
 import { useAgents } from '../../hooks/useAgents'
 import { UserRole } from '../../types/AppUser'
+import { Users, CheckCircle, Moon, Ban, Shield, Handshake, CalendarDays, Sparkles, Search, Eye } from 'lucide-react'
 
 type StatusFilter = 'all' | 'active' | 'inactive' | 'suspended'
 type RoleFilter   = 'all' | 'user' | 'admin' | 'agent'
@@ -163,7 +164,7 @@ const UserManagement: React.FC<Props> = ({ onViewUserDashboard }) => {
 
   if (error) return (
     <div className="card-base p-6 bg-red-50 border border-red-200">
-      <p className="text-red-700 font-semibold">⚠️ Error loading users</p>
+      <p className="text-red-700 font-semibold">Error loading users</p>
       <p className="text-red-600 text-sm mt-1">{error}</p>
       <button onClick={() => window.location.reload()} className="mt-4 btn-primary text-sm">Retry</button>
     </div>
@@ -176,7 +177,7 @@ const UserManagement: React.FC<Props> = ({ onViewUserDashboard }) => {
       <div className="card-base p-6 pb-5">
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">👤 User Management</h2>
+            <h2 className="text-xl font-semibold text-slate-900">User Management</h2>
             <p className="text-sm text-slate-500 mt-0.5">All registered accounts · roles · status</p>
           </div>
           <div className="text-right text-xs text-slate-400">
@@ -188,17 +189,17 @@ const UserManagement: React.FC<Props> = ({ onViewUserDashboard }) => {
         {/* ── 8-card stats grid ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Total Accounts', value: stats.total,     icon: '👥', bg: 'bg-slate-50',   border: 'border-slate-200',  text: 'text-slate-800'  },
-            { label: 'Active',         value: stats.active,    icon: '✅', bg: 'bg-green-50',   border: 'border-green-200',  text: 'text-green-800'  },
-            { label: 'Inactive',       value: stats.inactive,  icon: '😴', bg: 'bg-slate-50',   border: 'border-slate-200',  text: 'text-slate-600'  },
-            { label: 'Suspended',      value: stats.suspended, icon: '🚫', bg: 'bg-red-50',     border: 'border-red-200',    text: 'text-red-700'    },
-            { label: 'Admins',         value: stats.admins,    icon: '🛡', bg: 'bg-purple-50',  border: 'border-purple-200', text: 'text-purple-800' },
-            { label: 'Agents',         value: stats.agents,    icon: '🤝', bg: 'bg-amber-50',   border: 'border-amber-200',  text: 'text-amber-800'  },
-            { label: 'New This Month', value: stats.newMonth,  icon: '📅', bg: 'bg-sky-50',     border: 'border-sky-200',    text: 'text-sky-700'    },
-            { label: 'New Today',      value: stats.newToday,  icon: '🆕', bg: 'bg-emerald-50', border: 'border-emerald-200',text: 'text-emerald-800'},
+            { label: 'Total Accounts', value: stats.total,     icon: <Users className="w-6 h-6" />,        bg: 'bg-slate-50',   border: 'border-slate-200',  text: 'text-slate-800'  },
+            { label: 'Active',         value: stats.active,    icon: <CheckCircle className="w-6 h-6" />,   bg: 'bg-green-50',   border: 'border-green-200',  text: 'text-green-800'  },
+            { label: 'Inactive',       value: stats.inactive,  icon: <Moon className="w-6 h-6" />,          bg: 'bg-slate-50',   border: 'border-slate-200',  text: 'text-slate-600'  },
+            { label: 'Suspended',      value: stats.suspended, icon: <Ban className="w-6 h-6" />,           bg: 'bg-red-50',     border: 'border-red-200',    text: 'text-red-700'    },
+            { label: 'Admins',         value: stats.admins,    icon: <Shield className="w-6 h-6" />,        bg: 'bg-purple-50',  border: 'border-purple-200', text: 'text-purple-800' },
+            { label: 'Agents',         value: stats.agents,    icon: <Handshake className="w-6 h-6" />,     bg: 'bg-amber-50',   border: 'border-amber-200',  text: 'text-amber-800'  },
+            { label: 'New This Month', value: stats.newMonth,  icon: <CalendarDays className="w-6 h-6" />,  bg: 'bg-sky-50',     border: 'border-sky-200',    text: 'text-sky-700'    },
+            { label: 'New Today',      value: stats.newToday,  icon: <Sparkles className="w-6 h-6" />,      bg: 'bg-emerald-50', border: 'border-emerald-200',text: 'text-emerald-800'},
           ].map(s => (
             <div key={s.label} className={`rounded-xl border px-4 py-3 ${s.bg} ${s.border} flex items-center gap-3`}>
-              <span className="text-2xl">{s.icon}</span>
+              <span className="text-slate-600 flex items-center">{s.icon}</span>
               <div>
                 <div className={`text-2xl font-bold leading-none ${s.text}`}>{s.value}</div>
                 <div className="text-xs text-slate-500 mt-0.5 font-medium">{s.label}</div>
@@ -215,7 +216,7 @@ const UserManagement: React.FC<Props> = ({ onViewUserDashboard }) => {
         <div className="flex flex-col sm:flex-row gap-3 mb-5">
           <input
             type="text"
-            placeholder="🔍  Search name, email or phone…"
+            placeholder="Search name, email or phone…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="flex-1 border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 bg-slate-50"
@@ -247,7 +248,7 @@ const UserManagement: React.FC<Props> = ({ onViewUserDashboard }) => {
 
         {filtered.length === 0 ? (
           <div className="text-center py-16">
-            <div className="text-5xl mb-3">🔍</div>
+            <Search className="w-12 h-12 mx-auto mb-3 text-slate-300" />
             <p className="text-slate-500 text-lg">No users found</p>
             {users.length === 0 && (
               <p className="text-slate-400 text-sm mt-2">
@@ -334,7 +335,7 @@ const UserManagement: React.FC<Props> = ({ onViewUserDashboard }) => {
                               role === 'agent'  ? 'bg-amber-100 text-amber-800 border-amber-200'   :
                                                   'bg-sky-50 text-sky-700 border-sky-200'
                             }`}>
-                              {role === 'admin' ? '🛡 Admin' : role === 'agent' ? '🤝 Agent' : '👤 User'}
+                              {role === 'admin' ? 'Admin' : role === 'agent' ? 'Agent' : 'User'}
                             </span>
                           </td>
 
@@ -389,7 +390,7 @@ const UserManagement: React.FC<Props> = ({ onViewUserDashboard }) => {
                                   onClick={() => handleStatusToggle(user.id, status)}
                                   className="text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2.5 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50"
                                 >
-                                  {isActing ? '…' : '🚫 Suspend'}
+                                  {isActing ? '…' : 'Suspend'}
                                 </button>
                               )}
                             </div>
@@ -439,7 +440,7 @@ const UserManagement: React.FC<Props> = ({ onViewUserDashboard }) => {
                                         }`}
                                       >
                                         {isRoleAct && role !== r ? '…' : (
-                                          r === 'admin' ? '🛡 Admin' : r === 'agent' ? '🤝 Agent' : '👤 User'
+                                        r === 'admin' ? 'Admin' : r === 'agent' ? 'Agent' : 'User'
                                         )}
                                       </button>
                                     ))}
@@ -450,7 +451,7 @@ const UserManagement: React.FC<Props> = ({ onViewUserDashboard }) => {
                                       onClick={() => onViewUserDashboard(user.id)}
                                       className="mt-1 flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors shadow-sm"
                                     >
-                                      👁 View User Dashboard
+                                      <Eye className="w-3.5 h-3.5" /> View User Dashboard
                                     </button>
                                   )}
                                 </div>

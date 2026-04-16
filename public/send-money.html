@@ -399,7 +399,7 @@
 
         <!-- Rate changed banner -->
         <div id="rate-changed-banner" style="display:none; background:#fef9c3; border:1px solid #fbbf24; color:#92400e; border-radius:12px; padding:0.85rem 1.25rem; margin-bottom:16px; display:none; align-items:center; gap:0.75rem; font-size:0.9rem;">
-            <span style="font-size:1.2rem;">⚠️</span>
+            <span style="font-size:1.2rem;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
             <span id="rate-changed-text" data-i18n="send_rate_updated">The exchange rate has been updated. Please review the new rate below before continuing.</span>
             <button onclick="dismissRateBanner()" style="margin-left:auto;background:none;border:none;font-size:1rem;cursor:pointer;color:#92400e;">✕</button>
         </div>
@@ -472,7 +472,7 @@
         <div id="step4" class="card" style="display: none;">
             <h2 data-i18n="send_proof_title">Upload Payment Proof</h2>
             <div style="border: 2px dashed #e2e8f0; border-radius: 16px; padding: 40px 20px; text-align: center; margin-bottom: 1rem;">
-                <div style="font-size: 3rem; margin-bottom: 12px;">📎</div>
+                <div style="font-size: 3rem; margin-bottom: 12px;"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></div>
                 <h3 style="margin-bottom: 8px;" data-i18n="send_proof_drag">Drag and drop or click to upload</h3>
                 <p style="color: #718096; margin-bottom: 16px;" data-i18n="send_proof_hint">Supported: JPG, PNG, PDF (Max 10MB)</p>
                 <input type="file" accept="image/*,.pdf" style="display: none;" id="fileInput">
@@ -487,7 +487,7 @@
 
         <!-- Success Screen (shown after proof uploaded) -->
         <div id="successScreen" class="card" style="display: none; text-align: center; padding: 2.5rem 2rem;">
-            <div style="font-size: 3.5rem; margin-bottom: 1rem;">✅</div>
+            <div style="font-size: 3.5rem; margin-bottom: 1rem;"><svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
             <h2 style="color: #0b1b3a; margin-bottom: 0.5rem;" data-i18n="send_success_title">Payment Submitted!</h2>
             <p style="color: #718096; margin-bottom: 1.75rem; font-size: 0.95rem;" data-i18n="send_success_sub">Your proof of payment has been received. Our team will process your transaction shortly.</p>
 
@@ -500,7 +500,7 @@
 
             <div style="display: flex; gap: 0.75rem; flex-direction: column;">
                 <a href="support.html" style="display: block; width: 100%; padding: 0.85rem; background: #0b1b3a; color: white; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 0.95rem; text-align: center;">
-                    💬 Contact Support
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Contact Support
                 </a>
                 <a href="history.html" style="display: block; width: 100%; padding: 0.85rem; background: white; color: #4a5568; border: 1.5px solid #e2e8f0; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 0.95rem; text-align: center;">
                     View Transaction History
@@ -925,7 +925,7 @@
                                     <div><strong>${method.name}</strong></div>
                                     <div style="font-size:0.9rem; color:#718096; margin: 4px 0;">${cardholderName}</div>
                                     <div style="font-size:0.85rem; color:#0b1b3a; margin-top:6px;">
-                                        💳 ${method.type === 'bank' ? 'Bank Transfer' : method.type === 'mobile' ? 'Mobile Money' : 'Cash'}${processingTime}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:4px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> ${method.type === 'bank' ? 'Bank Transfer' : method.type === 'mobile' ? 'Mobile Money' : 'Cash'}${processingTime}
                                     </div>
                                 </div>
                             `;
@@ -992,7 +992,7 @@
 
                     detailsHTML = `
                         <div style="background: #f7fafc; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #0b1b3a;">
-                            <h4 style="margin-bottom: 1rem; color: #0b1b3a;">💳 ${method.name} - ${cardholder.displayName}</h4>
+                            <h4 style="margin-bottom: 1rem; color: #0b1b3a;">Payment: ${method.name} - ${cardholder.displayName}</h4>
                             
                             <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">
                                 <span>${t('send_cardholder')}</span>
@@ -1001,7 +1001,7 @@
                             
                             <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">
                                 <span>${t('send_method_type')}</span>
-                                <span><strong>${method.type === 'bank' ? `🏦 ${t('send_bank')}` : method.type === 'mobile' ? `📱 ${t('send_mobile')}` : `💵 ${t('send_cash')}`}</strong></span>
+                                <span><strong>${method.type === 'bank' ? `${t('send_bank')}` : method.type === 'mobile' ? `${t('send_mobile')}` : `${t('send_cash')}`}</strong></span>
                             </div>
                             
                             <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #e2e8f0;">

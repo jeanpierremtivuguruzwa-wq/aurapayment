@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useRealtimeTransactions } from '../../hooks/useRealtimeTransactions'
 import { getDownloadURL, ref } from 'firebase/storage'
 import { storage } from '../../services/firebase'
+import { Image } from 'lucide-react'
 
 const AllTransactions: React.FC = () => {
   const { transactions } = useRealtimeTransactions()
@@ -66,7 +67,7 @@ const AllTransactions: React.FC = () => {
         {/* Transactions Table */}
         <div className="card-base p-6">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-            <h2 className="text-xl font-semibold">✓ All Transactions</h2>
+            <h2 className="text-xl font-semibold">All Transactions</h2>
             <span className="text-sm font-medium text-slate-500">{linkedTransactions.length} transactions</span>
           </div>
 
@@ -182,7 +183,7 @@ const AllTransactions: React.FC = () => {
                                     disabled={loadingProofId === tx.id}
                                     className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-60"
                                   >
-                                    {loadingProofId === tx.id ? '⏳ Loading...' : '🖼 View Uploaded Proof'}
+                                    {loadingProofId === tx.id ? 'Loading...' : <><Image className="w-3.5 h-3.5 inline mr-1" />View Uploaded Proof</>}
                                   </button>
                                 </div>
                               )}
@@ -210,7 +211,7 @@ const AllTransactions: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <h3 className="text-lg font-semibold">🖼 Proof of Payment</h3>
+              <h3 className="text-lg font-semibold">Proof of Payment</h3>
               <button
                 onClick={() => setProofModal(null)}
                 className="text-slate-500 hover:text-slate-800 text-2xl font-bold leading-none"

@@ -620,3 +620,249 @@ export const notifyUserOnOrderComplete = onDocumentUpdated(
     console.log(`[orderComplete] Email sent → ${userEmail}, order ${orderId}, status: ${after.status}`);
   }
 );
+
+// ─── Email user when support agent/admin replies to their ticket ──────────────
+// Fires when a new message is added to supportTickets/{ticketId}/messages/.
+// If the sender is admin or agent (role !== 'user'), emails the user so they
+// know the support team has replied and their issue is being handled.
+export const notifyUserOnSupportReply = onDocumentCreated(
+  { document: 'supportTickets/{ticketId}/messages/{messageId}', secrets: ['GMAIL_USER', 'GMAIL_PASS'] },
+  async (event) => {
+    const msg = event.data?.data();
+    if (!msg) return;
+
+    // Only notify when admin or agent replies – not on user messages
+    if (msg.role === 'user') return;
+
+    const ticketId   = event.params.ticketId;
+    const db         = getFirestore();
+
+    // Fetch parent ticket to get user email and details
+    const ticketSnap = await db.collection('supportTickets').doc(ticketId).get();
+    if (!ticketSnap.exists) {
+      console.log(`[supportReply] Ticket ${ticketId} not found – skipping.`);
+      return;
+    }
+
+    const ticket    = ticketSnap.data();
+    const userEmail = ticket?.userEmail;
+    if (!userEmail) {
+      console.log(`[supportReply] No userEmail on ticket ${ticketId} – skipping.`);
+      return;
+    }
+
+    const userName   = ticket?.userName   || '';
+    const subjectKey = ticket?.subject    || 'general';
+    const replyText  = msg.text           || '';
+    const senderName = msg.senderName     || 'Support Team';
+    const supportLink = 'https://aura-payment.web.app/support.html';
+
+    const CATEGORY = {
+      transaction_delay: 'Transaction taking too long',
+      proof_issue:       'Problem with proof of payment',
+      wrong_amount:      'Wrong amount received',
+      payment_failed:    'Payment failed',
+      account_issue:     'Account issue',
+      general:           'General question',
+      other:             'Other',
+    };
+    const topicLabel = CATEGORY[subjectKey] || subjectKey;
+
+    const subject = `Reply from Aura Support – ${topicLabel}`;
+    const html    = `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a202c;">
+        <div style="background:#0b1b3a;padding:24px 32px;border-radius:12px 12px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Aura Payment</h1>
+          <p style="color:#90cdf4;margin:4px 0 0;font-size:14px;">Support Team</p>
+        </div>
+        <div style="background:#f7fafc;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;">
+
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:18px 22px;margin-bottom:24px;">
+            <p style="margin:0;font-size:13px;color:#1e40af;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Support Reply</p>
+            <p style="margin:6px 0 0;font-size:18px;font-weight:700;color:#1e3a8a;">${topicLabel}</p>
+          </div>
+
+          <p style="color:#4a5568;margin-top:0;">
+            Hi${userName ? ' ' + userName : ''},<br><br>
+            Our support team has replied to your enquiry. Here is their message:
+          </p>
+
+          <div style="background:white;border-left:4px solid #0b1b3a;border-radius:6px;padding:18px 22px;margin:20px 0;color:#1a202c;font-size:15px;line-height:1.6;">
+            ${replyText.replace(/\n/g, '<br>')}
+          </div>
+
+          <p style="color:#718096;font-size:14px;">
+            — <strong style="color:#0b1b3a;">${senderName}</strong>, Aura Payment Support
+          </p>
+
+          <a href="${supportLink}" style="display:inline-block;margin-top:8px;background:#0b1b3a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            View Your Support Ticket &rarr;
+          </a>
+
+          <p style="margin-top:28px;font-size:13px;color:#718096;">
+            You can reply directly from the <a href="${supportLink}" style="color:#0b1b3a;font-weight:600;">support page</a>
+            on our website. Our team is here to help and your issue is being handled.<br><br>
+            Thank you for your patience.
+          </p>
+
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+          <p style="font-size:11px;color:#a0aec0;">
+            Aura Payment &middot; <a href="https://aura-payment.web.app" style="color:#a0aec0;">aura-payment.web.app</a><br>
+            This email was sent because you submitted a support request. Please do not reply to this email.
+          </p>
+        </div>
+      </div>
+    `;
+
+    const user = process.env.GMAIL_USER;
+    const pass = process.env.GMAIL_PASS;
+    if (!user || !pass) {
+      console.error('[supportReply] GMAIL_USER or GMAIL_PASS secret not available – cannot send email.');
+      return;
+    }
+
+    const transporter = createTransporter(user, pass);
+    await transporter.sendMail({
+      from:    `"Aura Payment Support" <${user}>`,
+      to:      userEmail,
+      subject,
+      html,
+    });
+
+    console.log(`[supportReply] Email sent → ${userEmail}, ticket ${ticketId}`);
+  }
+);
+
+// ─── Email active notification recipients when a new support ticket is opened ─
+// Fires when any new supportTickets document is created (user submits a ticket
+// from the support page). Reads all active notificationRecipients and emails
+// them so the team can reply promptly to the user.
+export const notifyAgentsOnNewSupportTicket = onDocumentCreated(
+  { document: 'supportTickets/{ticketId}', secrets: ['GMAIL_USER', 'GMAIL_PASS'] },
+  async (event) => {
+    const ticket = event.data?.data();
+    if (!ticket) return;
+
+    const ticketId = event.params.ticketId;
+
+    // Gather all active notification recipients (admins + agents marked active)
+    const recipientsSnap = await db.collection('notificationRecipients')
+      .where('active', '==', true)
+      .get();
+
+    if (recipientsSnap.empty) {
+      console.log('[newTicket] No active notification recipients – skipping email.');
+    }
+
+    const userEmail  = ticket.userEmail  || 'unknown';
+    const userName   = ticket.userName   || '';
+    const subjectKey = ticket.subject    || 'general';
+    const message    = ticket.message    || '';
+    const orderId    = ticket.orderId    || null;
+    const adminLink  = 'https://aura-payment.web.app/admin/';
+
+    const CATEGORY = {
+      transaction_delay: 'Transaction taking too long',
+      proof_issue:       'Problem with proof of payment',
+      wrong_amount:      'Wrong amount received',
+      payment_failed:    'Payment failed',
+      account_issue:     'Account issue',
+      general:           'General question',
+      other:             'Other',
+    };
+    const topicLabel = CATEGORY[subjectKey] || subjectKey;
+
+    // Write in-app notification so the admin bell icon updates immediately
+    await db.collection('adminNotifications').add({
+      message:   `New support ticket from ${userName || userEmail} – ${topicLabel}`,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      read:      false,
+      type:      'support',
+      ticketId,
+      userEmail,
+    });
+
+    if (recipientsSnap.empty) return;
+
+    const toEmails = recipientsSnap.docs.map(d => d.data().email).filter(Boolean);
+    if (toEmails.length === 0) return;
+
+    const emailSubject = `New Support Ticket – ${topicLabel}`;
+    const html = `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a202c;">
+        <div style="background:#0b1b3a;padding:24px 32px;border-radius:12px 12px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Aura Payment</h1>
+          <p style="color:#90cdf4;margin:4px 0 0;font-size:14px;">Support Notification</p>
+        </div>
+        <div style="background:#f7fafc;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;">
+
+          <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:18px 22px;margin-bottom:24px;">
+            <p style="margin:0;font-size:13px;color:#c2410c;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">New Support Ticket</p>
+            <p style="margin:6px 0 0;font-size:18px;font-weight:700;color:#9a3412;">${topicLabel}</p>
+          </div>
+
+          <p style="color:#4a5568;margin-top:0;">
+            A user has submitted a new support ticket and is waiting for a reply.<br>
+            Please log in to the admin panel and respond as soon as possible.
+          </p>
+
+          <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+            <tr style="background:#edf2f7;">
+              <td style="padding:11px 16px;font-weight:600;width:38%;color:#2d3748;">Ticket ID</td>
+              <td style="padding:11px 16px;font-family:monospace;font-size:13px;color:#4a5568;">${ticketId}</td>
+            </tr>
+            <tr>
+              <td style="padding:11px 16px;font-weight:600;color:#2d3748;">User</td>
+              <td style="padding:11px 16px;color:#4a5568;">${userName ? userName + ' &lt;' + userEmail + '&gt;' : userEmail}</td>
+            </tr>
+            <tr style="background:#edf2f7;">
+              <td style="padding:11px 16px;font-weight:600;color:#2d3748;">Topic</td>
+              <td style="padding:11px 16px;color:#4a5568;">${topicLabel}</td>
+            </tr>
+            ${orderId ? `<tr>
+              <td style="padding:11px 16px;font-weight:600;color:#2d3748;">Linked Order</td>
+              <td style="padding:11px 16px;font-family:monospace;font-size:13px;color:#4a5568;">${orderId}</td>
+            </tr>` : ''}
+          </table>
+
+          <div style="background:white;border-left:4px solid #ea580c;border-radius:6px;padding:16px 20px;margin:20px 0;color:#1a202c;font-size:14px;line-height:1.65;">
+            <p style="margin:0 0 6px;font-size:11px;font-weight:700;text-transform:uppercase;color:#9a3412;letter-spacing:.05em;">User's Message</p>
+            ${message.replace(/\n/g, '<br>')}
+          </div>
+
+          <a href="${adminLink}" style="display:inline-block;background:#0b1b3a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            Open Admin Dashboard &rarr;
+          </a>
+
+          <p style="margin-top:28px;font-size:13px;color:#718096;">
+            Go to <strong>Support</strong> in the admin dashboard to view and reply to this ticket.
+            The user is waiting for your response.
+          </p>
+
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+          <p style="font-size:11px;color:#a0aec0;">
+            Aura Payment &middot; <a href="https://aura-payment.web.app" style="color:#a0aec0;">aura-payment.web.app</a><br>
+            You are receiving this because you are an active notification recipient.
+          </p>
+        </div>
+      </div>
+    `;
+
+    const user = process.env.GMAIL_USER;
+    const pass = process.env.GMAIL_PASS;
+    if (!user || !pass) {
+      console.error('[newTicket] GMAIL_USER or GMAIL_PASS secret not available – cannot send email.');
+      return;
+    }
+
+    const transporter = createTransporter(user, pass);
+    await transporter.sendMail({
+      from:    `"Aura Payment Support" <${user}>`,
+      to:      toEmails.join(','),
+      subject: emailSubject,
+      html,
+    });
+
+    console.log(`[newTicket] Email sent to ${toEmails.length} recipient(s), ticket ${ticketId}`);
+  }
+);

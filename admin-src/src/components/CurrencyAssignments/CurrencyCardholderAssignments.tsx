@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { Landmark } from 'lucide-react'
 import { useCurrencyAssignments, EnrichedCardholder } from '../../hooks/useCurrencyAssignments'
 
 // ─── Cardholder row ──────────────────────────────────────────────────────────
@@ -402,7 +403,7 @@ export default function CurrencyCardholderAssignments() {
       {/* Currency blocks */}
       {currencies.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
-          <div className="text-5xl mb-4">🏦</div>
+          <Landmark className="w-12 h-12 mx-auto mb-4 text-slate-300" />
           <p className="text-lg font-medium text-gray-500">No currencies yet</p>
           <p className="text-sm mt-1">Click <span className="font-medium text-indigo-600">+ Add Currency</span> to get started.</p>
         </div>

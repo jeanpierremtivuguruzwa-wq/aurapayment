@@ -102,7 +102,7 @@ const CardholderManagement: React.FC<Props> = ({ paymentMethod, onClose }) => {
       <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold">👥 Cardholders - {paymentMethod.name}</h2>
+          <h2 className="text-2xl font-bold">Cardholders - {paymentMethod.name}</h2>
           <button
             onClick={onClose}
             className="text-slate-500 hover:text-slate-700 font-bold text-2xl"
@@ -263,7 +263,7 @@ const CardholderManagement: React.FC<Props> = ({ paymentMethod, onClose }) => {
 
           {/* Info Box */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-xs text-blue-900 font-semibold mb-2">💡 How it works:</p>
+            <p className="text-xs text-blue-900 font-semibold mb-2">How it works:</p>
             <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
               <li>Only ONE cardholder can be active per payment method</li>
               <li>The active cardholder's details are shown to users in send-money</li>

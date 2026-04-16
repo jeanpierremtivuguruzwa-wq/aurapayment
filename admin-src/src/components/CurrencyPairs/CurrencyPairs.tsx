@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useFirestoreQuery } from '../../hooks/useFirestoreQuery'
 import { CurrencyPair } from '../../types/CurrencyPair'
+import { TrendingUp, Trash2, Smartphone, DollarSign, BarChart2, Search, Globe } from 'lucide-react'
 import {
   addCurrencyPair,
   deactivateAllPairs,
@@ -314,7 +315,7 @@ function PairRow({
               pair.urgent ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-100 text-slate-400 border-slate-200 hover:border-red-200 hover:text-red-500'
             }`}
           >
-            {pair.urgent ? '🔴' : '⚪'}
+            {pair.urgent ? <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> : <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" />}
           </button>
 
           {/* Active toggle */}
@@ -332,7 +333,7 @@ function PairRow({
             onClick={() => onViewHistory(pair)}
             title="Rate history"
             className="text-[11px] px-2 py-1 border border-slate-200 text-slate-400 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all"
-          >📈</button>
+          ><TrendingUp className="w-3.5 h-3.5" /></button>
 
           {/* Expand */}
           <button
@@ -354,7 +355,7 @@ function PairRow({
             }}
             disabled={deleting}
             className="text-[11px] px-2 py-1 border border-red-100 text-red-400 rounded-lg hover:bg-red-50 hover:border-red-300 disabled:opacity-40 transition-all"
-          >{deleting ? '…' : '🗑'}</button>
+          >{deleting ? '…' : <Trash2 className="w-3.5 h-3.5" />}</button>
         </div>
       </div>
 
@@ -365,7 +366,7 @@ function PairRow({
 
             {/* Delivery Methods */}
             <div>
-              <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">📱 Delivery Methods</p>
+              <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide flex items-center gap-1"><Smartphone className="w-3.5 h-3.5" /> Delivery Methods</p>
               <div className="flex flex-wrap gap-2">
                 {DELIVERY_OPTIONS.map(method => (
                   <button
@@ -385,7 +386,7 @@ function PairRow({
 
             {/* Fee */}
             <div>
-              <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">💰 Transaction Fee</p>
+              <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide flex items-center gap-1"><DollarSign className="w-3.5 h-3.5" /> Transaction Fee</p>
               <div className="flex items-center gap-2">
                 <input
                   type="number" step="0.01" min="0"
@@ -422,7 +423,7 @@ function PairRow({
 
             {/* Margin */}
             <div>
-              <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide">📊 Rate Margin</p>
+              <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide flex items-center gap-1"><BarChart2 className="w-3.5 h-3.5" /> Rate Margin</p>
               <div className="flex items-center gap-2">
                 <input
                   type="number" step="0.01" min="0" max="100"
@@ -766,7 +767,7 @@ function RateHistoryModal({ pair, onClose }: { pair: CurrencyPair; onClose: () =
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">📈 Rate History</h2>
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><TrendingUp className="w-5 h-5" /> Rate History</h2>
             <p className="text-xs text-gray-500">
               {pair.flag} {pair.country} · {pair.from} → {pair.to} · last 20 changes
             </p>
@@ -783,7 +784,7 @@ function RateHistoryModal({ pair, onClose }: { pair: CurrencyPair; onClose: () =
             </div>
           ) : history.length === 0 ? (
             <div className="text-center py-10 text-gray-400">
-              <p className="text-4xl mb-2">📈</p>
+              <TrendingUp className="w-10 h-10 mx-auto mb-2 text-gray-300" />
               <p className="text-sm font-medium">No rate changes recorded yet.</p>
               <p className="text-xs mt-1">Edit a rate to start tracking history.</p>
             </div>
@@ -1069,7 +1070,7 @@ const CurrencyPairs: React.FC = () => {
 
       {/* ── Search bar (pill style) ── */}
       <div className="flex items-center gap-2.5 bg-white border border-[#e2e8f0] rounded-[48px] px-[18px] py-2.5 max-w-sm">
-        <span className="text-[#94a3b8] text-base">🔍</span>
+        <Search className="text-[#94a3b8] w-4 h-4" />
         <input
           type="text"
           value={searchTerm}
@@ -1153,7 +1154,7 @@ const CurrencyPairs: React.FC = () => {
 
         {totalVisible === 0 && (
           <div className="text-center py-16 bg-white rounded-3xl border border-[#edf2f7]">
-            <p className="text-5xl mb-4">🔍</p>
+            <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" />
             <h3 className="text-lg font-semibold text-[#1e293b] mb-2">No currency pairs found</h3>
             <p className="text-[#5c6e8c] text-sm">Try a different search term</p>
           </div>
@@ -1163,7 +1164,7 @@ const CurrencyPairs: React.FC = () => {
       {/* ── Countries Reference Section ── */}
       <div className="bg-white rounded-3xl border border-[#edf2f7] overflow-hidden" style={{boxShadow:'0 1px 2px rgba(0,0,0,0.03)'}}>
         <div className="px-6 py-[18px] bg-[#fafcff] border-b border-[#edf2f7]">
-          <h3 className="text-[17px] font-semibold text-[#0f172a] mb-1.5">🌍 Countries using CFA Francs</h3>
+          <h3 className="text-[17px] font-semibold text-[#0f172a] mb-1.5 flex items-center gap-2"><Globe className="w-5 h-5" /> Countries using CFA Francs</h3>
           <p className="text-[12px] text-[#6b7a8f]">* Each country has its own pair because exchange rates may vary by location</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">

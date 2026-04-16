@@ -5,16 +5,17 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../services/firebase'
 import { useRealtimeOrders } from '../../hooks/useRealtimeOrders'
+import { Package, BarChart2, Users, ArrowLeftRight, CreditCard, UserCheck, Bell, Shield, Camera, Pencil } from 'lucide-react'
 
-const PERMISSIONS = [
-  { icon: '📦', label: 'Manage Orders',           desc: 'View, complete and cancel all customer orders' },
-  { icon: '📊', label: 'View All Transactions',   desc: 'Full read access to every transaction record' },
-  { icon: '👤', label: 'Manage Users',             desc: 'Suspend, activate and change user roles' },
-  { icon: '💱', label: 'Manage Currency Pairs',   desc: 'Add, edit and toggle currency exchange pairs' },
-  { icon: '💳', label: 'Manage Payment Methods',  desc: 'Create and configure payment methods' },
-  { icon: '👥', label: 'Manage Cardholders',      desc: 'Assign cardholders to payment methods' },
-  { icon: '🔔', label: 'Admin Notifications',     desc: 'Receive real-time alerts on activity' },
-  { icon: '🛡', label: 'Full Admin Access',        desc: 'All permissions are automatically granted' },
+const PERMISSIONS: { icon: React.ReactNode; label: string; desc: string }[] = [
+  { icon: <Package className="w-5 h-5" />,         label: 'Manage Orders',           desc: 'View, complete and cancel all customer orders' },
+  { icon: <BarChart2 className="w-5 h-5" />,        label: 'View All Transactions',   desc: 'Full read access to every transaction record' },
+  { icon: <Users className="w-5 h-5" />,            label: 'Manage Users',             desc: 'Suspend, activate and change user roles' },
+  { icon: <ArrowLeftRight className="w-5 h-5" />,   label: 'Manage Currency Pairs',   desc: 'Add, edit and toggle currency exchange pairs' },
+  { icon: <CreditCard className="w-5 h-5" />,       label: 'Manage Payment Methods',  desc: 'Create and configure payment methods' },
+  { icon: <UserCheck className="w-5 h-5" />,        label: 'Manage Cardholders',      desc: 'Assign cardholders to payment methods' },
+  { icon: <Bell className="w-5 h-5" />,             label: 'Admin Notifications',     desc: 'Receive real-time alerts on activity' },
+  { icon: <Shield className="w-5 h-5" />,           label: 'Full Admin Access',        desc: 'All permissions are automatically granted' },
 ]
 
 const AdminProfile: React.FC = () => {
@@ -110,7 +111,7 @@ const AdminProfile: React.FC = () => {
               )}
               {/* Hover overlay */}
               <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="text-white text-xs font-semibold">{uploadingPhoto ? 'Uploading…' : '📷 Change'}</span>
+                <span className="text-white text-xs font-semibold">{uploadingPhoto ? 'Uploading…' : <Camera className="w-4 h-4" />}</span>
               </div>
             </div>
             <span className="absolute -bottom-2 -right-2 bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow">
@@ -156,9 +157,9 @@ const AdminProfile: React.FC = () => {
                 <h2 className="text-2xl font-bold text-slate-900">{displayName}</h2>
                 <button
                   onClick={() => setEditing(true)}
-                  className="text-slate-400 hover:text-sky-600 text-xs border border-slate-200 px-2 py-0.5 rounded-lg transition-colors"
+                  className="text-slate-400 hover:text-sky-600 text-xs border border-slate-200 px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1"
                 >
-                  ✏ Edit
+                  <Pencil className="w-3 h-3" /> Edit
                 </button>
               </div>
             )}
@@ -168,7 +169,7 @@ const AdminProfile: React.FC = () => {
 
             <div className="flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 bg-purple-100 text-purple-800 border border-purple-200 text-xs font-semibold px-3 py-1 rounded-full">
-                🛡 Full Admin
+                <Shield className="w-3 h-3" /> Full Admin
               </span>
               <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-800 border border-green-200 text-xs font-semibold px-3 py-1 rounded-full">
                 ● Active
@@ -196,13 +197,13 @@ const AdminProfile: React.FC = () => {
         <h3 className="text-base font-semibold text-slate-800 mb-4">Order Activity</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: 'Completed',    value: stats.completed, color: 'bg-green-50 border-green-200',  icon: '✅', text: 'text-green-800'  },
-            { label: 'Cancelled',    value: stats.cancelled, color: 'bg-red-50 border-red-200',      icon: '❌', text: 'text-red-700'    },
-            { label: 'Proof Received', value: stats.uploaded,  color: 'bg-blue-50 border-blue-200',   icon: '📎', text: 'text-blue-800'   },
-            { label: 'Pending Review', value: stats.pending,   color: 'bg-amber-50 border-amber-200', icon: '⏳', text: 'text-amber-800'  },
+            { label: 'Completed',    value: stats.completed, color: 'bg-green-50 border-green-200',  icon: <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>, text: 'text-green-800'  },
+            { label: 'Cancelled',    value: stats.cancelled, color: 'bg-red-50 border-red-200',      icon: <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>, text: 'text-red-700'    },
+            { label: 'Proof Received', value: stats.uploaded, color: 'bg-blue-50 border-blue-200',  icon: <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>, text: 'text-blue-800'   },
+            { label: 'Pending Review', value: stats.pending,  color: 'bg-amber-50 border-amber-200', icon: <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" /></svg>, text: 'text-amber-800'  },
           ].map(s => (
             <div key={s.label} className={`rounded-xl border p-5 ${s.color}`}>
-              <div className="text-2xl mb-2">{s.icon}</div>
+              <div className="mb-2">{s.icon}</div>
               <div className={`text-3xl font-bold mb-0.5 ${s.text}`}>{s.value}</div>
               <div className="text-xs text-slate-500 font-medium">{s.label}</div>
             </div>

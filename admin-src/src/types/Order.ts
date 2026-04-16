@@ -32,4 +32,8 @@ export interface Order {
   status: OrderStatus
   paymentMethod: string
   proofFileName?: string
+  // Claim system — which agent/admin took this order
+  claimedBy?: string | null       // agent/admin UID or doc ID
+  claimedByName?: string | null   // display name
+  claimedAt?: { seconds: number; nanoseconds: number } | null
 }

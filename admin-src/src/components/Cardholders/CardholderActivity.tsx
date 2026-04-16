@@ -9,6 +9,7 @@ import { PaymentMethod } from '../../types/PaymentMethod'
 import { useFirestoreQuery } from '../../hooks/useFirestoreQuery'
 import { setActiveCardholder } from '../../services/cardholderService'
 import { listenToPaymentMethodTotal } from '../../services/paymentMethodService'
+import { AlertTriangle, ArrowDownCircle, ArrowUpCircle, Users } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -141,7 +142,7 @@ function CardholderRow({
               </p>
             </div>
           ) : (
-            <span className="text-xs text-red-400">⚠️ Unlinked</span>
+            <span className="text-xs text-red-400 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Unlinked</span>
           )}
         </td>
 
@@ -183,8 +184,8 @@ function CardholderRow({
 
               {/* Orders / Received */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wide text-green-700 mb-2">
-                  💰 Money Received ({myOrders.length})
+                <h4 className="text-xs font-bold uppercase tracking-wide text-green-700 mb-2 flex items-center gap-1">
+                  <ArrowDownCircle className="w-3.5 h-3.5" /> Money Received ({myOrders.length})
                 </h4>
                 {myOrders.length === 0 ? (
                   <p className="text-xs text-gray-400 italic">No completed orders yet</p>
@@ -207,8 +208,8 @@ function CardholderRow({
 
               {/* Withdrawals */}
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wide text-orange-700 mb-2">
-                  💸 Withdrawals ({myWithdrawals.length})
+                <h4 className="text-xs font-bold uppercase tracking-wide text-orange-700 mb-2 flex items-center gap-1">
+                  <ArrowUpCircle className="w-3.5 h-3.5" /> Withdrawals ({myWithdrawals.length})
                 </h4>
                 {myWithdrawals.length === 0 ? (
                   <p className="text-xs text-gray-400 italic">No withdrawals yet</p>
@@ -310,7 +311,7 @@ const CardholderActivity: React.FC = () => {
 
         {cardholders.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
-            <div className="text-4xl mb-3">👥</div>
+            <Users className="w-10 h-10 mx-auto mb-3 text-gray-300" />
             <p className="font-medium">No cardholders yet</p>
           </div>
         ) : (

@@ -50,7 +50,7 @@ const EditMethodForm: React.FC<Props> = ({ method, onClose, onSaved }) => {
       <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold">✏️ Edit Payment Method</h2>
+          <h2 className="text-2xl font-bold flex items-center gap-2"><span className="text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></span> Edit Payment Method</h2>
           <button
             onClick={onClose}
             className="text-slate-500 hover:text-slate-700 font-bold text-2xl"
@@ -69,7 +69,7 @@ const EditMethodForm: React.FC<Props> = ({ method, onClose, onSaved }) => {
 
           {/* Basic Info */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-lg text-slate-900">📋 Basic Information</h3>
+            <h3 className="font-semibold text-lg text-slate-900">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-slate-600 uppercase block mb-2">Method Name</label>

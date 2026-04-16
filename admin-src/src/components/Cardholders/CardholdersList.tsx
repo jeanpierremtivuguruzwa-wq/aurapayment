@@ -12,6 +12,7 @@ import {
 import { listenToPaymentMethodTotal } from '../../services/paymentMethodService'
 import { doc, updateDoc, getDocs, collection } from 'firebase/firestore'
 import { db } from '../../services/firebase'
+import { Landmark, Smartphone, CreditCard, RefreshCw, AlertTriangle, Pencil, ArrowUpFromLine, PauseCircle, Trash2 } from 'lucide-react'
 
 // ─── Live Balance (subscribes directly to paymentMethods/{id}.totalReceived) ──
 
@@ -126,9 +127,8 @@ function AddCardholderModal({
               {['bank', 'mobile', 'cash'].map(type => {
                 const group = paymentMethods.filter(m => m.type === type)
                 if (group.length === 0) return null
-                const groupLabel = type === 'bank' ? '🏦 Bank Transfer' : type === 'mobile' ? '📱 Mobile Money' : 'Cash'
                 return (
-                  <optgroup key={type} label={groupLabel}>
+                  <optgroup key={type} label={type === 'bank' ? 'Bank Transfer' : type === 'mobile' ? 'Mobile Money' : 'Cash'}>
                     {group.map(m => (
                       <option key={m.id} value={m.id}>
                         {m.name} · {m.currency}
@@ -141,8 +141,8 @@ function AddCardholderModal({
             {/* Show detected type badge */}
             {selectedMethod && (
               <p className="text-xs mt-1.5 text-gray-500">
-                {selectedMethod.type === 'bank' && '🏦 Bank — enter account number below'}
-                {selectedMethod.type === 'mobile' && '📱 Mobile Money — enter phone number below'}
+              {selectedMethod?.type === 'bank' && 'Bank — enter account number below'}
+                {selectedMethod?.type === 'mobile' && 'Mobile Money — enter phone number below'}
                 {selectedMethod.type === 'cash' && 'Cash — no account details needed'}
               </p>
             )}
@@ -226,8 +226,8 @@ const CardholdersList: React.FC = () => {
   }, [withdrawTarget?.paymentMethodId])
 
   const getMethod = (id: string) => paymentMethods.find(m => m.id === id)
-  const methodIcon = (type?: string) =>
-    type === 'bank' ? '🏦' : type === 'mobile' ? '📱' : type === 'cash' ? '' : '💳'
+  const methodIcon = (type?: string): React.ReactNode =>
+    type === 'bank' ? <Landmark className="w-4 h-4" /> : type === 'mobile' ? <Smartphone className="w-4 h-4" /> : type === 'cash' ? null : <CreditCard className="w-4 h-4" />
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -425,7 +425,7 @@ const CardholdersList: React.FC = () => {
           >
             {recalculating ? (
               <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full" />
-            ) : '🔄'} Recalculate Balances
+            ) : <RefreshCw className="w-3.5 h-3.5" />} Recalculate Balances
           </button>
           <button
             onClick={() => setShowAddModal(true)}
@@ -466,7 +466,7 @@ const CardholdersList: React.FC = () => {
 
         {cardholders.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
-            <div className="text-4xl mb-3">💳</div>
+            <CreditCard className="w-10 h-10 mx-auto mb-3 text-gray-300" />
             <p className="font-medium text-gray-500">No cardholders yet</p>
             <p className="text-sm mt-1">Click <span className="text-indigo-600 font-medium">+ Add Cardholder</span> to get started.</p>
           </div>
@@ -539,7 +539,7 @@ const CardholdersList: React.FC = () => {
                         ) : (
                           <span className="inline-flex items-center gap-1.5 text-gray-700">
                             <span>{methodIcon(method?.type)}</span>
-                            <span>{method?.name ?? <span className="text-red-500 text-xs">⚠️ Unlinked</span>}</span>
+                            <span>{method?.name ?? <span className="text-red-500 text-xs flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Unlinked</span>}</span>
                             {method?.currency && (
                               <span className="text-xs text-gray-400">· {method.currency}</span>
                             )}
@@ -602,34 +602,34 @@ const CardholdersList: React.FC = () => {
                           ) : (
                             <>
                               <button onClick={() => startEdit(ch)}
-                                className="px-2.5 py-1.5 text-xs bg-sky-100 text-sky-700 rounded-lg hover:bg-sky-200 font-medium"
+                                className="px-2.5 py-1.5 text-xs bg-sky-100 text-sky-700 rounded-lg hover:bg-sky-200 font-medium flex items-center gap-1"
                                 title="Edit">
-                                ✏️ Edit
+                                <Pencil className="w-3 h-3" /> Edit
                               </button>
                               <button
                                 onClick={() => openWithdraw(ch)}
-                                className="px-2.5 py-1.5 text-xs bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 font-medium"
+                                className="px-2.5 py-1.5 text-xs bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 font-medium flex items-center gap-1"
                                 title="Withdraw money"
                               >
-                                💸 Withdraw
+                                <ArrowUpFromLine className="w-3 h-3" /> Withdraw
                               </button>
                               {ch.status === 'active' ? (
                                 <button onClick={() => handleDeactivate(ch)}
-                                  className="px-2.5 py-1.5 text-xs bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 font-medium"
+                                  className="px-2.5 py-1.5 text-xs bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 font-medium flex items-center gap-1"
                                   title="Set inactive">
-                                  ⏸ Deactivate
+                                  <PauseCircle className="w-3 h-3" /> Deactivate
                                 </button>
                               ) : (
                                 <button onClick={() => handleActivate(ch)}
                                   className="px-2.5 py-1.5 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 font-medium"
                                   title="Set active">
-                                  ▶ Activate
+                                  Activate
                                 </button>
                               )}
                               <button onClick={() => handleDelete(ch.id)}
                                 className="px-2.5 py-1.5 text-xs bg-red-100 text-red-600 rounded-lg hover:bg-red-200 font-medium"
                                 title="Delete">
-                                🗑
+                                <Trash2 className="w-3 h-3" />
                               </button>
                             </>
                           )}
@@ -658,7 +658,7 @@ const CardholdersList: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">💸 Withdraw Money</h2>
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><ArrowUpFromLine className="w-5 h-5 text-orange-600" /> Withdraw Money</h2>
               <button onClick={() => setWithdrawTarget(null)} className="text-gray-400 hover:text-gray-600 text-xl font-bold leading-none">×</button>
             </div>
             <div className="p-5 space-y-4">
@@ -710,7 +710,7 @@ const CardholdersList: React.FC = () => {
                           : 'bg-white text-gray-700 border-gray-300 hover:border-orange-400 hover:text-orange-600'
                       }`}
                     >
-                      {opt === 'ATM' ? '🏧 ATM' : '💳 Send to card'}
+                      {opt === 'ATM' ? 'ATM' : 'Send to card'}
                     </button>
                   ))}
                 </div>
@@ -743,7 +743,7 @@ const CardholdersList: React.FC = () => {
                   disabled={withdrawing || !withdrawAmount || !withdrawNote || (withdrawNote === 'Send to card' && !withdrawRecipient.trim())}
                   className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50"
                 >
-                  {withdrawing ? 'Processing…' : '💸 Confirm Withdrawal'}
+                  {withdrawing ? 'Processing…' : 'Confirm Withdrawal'}
                 </button>
               </div>
             </div>

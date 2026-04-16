@@ -481,7 +481,7 @@
                     console.error('Error loading orders:', error);
                     document.getElementById('ordersContainer').innerHTML = `
                         <div class="empty-state">
-                            <div class="empty-state-icon">⚠️</div>
+                            <div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
                             <div class="empty-state-text">${t('hist_error_load')}</div>
                             <button class="btn btn-primary" style="margin-top:1rem;" onclick="location.reload()">${t('hist_try_again')}</button>
                         </div>
@@ -513,7 +513,7 @@
             if (filtered.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">📭</div>
+                        <div class="empty-state-icon"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 19.76 4H4.24a2 2 0 0 0-1.79 1.11z"/></svg></div>
                         <div class="empty-state-text">${t('hist_empty')}</div>
                         <a href="send-money.html" style="color: #0b1b3a; text-decoration: none; font-weight: 500;">${t('hist_empty_start')}</a>
                     </div>

@@ -351,7 +351,7 @@
     <!-- My Tickets List -->
     <div class="card" id="ticketsSection">
         <div class="card-header">
-            <div class="icon">🎧</div>
+            <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg></div>
             <div>
                 <h2>Support</h2>
                 <p>Your tickets and conversations with our team</p>
@@ -359,7 +359,7 @@
         </div>
         <div id="ticketList" class="ticket-list">
             <div class="empty-state">
-                <div class="es-icon">💬</div>
+                <div class="es-icon"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
                 <p>No support tickets yet</p>
             </div>
         </div>
@@ -371,7 +371,7 @@
     <!-- Compose New Ticket -->
     <div class="card" id="composeSection">
         <div class="card-header">
-            <div class="icon">✉️</div>
+            <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
             <div>
                 <h2>New Support Ticket</h2>
                 <p>Describe your issue and we'll get back to you</p>
@@ -380,7 +380,7 @@
 
         <!-- Linked order (auto-filled if coming from a transaction) -->
         <div id="linkedOrderBox" class="linked-order-box" style="margin-bottom: 1.25rem; display: none;">
-            <span class="lob-icon">📦</span>
+            <span class="lob-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
             <div>
                 <strong id="linkedOrderRef">—</strong>
                 <span id="linkedOrderDesc">Payment order linked to this ticket</span>
@@ -430,7 +430,7 @@
         </div>
         <div class="reply-box" id="replyBox">
             <textarea class="reply-input" id="replyInput" placeholder="Type your reply…" rows="1" oninput="autoResize(this)"></textarea>
-            <button class="send-btn" id="sendReplyBtn" onclick="sendReply()" title="Send">➤</button>
+            <button class="send-btn" id="sendReplyBtn" onclick="sendReply()" title="Send"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
         </div>
     </div>
 
@@ -517,14 +517,14 @@
             .onSnapshot(snap => {
                 const list = document.getElementById('ticketList');
                 if (snap.empty) {
-                    list.innerHTML = `<div class="empty-state"><div class="es-icon">💬</div><p>No support tickets yet</p></div>`;
+                    list.innerHTML = `<div class="empty-state"><div class="es-icon"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><p>No support tickets yet</p></div>`;
                     return;
                 }
                 list.innerHTML = '';
                 snap.docs.forEach(doc => {
                     const t = doc.data();
                     const statusClass = t.status === 'closed' ? 'badge-closed' : t.status === 'pending' ? 'badge-pending' : 'badge-open';
-                    const statusLabel = t.status === 'closed' ? '✓ Closed' : t.status === 'pending' ? '⏳ Pending' : '💬 Open';
+                    const statusLabel = t.status === 'closed' ? '✓ Closed' : t.status === 'pending' ? '⏳ Pending' : 'Open';
                     const created = t.createdAt ? new Date(t.createdAt.seconds * 1000).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '';
                     const div = document.createElement('div');
                     div.className = 'ticket-item';
@@ -631,7 +631,7 @@
         document.getElementById('threadTitle').textContent = categoryLabel(ticketData.subject);
         const badge = document.getElementById('threadBadge');
         badge.className = 'badge ' + (ticketData.status === 'closed' ? 'badge-closed' : ticketData.status === 'pending' ? 'badge-pending' : 'badge-open');
-        badge.textContent = ticketData.status === 'closed' ? '✓ Closed' : ticketData.status === 'pending' ? '⏳ Pending' : '💬 Open';
+        badge.textContent = ticketData.status === 'closed' ? '✓ Closed' : ticketData.status === 'pending' ? '⏳ Pending' : 'Open';
 
         // Hide reply if closed
         document.getElementById('replyBox').style.display = ticketData.status === 'closed' ? 'none' : 'flex';

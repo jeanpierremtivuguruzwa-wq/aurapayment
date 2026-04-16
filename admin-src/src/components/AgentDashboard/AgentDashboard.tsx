@@ -105,7 +105,7 @@ const AgentDashboard: React.FC<Props> = ({ agent, requestPermission, getPermissi
       case 'live':
         return <LiveActivity />
       case 'orders':
-        return <OrderManagement />
+        return <OrderManagement agent={agent} isAdmin={false} />
       case 'users':
         return <UserManagement onViewUserDashboard={handleViewUserDashboard} />
       case 'user-dashboard':

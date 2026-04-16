@@ -7,13 +7,14 @@ import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../services/firebase'
 import CardForm from './CardForm'
 import EditMethodForm from './EditMethodForm'
+import { CreditCard, Landmark, Smartphone, Banknote, AlertTriangle, Link, Trash2 } from 'lucide-react'
 
 type FilterTab = 'all' | 'bank' | 'mobile' | 'cash'
 
-const ICONS: Record<string, string> = {
-  bank: '',
-  mobile: '',
-  cash: '',
+const ICONS: Record<string, React.ReactNode> = {
+  bank: <Landmark className="w-5 h-5" />,
+  mobile: <Smartphone className="w-5 h-5" />,
+  cash: <Banknote className="w-5 h-5" />,
 }
 
 const PaymentMethods: React.FC = () => {
@@ -110,7 +111,7 @@ const PaymentMethods: React.FC = () => {
       {/* ── Cards ── */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
-          <div className="text-4xl mb-3">💳</div>
+          <CreditCard className="w-10 h-10 mx-auto mb-3 text-gray-300" />
           <p className="font-medium text-gray-500">No {activeTab === 'all' ? '' : activeTab + ' '}methods yet</p>
           <p className="text-sm mt-1">Click <span className="text-indigo-600 font-medium">+ Add Payment Method</span> to create one.</p>
         </div>
@@ -171,7 +172,7 @@ function MethodCard({
   onDelete: () => void
   onToggleActive: () => void
 }) {
-  const icon = ICONS[method.type] ?? '💳'
+  const icon = ICONS[method.type] ?? <CreditCard className="w-5 h-5" />
   const isBank = method.type === 'bank'
   const isMobile = method.type === 'mobile'
 
@@ -309,13 +310,13 @@ function MethodCard({
             </div>
           ) : (
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-amber-700 font-medium">⚠️ No cardholder linked</p>
+              <p className="text-xs text-amber-700 font-medium flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> No cardholder linked</p>
               <button
                 onClick={handleAutoLink}
                 disabled={linking}
                 className="text-xs px-2.5 py-1 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap"
               >
-                {linking ? 'Linking…' : '🔗 Auto-Link'}
+                {linking ? 'Linking…' : <><Link className="w-3 h-3 inline mr-1" />Auto-Link</>}
               </button>
             </div>
           )}
@@ -336,9 +337,9 @@ function MethodCard({
         </button>
         <button
           onClick={onDelete}
-          className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-lg transition-colors"
+          className="text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
         >
-          🗑 Delete
+          <Trash2 className="w-3.5 h-3.5" /> Delete
         </button>
       </div>
     </div>

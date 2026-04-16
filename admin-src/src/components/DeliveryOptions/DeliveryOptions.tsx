@@ -8,6 +8,7 @@ import {
   serverTimestamp,
   updateDoc,
 } from 'firebase/firestore'
+import { Landmark, Smartphone, Banknote, Sprout, ArrowLeftRight, Inbox } from 'lucide-react'
 import { db } from '../../services/firebase'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -125,10 +126,10 @@ const DEFAULT_OPTIONS: Record<string, { type: DeliveryType; name: string }[]> = 
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TYPE_META: Record<DeliveryType, { label: string; icon: string; bg: string; text: string; border: string }> = {
-  bank:   { label: 'Bank',         icon: '🏦', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  mobile: { label: 'Mobile Money', icon: '📱', bg: 'bg-orange-50',  text: 'text-orange-700',  border: 'border-orange-200'  },
-  cash:   { label: 'Cash Pickup',  icon: '💵', bg: 'bg-sky-50',     text: 'text-sky-700',     border: 'border-sky-200'     },
+const TYPE_META: Record<DeliveryType, { label: string; icon: React.ReactNode; bg: string; text: string; border: string }> = {
+  bank:   { label: 'Bank',         icon: <Landmark className="w-4 h-4" />,    bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  mobile: { label: 'Mobile Money', icon: <Smartphone className="w-4 h-4" />, bg: 'bg-orange-50',  text: 'text-orange-700',  border: 'border-orange-200'  },
+  cash:   { label: 'Cash Pickup',  icon: <Banknote className="w-4 h-4" />,   bg: 'bg-sky-50',     text: 'text-sky-700',     border: 'border-sky-200'     },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -312,7 +313,7 @@ const DeliveryOptions: React.FC = () => {
   if (destinations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
-        <div className="text-4xl">💱</div>
+        <ArrowLeftRight className="w-10 h-10 text-gray-300" />
         <p className="text-gray-600 font-medium">No currency pairs configured yet</p>
         <p className="text-gray-400 text-sm">Add currency pairs in the Currency Pairs section first — destination countries will appear here automatically.</p>
       </div>
@@ -333,7 +334,7 @@ const DeliveryOptions: React.FC = () => {
             disabled={seeding || !selectedRegion}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-60"
           >
-            {seeding ? '...' : '🌱'} Seed Defaults
+            {seeding ? '...' : <><Sprout className="w-4 h-4 inline mr-1" />Seed Defaults</>}
           </button>
           <button
             onClick={() => { setShowAddModal(true); setFormErr('') }}
@@ -411,7 +412,7 @@ const DeliveryOptions: React.FC = () => {
         {/* Groups */}
         {countryOptions.length === 0 ? (
           <div className="text-center py-10">
-            <div className="text-4xl mb-3">📭</div>
+            <Inbox className="w-10 h-10 mx-auto mb-3 text-gray-300" />
             <p className="text-gray-500 font-medium">No delivery options configured</p>
             <p className="text-gray-400 text-sm mt-1">Click "Seed Defaults" to add common options, or "Add Option" to create one manually.</p>
           </div>

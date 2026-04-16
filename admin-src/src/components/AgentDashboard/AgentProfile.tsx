@@ -3,20 +3,25 @@ import { signOut, updateProfile } from 'firebase/auth'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { auth, storage } from '../../services/firebase'
 import { Agent, AgentPermission } from '../../types/Agent'
+import {
+  BarChart2, Package, Users, ArrowLeftRight, CreditCard, UserCheck,
+  TrendingUp, MessageCircle, Wallet, Landmark, Bell, Headphones,
+  Camera, Pencil, Lock,
+} from 'lucide-react'
 
-const PERMISSION_META: Record<AgentPermission, { icon: string; label: string; desc: string }> = {
-  transactions:          { icon: '📊', label: 'All Transactions',      desc: 'View and manage all payment transactions' },
-  orders:                { icon: '📦', label: 'Orders',                desc: 'View, complete and cancel customer orders' },
-  users:                 { icon: '👤', label: 'User Management',       desc: 'View registered users and their details' },
-  currency:              { icon: '💱', label: 'Currency Pairs',        desc: 'View and edit currency exchange rates' },
-  payments:              { icon: '💳', label: 'Payment Methods',       desc: 'View and manage payment methods' },
-  cardholders:           { icon: '👥', label: 'Cardholders',           desc: 'View and manage cardholder records' },
-  'cardholder-activity': { icon: '📈', label: 'Cardholder Activity',   desc: 'View cardholder transaction activity history' },
-  chat:                  { icon: '💬', label: 'AuraChat',              desc: 'Access the internal Aura chat system' },
-  wallet:                { icon: '💰', label: 'AuraWallet',            desc: 'View and manage Aura wallet records' },
-  'currency-assignments':{ icon: '🏦', label: 'Currency Assignments',  desc: 'Manage cardholder currency assignments' },
-  notifications:         { icon: '🔔', label: 'Notifications',         desc: 'Manage notification recipients and alerts' },
-  support:               { icon: '🎧', label: 'User Support',           desc: 'Answer user support tickets and chat' },
+const PERMISSION_META: Record<AgentPermission, { icon: React.ReactNode; label: string; desc: string }> = {
+  transactions:          { icon: <BarChart2 className="w-5 h-5" />,      label: 'All Transactions',      desc: 'View and manage all payment transactions' },
+  orders:                { icon: <Package className="w-5 h-5" />,         label: 'Orders',                desc: 'View, complete and cancel customer orders' },
+  users:                 { icon: <Users className="w-5 h-5" />,           label: 'User Management',       desc: 'View registered users and their details' },
+  currency:              { icon: <ArrowLeftRight className="w-5 h-5" />, label: 'Currency Pairs',        desc: 'View and edit currency exchange rates' },
+  payments:              { icon: <CreditCard className="w-5 h-5" />,      label: 'Payment Methods',       desc: 'View and manage payment methods' },
+  cardholders:           { icon: <UserCheck className="w-5 h-5" />,       label: 'Cardholders',           desc: 'View and manage cardholder records' },
+  'cardholder-activity': { icon: <TrendingUp className="w-5 h-5" />,      label: 'Cardholder Activity',   desc: 'View cardholder transaction activity history' },
+  chat:                  { icon: <MessageCircle className="w-5 h-5" />,   label: 'AuraChat',              desc: 'Access the internal Aura chat system' },
+  wallet:                { icon: <Wallet className="w-5 h-5" />,          label: 'AuraWallet',            desc: 'View and manage Aura wallet records' },
+  'currency-assignments':{ icon: <Landmark className="w-5 h-5" />,        label: 'Currency Assignments',  desc: 'Manage cardholder currency assignments' },
+  notifications:         { icon: <Bell className="w-5 h-5" />,            label: 'Notifications',         desc: 'Manage notification recipients and alerts' },
+  support:               { icon: <Headphones className="w-5 h-5" />,      label: 'User Support',          desc: 'Answer user support tickets and chat' },
 }
 
 const ALL_PERMISSIONS = Object.keys(PERMISSION_META) as AgentPermission[]
@@ -111,7 +116,7 @@ const AgentProfile: React.FC<Props> = ({ agent }) => {
                 </div>
               )}
               <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="text-white text-xs font-semibold">{uploadingPhoto ? 'Uploading…' : '📷 Change'}</span>
+                <span className="text-white text-xs font-semibold">{uploadingPhoto ? 'Uploading…' : <Camera className="w-4 h-4" />}</span>
               </div>
             </div>
             <span className="absolute -bottom-2 -right-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow">
@@ -159,7 +164,7 @@ const AgentProfile: React.FC<Props> = ({ agent }) => {
                   onClick={() => setEditing(true)}
                   className="text-slate-400 hover:text-amber-600 text-xs border border-slate-200 px-2 py-0.5 rounded-lg transition-colors"
                 >
-                  ✏ Edit
+                  <Pencil className="w-3.5 h-3.5" /> Edit
                 </button>
               </div>
             )}
@@ -167,7 +172,7 @@ const AgentProfile: React.FC<Props> = ({ agent }) => {
             <p className="text-slate-500 text-sm mb-3">{email}</p>
             <div className="flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold px-3 py-1 rounded-full">
-                🕵️ Agent
+                Agent
               </span>
               <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full border ${
                 agent.status === 'active'
@@ -209,7 +214,7 @@ const AgentProfile: React.FC<Props> = ({ agent }) => {
               const meta = PERMISSION_META[p]
               return (
                 <div key={p} className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                  <span className="text-xl shrink-0 mt-0.5">{meta.icon}</span>
+                  <span className="flex items-center shrink-0 mt-0.5 text-slate-600">{meta.icon}</span>
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-semibold text-slate-800">{meta.label}</span>
@@ -233,11 +238,11 @@ const AgentProfile: React.FC<Props> = ({ agent }) => {
                 const meta = PERMISSION_META[p]
                 return (
                   <div key={p} className="flex items-start gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 opacity-60">
-                    <span className="text-xl shrink-0 mt-0.5">{meta.icon}</span>
+                    <span className="flex items-center shrink-0 mt-0.5 text-slate-500">{meta.icon}</span>
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-semibold text-slate-600">{meta.label}</span>
-                        <span className="text-slate-400 text-xs">🔒</span>
+                        <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5">{meta.desc}</p>
                     </div>

@@ -20,7 +20,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     if (this.state.hasError) {
       return (
         <div className="card-base p-6 bg-red-50 border border-red-200">
-          <p className="text-red-700 font-semibold mb-1">⚠️ This section encountered an error</p>
+          <p className="text-red-700 font-semibold mb-1">This section encountered an error</p>
           <p className="text-red-600 text-sm font-mono">{this.state.error}</p>
           <button
             onClick={() => this.setState({ hasError: false, error: '' })}

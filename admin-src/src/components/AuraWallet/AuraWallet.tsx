@@ -3,6 +3,7 @@ import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../../services/firebase'
 import { Cardholder } from '../../types/Cardholder'
 import { PaymentMethod } from '../../types/PaymentMethod'
+import { Wallet, CreditCard, AlertTriangle } from 'lucide-react'
 
 // ── Currency metadata ─────────────────────────────────────────────────────────
 const CURRENCY_META: Record<string, { flag: string; label: string; symbol: string }> = {
@@ -18,7 +19,7 @@ const CURRENCY_META: Record<string, { flag: string; label: string; symbol: strin
   INR: { flag: '🇮🇳', label: 'Indian Rupee',          symbol: '₹' },
 }
 function meta(code: string) {
-  return CURRENCY_META[code] ?? { flag: '💱', label: code, symbol: code }
+  return CURRENCY_META[code] ?? { flag: '~', label: code, symbol: code }
 }
 function fmt(n: number, symbol: string) {
   return `${symbol} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -119,7 +120,7 @@ const AuraWallet: React.FC = () => {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">💰 AuraWallet</h1>
+        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2"><Wallet className="w-6 h-6 text-slate-600" /> AuraWallet</h1>
         <p className="text-sm text-slate-500 mt-1">
           Live cardholder balances grouped by currency — updates automatically
         </p>
@@ -148,7 +149,7 @@ const AuraWallet: React.FC = () => {
         <div className="text-center py-16 text-slate-400">Loading wallet…</div>
       ) : groups.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
-          <div className="text-4xl mb-3">💳</div>
+          <CreditCard className="w-10 h-10 mx-auto mb-3 text-slate-300" />
           <p className="font-medium">No cardholder balances found.</p>
           <p className="text-sm mt-1">Add cardholders with assigned payment methods to see balances here.</p>
         </div>
@@ -179,7 +180,7 @@ const AuraWallet: React.FC = () => {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-slate-800 text-lg">{g.currency}</span>
                       <span className="text-sm text-slate-400">{m.label}</span>
-                      {isNeg && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">⚠ Negative</span>}
+                    {isNeg && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Negative</span>}
                       {isLow && !isNeg && !isEmpty && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 font-medium">Low</span>}
                       {isEmpty && <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 font-medium">No cardholders</span>}
                     </div>

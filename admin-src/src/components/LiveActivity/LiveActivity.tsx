@@ -8,6 +8,7 @@ import { useAgents } from '../../hooks/useAgents'
 import { useRealtimeOrders } from '../../hooks/useRealtimeOrders'
 import { useRealtimeTransactions } from '../../hooks/useRealtimeTransactions'
 import { AppUser } from '../../types/AppUser'
+import { Inbox, Package, DollarSign, MousePointerClick, FileText, Radio, Compass } from 'lucide-react'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -72,13 +73,13 @@ function LiveFeed({ events }: { events: FeedEvent[] }) {
     <div className="space-y-2 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
       {events.length === 0 && (
         <div className="text-center py-16 text-gray-400">
-          <div className="text-3xl mb-2">📭</div>
+          <Inbox className="w-8 h-8 mx-auto mb-2 text-gray-300" />
           <p>No events yet</p>
         </div>
       )}
       {events.map(ev => (
         <div key={ev.kind + ev.id} className="flex items-start gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm">
-          <span className="text-lg mt-0.5">{ev.kind === 'order' ? '📦' : '💸'}</span>
+          <span className="flex items-center mt-0.5">{ev.kind === 'order' ? <Package className="w-5 h-5 text-slate-500" /> : <DollarSign className="w-5 h-5 text-slate-500" />}</span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-gray-900 text-sm">{ev.userName || 'Unknown user'}</span>
@@ -179,7 +180,7 @@ function UserJourney({
       <div className="flex-1 border border-gray-200 rounded-xl overflow-hidden flex flex-col">
         {!selected ? (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-            <div className="text-4xl mb-3">👆</div>
+          <MousePointerClick className="w-10 h-10 mb-3 mx-auto text-gray-300" />
             <p className="font-medium text-sm">Select a user to see their activity flow</p>
           </div>
         ) : (
@@ -212,7 +213,7 @@ function UserJourney({
                   {userEvents.map(ev => (
                     <li key={ev.kind + ev.id} className="ml-5">
                       <span className="absolute -left-1.5 flex items-center justify-center w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-white text-white text-[8px]">
-                        {ev.kind === 'order' ? '📦' : '💸'}
+                        {ev.kind === 'order' ? <Package className="w-2 h-2" /> : <DollarSign className="w-2 h-2" />}
                       </span>
                       <p className="text-xs font-semibold text-gray-900">{ev.label}</p>
                       <p className="text-[11px] text-gray-500">{ev.detail}</p>
@@ -269,7 +270,7 @@ function OnlineNow({ agents }: { agents: any[] }) {
       {/* Online Agents */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 bg-green-50 flex items-center justify-between">
-          <h3 className="font-bold text-green-900 text-sm">🟢 Agents Online</h3>
+          <h3 className="font-bold text-green-900 text-sm flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Agents Online</h3>
           <span className="text-xs bg-green-200 text-green-800 font-bold px-2 py-0.5 rounded-full">{onlineAgents.length}</span>
         </div>
         <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
@@ -292,7 +293,7 @@ function OnlineNow({ agents }: { agents: any[] }) {
       {/* Online Users */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 bg-blue-50 flex items-center justify-between">
-          <h3 className="font-bold text-blue-900 text-sm">🔵 Users Online Now</h3>
+          <h3 className="font-bold text-blue-900 text-sm flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span> Users Online Now</h3>
           <span className="text-xs bg-blue-200 text-blue-800 font-bold px-2 py-0.5 rounded-full">{usersWithPresence.length}</span>
         </div>
         <div className="divide-y divide-gray-50 max-h-96 overflow-y-auto">
@@ -312,7 +313,7 @@ function OnlineNow({ agents }: { agents: any[] }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 truncate">{u.fullName || u.email || '—'}</p>
                 <p className="text-xs text-gray-400 truncate">
-                  {u.currentPage ? `📄 ${u.currentPage}` : u.email}
+                  {u.currentPage ? <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5 inline" /> {u.currentPage}</span> : u.email}
                 </p>
               </div>
               <span className="text-[10px] text-gray-400 whitespace-nowrap">{ago(u.lastSeen)}</span>
@@ -371,10 +372,10 @@ const LiveActivity: React.FC = () => {
     })
   }, [orders, transactions, users])
 
-  const TABS: { id: Tab; label: string; icon: string }[] = [
-    { id: 'feed',    label: 'Live Feed',     icon: '📡' },
-    { id: 'journey', label: 'User Journey',  icon: '🧭' },
-    { id: 'online',  label: 'Online Now',    icon: '🟢' },
+  const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'feed',    label: 'Live Feed',    icon: <Radio className="w-4 h-4" /> },
+    { id: 'journey', label: 'User Journey', icon: <Compass className="w-4 h-4" /> },
+    { id: 'online',  label: 'Online Now',   icon: <span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> },
   ]
 
   return (

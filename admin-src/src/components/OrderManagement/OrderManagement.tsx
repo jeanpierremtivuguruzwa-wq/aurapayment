@@ -1,15 +1,34 @@
 import React from 'react'
 import { useRealtimeOrders } from '../../hooks/useRealtimeOrders'
 import { db, storage } from '../../services/firebase'
-import { doc, updateDoc, Timestamp, increment, collection, query, where, getDocs } from 'firebase/firestore'
+import { doc, updateDoc, Timestamp, increment, collection, query, where, getDocs, runTransaction } from 'firebase/firestore'
 import { ref, getDownloadURL } from 'firebase/storage'
+import { Agent } from '../../types/Agent'
+import { AlertTriangle, Package, Inbox, Hand, Image, Download } from 'lucide-react'
 
-const OrderManagement: React.FC = () => {
+interface Props {
+  /** When passed, the component runs in "agent mode" — filtering & claim rules apply */
+  agent?: Agent | null
+  /** When true (admin), all orders are visible regardless of who claimed them */
+  isAdmin?: boolean
+}
+
+const OrderManagement: React.FC<Props> = ({ agent = null, isAdmin = false }) => {
   const { orders, loading, error } = useRealtimeOrders()
   const [expandedId, setExpandedId] = React.useState<string | null>(null)
   const [copied, setCopied] = React.useState<string | null>(null)
   const [proofModal, setProofModal] = React.useState<{ url: string; name: string; isPdf: boolean } | null>(null)
   const [proofLoading, setProofLoading] = React.useState<string | null>(null)
+  const [actionLoading, setActionLoading] = React.useState<string | null>(null)
+
+  // For agents: only show orders that are unclaimed OR claimed by me
+  // For admins: show all orders
+  const visibleOrders = React.useMemo(() => {
+    if (isAdmin || !agent) return orders   // admin sees everything
+    return orders.filter(o =>
+      !o.claimedBy || o.claimedBy === agent.id
+    )
+  }, [orders, agent, isAdmin])
 
   const viewProof = async (proofFileName: string) => {
     setProofLoading(proofFileName)
@@ -30,52 +49,83 @@ const OrderManagement: React.FC = () => {
     setTimeout(() => setCopied(null), 1500)
   }
 
-  const handleCancelOrder = async (orderId: string) => {
-    if (confirm('Are you sure you want to cancel this order?')) {
-      try {
-        await updateDoc(doc(db, 'orders', orderId), {
-          status: 'cancelled',
-          cancelledAt: Timestamp.now(),
+  /** Atomically claim an order — fails if someone else already claimed it */
+  const handleClaimOrder = async (orderId: string) => {
+    if (!agent && !isAdmin) return
+    const claimerId = agent ? agent.id : 'admin'
+    const claimerName = agent ? agent.name : 'Admin'
+    setActionLoading(orderId)
+    try {
+      const orderRef = doc(db, 'orders', orderId)
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(orderRef)
+        if (!snap.exists()) throw new Error('Order not found')
+        const data = snap.data()
+        if (data.claimedBy && data.claimedBy !== claimerId) {
+          throw new Error('This order was just claimed by another agent.')
+        }
+        tx.update(orderRef, {
+          claimedBy: claimerId,
+          claimedByName: claimerName,
+          claimedAt: Timestamp.now(),
         })
-      } catch (err) {
-        alert('Error cancelling order: ' + (err as Error).message)
-      }
+      })
+    } catch (err) {
+      alert((err as Error).message)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!confirm('Are you sure you want to cancel this order?')) return
+    setActionLoading(orderId)
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        status: 'cancelled',
+        cancelledAt: Timestamp.now(),
+      })
+    } catch (err) {
+      alert('Error cancelling order: ' + (err as Error).message)
+    } finally {
+      setActionLoading(null)
     }
   }
 
   const handleCompleteOrder = async (orderId: string) => {
-    if (confirm('Mark this order as completed?')) {
-      try {
-        const order = orders.find(o => o.id === orderId)
-        if (!order) throw new Error('Order not found')
+    if (!confirm('Mark this order as completed?')) return
+    setActionLoading(orderId)
+    try {
+      const order = orders.find(o => o.id === orderId)
+      if (!order) throw new Error('Order not found')
 
-        await updateDoc(doc(db, 'orders', orderId), {
-          status: 'completed',
-          completedAt: Timestamp.now(),
-        })
+      await updateDoc(doc(db, 'orders', orderId), {
+        status: 'completed',
+        completedAt: Timestamp.now(),
+      })
 
-        if (order.paymentMethod) {
-          // Update ALL cardholders linked to this payment method (active or not)
-          const cardholderQ = query(
-            collection(db, 'cardholders'),
-            where('paymentMethodId', '==', order.paymentMethod)
-          )
-          const cardholderSnap = await getDocs(cardholderQ)
-          for (const chDoc of cardholderSnap.docs) {
-            await updateDoc(doc(db, 'cardholders', chDoc.id), {
-              balance: increment(order.sendAmount || 0),
-              totalReceived: increment(order.sendAmount || 0),
-              transactionsCount: increment(1),
-              updatedAt: new Date(),
-            })
-          }
-          await updateDoc(doc(db, 'paymentMethods', order.paymentMethod), {
+      if (order.paymentMethod) {
+        const cardholderQ = query(
+          collection(db, 'cardholders'),
+          where('paymentMethodId', '==', order.paymentMethod)
+        )
+        const cardholderSnap = await getDocs(cardholderQ)
+        for (const chDoc of cardholderSnap.docs) {
+          await updateDoc(doc(db, 'cardholders', chDoc.id), {
+            balance: increment(order.sendAmount || 0),
             totalReceived: increment(order.sendAmount || 0),
+            transactionsCount: increment(1),
+            updatedAt: new Date(),
           })
         }
-      } catch (err) {
-        alert('Error completing order: ' + (err as Error).message)
+        await updateDoc(doc(db, 'paymentMethods', order.paymentMethod), {
+          totalReceived: increment(order.sendAmount || 0),
+        })
       }
+    } catch (err) {
+      alert('Error completing order: ' + (err as Error).message)
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -121,12 +171,14 @@ const OrderManagement: React.FC = () => {
   if (error) {
     return (
       <div className="card-base p-6 bg-red-50 border border-red-200">
-        <p className="text-red-700 font-semibold mb-1">⚠️ Error loading orders</p>
+        <p className="text-red-700 font-semibold mb-1 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Error loading orders</p>
         <p className="text-red-600 text-sm">{error}</p>
         <button onClick={() => window.location.reload()} className="mt-4 btn-primary text-sm">Retry</button>
       </div>
     )
   }
+
+  const myId = agent ? agent.id : 'admin'
 
   return (
     <div className="card-base p-6">
@@ -140,7 +192,6 @@ const OrderManagement: React.FC = () => {
             className="relative bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200">
               <div>
                 <p className="font-semibold text-slate-900 text-sm">Payment Proof</p>
@@ -153,14 +204,14 @@ const OrderManagement: React.FC = () => {
                   rel="noopener noreferrer"
                   className="text-xs bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
                 >
-                  ↗ Open in New Tab
+                  ⬇ Open in New Tab
                 </a>
                 <a
                   href={proofModal.url}
                   download
                   className="text-xs bg-slate-600 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
                 >
-                  ⬇ Download
+                  <Download className="w-3.5 h-3.5 inline mr-1" />Download
                 </a>
                 <button
                   onClick={() => setProofModal(null)}
@@ -170,7 +221,6 @@ const OrderManagement: React.FC = () => {
                 </button>
               </div>
             </div>
-            {/* Content */}
             <div className="flex-1 overflow-auto flex items-center justify-center bg-slate-100 p-4">
               {proofModal.isPdf ? (
                 <iframe
@@ -189,15 +239,16 @@ const OrderManagement: React.FC = () => {
           </div>
         </div>
       )}
+
       <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-        <h2 className="text-xl font-semibold">📦 Order Management</h2>
-        <span className="text-sm font-medium text-slate-500">{orders.length} orders</span>
+        <h2 className="text-xl font-semibold flex items-center gap-2"><Package className="w-5 h-5 text-slate-600" /> Order Management</h2>
+        <span className="text-sm font-medium text-slate-500">{visibleOrders.length} orders</span>
       </div>
 
-      {orders.length === 0 ? (
+      {visibleOrders.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-4xl mb-3">📭</div>
-          <p className="text-slate-500 text-lg">No orders yet</p>
+          <Inbox className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+          <p className="text-slate-500 text-lg">No orders available</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -210,11 +261,12 @@ const OrderManagement: React.FC = () => {
                 <th className="px-3 py-3 text-left font-semibold text-slate-600 whitespace-nowrap">Amount Sent</th>
                 <th className="px-3 py-3 text-left font-semibold text-slate-600 whitespace-nowrap">Amount Received</th>
                 <th className="px-3 py-3 text-left font-semibold text-slate-600">Status</th>
+                <th className="px-3 py-3 text-left font-semibold text-slate-600">Claimed By</th>
                 <th className="px-3 py-3 text-left font-semibold text-slate-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {orders.map((order) => {
+              {visibleOrders.map((order) => {
                 const status = order.status || 'pending'
                 const sendAmount = order.sendAmount ?? 0
                 const rate = order.rate ?? 0
@@ -222,9 +274,17 @@ const OrderManagement: React.FC = () => {
                 const senderName = (order as any).senderName || order.userEmail || '—'
                 const recipientName = order.recipientName || '—'
 
+                const isActive = status === 'pending' || status === 'uploaded'
+                const claimedBy = order.claimedBy || null
+                const isMine = claimedBy === myId
+                const isUnclaimed = !claimedBy
+                // Admins can always act; agents only if they claimed
+                const canAct = isActive && (isAdmin || isMine)
+                const isLoading = actionLoading === order.id
+
                 return (
                   <React.Fragment key={order.id}>
-                    <tr className="hover:bg-slate-50 transition-colors">
+                    <tr className={`hover:bg-slate-50 transition-colors ${isMine ? 'bg-sky-50/40' : ''}`}>
                       {/* Date */}
                       <td className="px-3 py-3 text-xs text-slate-600 whitespace-nowrap">
                         {formatDate(order.createdAt)}
@@ -265,25 +325,55 @@ const OrderManagement: React.FC = () => {
                       {/* Status */}
                       <td className="px-3 py-3">{statusBadge(status)}</td>
 
+                      {/* Claimed By */}
+                      <td className="px-3 py-3">
+                        {claimedBy ? (
+                          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            isMine
+                              ? 'bg-sky-100 text-sky-700'
+                              : 'bg-violet-100 text-violet-700'
+                          }`}>
+                            {isMine ? '★ You' : (order.claimedByName || claimedBy)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">Unclaimed</span>
+                        )}
+                      </td>
+
                       {/* Actions */}
                       <td className="px-3 py-3">
                         <div className="flex gap-1.5 flex-wrap items-center">
-                          {(status === 'pending' || status === 'uploaded') && (
+                          {/* Claim button — shown when unclaimed and order is active */}
+                          {isActive && isUnclaimed && (
+                            <button
+                              disabled={isLoading}
+                              onClick={() => handleClaimOrder(order.id)}
+                              className="bg-sky-600 hover:bg-sky-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50"
+                            >
+                            {isLoading ? '…' : <><Hand className="w-3.5 h-3.5 inline mr-1" />Claim</>}
+                            </button>
+                          )}
+
+                          {/* Complete / Cancel — only for claimer or admin */}
+                          {canAct && (
                             <>
                               <button
+                                disabled={isLoading}
                                 onClick={() => handleCompleteOrder(order.id)}
-                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors"
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50"
                               >
-                                ✓ Complete
+                                {isLoading ? '…' : '✓ Complete'}
                               </button>
                               <button
+                                disabled={isLoading}
                                 onClick={() => handleCancelOrder(order.id)}
-                                className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors"
+                                className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50"
                               >
-                                ✕ Cancel
+                                {isLoading ? '…' : '✕ Cancel'}
                               </button>
                             </>
                           )}
+
                           <button
                             onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
                             className="text-sky-600 hover:text-sky-800 text-xs px-2 py-1.5 rounded-lg border border-sky-200 bg-sky-50 font-medium transition-colors"
@@ -297,7 +387,7 @@ const OrderManagement: React.FC = () => {
                     {/* Expanded Details Row */}
                     {expandedId === order.id && (
                       <tr className="bg-sky-50/60">
-                        <td colSpan={7} className="px-6 py-5">
+                        <td colSpan={8} className="px-6 py-5">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                             <div>
                               <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Recipient Name</p>
@@ -349,7 +439,7 @@ const OrderManagement: React.FC = () => {
                                   disabled={proofLoading === order.proofFileName}
                                   className="shrink-0 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
                                 >
-                                  {proofLoading === order.proofFileName ? '⏳ Loading…' : '🔍 View Proof'}
+                                  {proofLoading === order.proofFileName ? 'Loading…' : <><Image className="w-3.5 h-3.5 inline mr-1" />View Proof</>}
                                 </button>
                               </div>
                             )}
@@ -357,6 +447,9 @@ const OrderManagement: React.FC = () => {
 
                           <div className="text-xs text-slate-500 flex gap-4 flex-wrap">
                             <span>Created: {formatDate(order.createdAt)}</span>
+                            {order.claimedAt && (
+                              <span className="text-sky-600">Claimed by {order.claimedByName || order.claimedBy}: {formatDate(order.claimedAt)}</span>
+                            )}
                             {order.completedAt && <span className="text-green-700">Completed: {formatDate(order.completedAt)}</span>}
                             {order.cancelledAt && <span className="text-red-600">Cancelled: {formatDate(order.cancelledAt)}</span>}
                           </div>
@@ -375,4 +468,3 @@ const OrderManagement: React.FC = () => {
 }
 
 export default OrderManagement
-

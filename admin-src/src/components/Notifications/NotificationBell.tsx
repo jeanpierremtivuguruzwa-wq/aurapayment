@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAdminNotifications } from '../../hooks/useAdminNotifications'
 import { markNotificationAsRead } from '../../services/transactionService'
+import { Bell } from 'lucide-react'
 
 const NotificationBell: React.FC = () => {
   const { notifications, unreadCount } = useAdminNotifications()
@@ -14,9 +15,9 @@ const NotificationBell: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative text-2xl focus:outline-none"
+        className="relative focus:outline-none"
       >
-        🔔
+        <Bell className="w-6 h-6" />
         {unreadCount > 0 && (
           <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-1.5">
             {unreadCount}

@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../services/firebase'
 import { Agent } from '../../types/Agent'
+import { Headphones, Inbox, Package, Send } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface SupportTicket {
@@ -58,7 +59,7 @@ const STATUS_STYLE: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-700 border-amber-200',
   closed:  'bg-green-50 text-green-700 border-green-200',
 }
-const STATUS_DOT: Record<string, string> = { open: '💬', pending: '⏳', closed: '✓' }
+const STATUS_DOT: Record<string, string> = { open: '●', pending: '○', closed: '✓' }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 interface Props {
@@ -177,7 +178,7 @@ const AgentSupportView: React.FC<Props> = ({ agent }) => {
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
           <h2 className="font-bold text-slate-800 text-base flex items-center gap-2">
-            🎧 My Support Queue
+            <Headphones className="w-5 h-5 text-slate-600" /> My Support Queue
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">Tickets assigned to you by the admin</p>
         </div>
@@ -206,7 +207,7 @@ const AgentSupportView: React.FC<Props> = ({ agent }) => {
             <div className="p-6 text-center text-slate-400 text-sm">Loading…</div>
           ) : filtered.length === 0 ? (
             <div className="p-6 text-center">
-              <div className="text-3xl mb-2">📭</div>
+              <Inbox className="w-8 h-8 mx-auto mb-2 text-slate-300" />
               <p className="text-slate-400 text-sm">
                 {filter !== 'all' ? `No ${filter} tickets` : 'No tickets assigned to you yet'}
               </p>
@@ -242,7 +243,7 @@ const AgentSupportView: React.FC<Props> = ({ agent }) => {
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         {!selectedTicket ? (
           <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center gap-3 text-slate-300 p-8">
-            <div className="text-5xl">🎧</div>
+            <Headphones className="w-12 h-12 text-slate-200" />
             <p className="text-sm font-medium text-center">Select a ticket to start answering</p>
           </div>
         ) : (
@@ -257,7 +258,7 @@ const AgentSupportView: React.FC<Props> = ({ agent }) => {
                   </p>
                   {selectedTicket.orderId && (
                     <p className="text-xs text-sky-600 font-mono mt-1">
-                      📦 Order #{selectedTicket.orderId.slice(0, 8).toUpperCase()}
+                      <Package className="w-4 h-4 inline mr-1 text-sky-500" /> Order #{selectedTicket.orderId.slice(0, 8).toUpperCase()}
                     </p>
                   )}
                 </div>
@@ -268,8 +269,8 @@ const AgentSupportView: React.FC<Props> = ({ agent }) => {
                     disabled={statusSaving}
                     className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white font-semibold text-slate-700 focus:outline-none focus:border-sky-400"
                   >
-                    <option value="open">💬 Open</option>
-                    <option value="pending">⏳ Pending</option>
+                    <option value="open">Open</option>
+                    <option value="pending">Pending</option>
                     <option value="closed">✓ Close ticket</option>
                   </select>
                 </div>
@@ -297,7 +298,7 @@ const AgentSupportView: React.FC<Props> = ({ agent }) => {
                     return (
                       <div key={msg.id} className={`flex gap-2 items-end ${isAgent ? 'flex-row-reverse' : ''}`}>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isAgent ? 'bg-sky-600 text-white' : 'bg-slate-700 text-white'}`}>
-                          {isAgent ? '🎧' : initials}
+                          {isAgent ? <Headphones className="w-4 h-4" /> : initials}
                         </div>
                         <div className="max-w-sm">
                           <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed ${isAgent ? 'bg-sky-600 text-white rounded-br-sm' : 'bg-slate-50 border border-slate-200 text-slate-800 rounded-bl-sm'}`}>
@@ -334,7 +335,7 @@ const AgentSupportView: React.FC<Props> = ({ agent }) => {
                     className="w-10 h-10 self-end bg-sky-600 text-white rounded-xl flex items-center justify-center text-base hover:bg-sky-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Send reply"
                   >
-                    ➤
+                    <Send className="w-4 h-4" />
                   </button>
                 </div>
               ) : (

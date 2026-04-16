@@ -3,6 +3,7 @@ import {
   collection, onSnapshot, query, orderBy, doc,
   updateDoc, addDoc, Timestamp, getDocs
 } from 'firebase/firestore'
+import { Headphones, Package, Shield, User } from 'lucide-react'
 import { db } from '../../services/firebase'
 import { Agent } from '../../types/Agent'
 
@@ -64,7 +65,7 @@ const STATUS_STYLE: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-700 border-amber-200',
   closed:  'bg-green-50 text-green-700 border-green-200',
 }
-const STATUS_DOT: Record<string, string> = { open: '💬', pending: '⏳', closed: '✓' }
+const STATUS_DOT: Record<string, string> = { open: '●', pending: '○', closed: '✓' }
 
 // ── Main Component ────────────────────────────────────────────────────────────
 const SupportManagement: React.FC = () => {
@@ -223,7 +224,7 @@ const SupportManagement: React.FC = () => {
             <div className="p-6 text-center text-slate-400 text-sm">Loading tickets…</div>
           ) : filtered.length === 0 ? (
             <div className="p-6 text-center text-slate-400 text-sm">
-              <div className="text-3xl mb-2">🎧</div>
+              <div className="text-3xl mb-2"><Headphones className="w-8 h-8 mx-auto text-slate-300" /></div>
               No {filter !== 'all' ? filter : ''} tickets
             </div>
           ) : (
@@ -247,7 +248,7 @@ const SupportManagement: React.FC = () => {
                 <p className="text-xs text-slate-400 truncate">{ticket.message}</p>
                 <p className="text-xs text-slate-300 mt-1">{ago(ticket.updatedAt)}</p>
                 {ticket.assignedAgentName && (
-                  <p className="text-xs text-sky-600 mt-1">👤 {ticket.assignedAgentName}</p>
+                  <p className="text-xs text-sky-600 mt-1 flex items-center gap-1"><User className="w-3 h-3" /> {ticket.assignedAgentName}</p>
                 )}
               </button>
             ))
@@ -259,7 +260,7 @@ const SupportManagement: React.FC = () => {
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         {!selectedTicket ? (
           <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-slate-300 gap-3">
-            <div className="text-5xl">🎧</div>
+            <Headphones className="w-14 h-14 text-slate-200" />
             <p className="text-sm font-medium">Select a ticket to view the conversation</p>
           </div>
         ) : (
@@ -274,8 +275,8 @@ const SupportManagement: React.FC = () => {
                   </p>
                   <p className="text-xs text-slate-400 mt-0.5">Opened {fmt(selectedTicket.createdAt)}</p>
                   {selectedTicket.orderId && (
-                    <p className="text-xs text-sky-600 mt-1 font-mono">
-                      📦 Order #{selectedTicket.orderId.slice(0, 8).toUpperCase()}
+                    <p className="text-xs text-sky-600 mt-1 font-mono flex items-center gap-1">
+                      <Package className="w-3 h-3" /> Order #{selectedTicket.orderId.slice(0, 8).toUpperCase()}
                     </p>
                   )}
                 </div>
@@ -288,8 +289,8 @@ const SupportManagement: React.FC = () => {
                     disabled={statusSaving}
                     className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white font-semibold text-slate-700 focus:outline-none focus:border-sky-400"
                   >
-                    <option value="open">💬 Open</option>
-                    <option value="pending">⏳ Pending</option>
+                    <option value="open">Open</option>
+                    <option value="pending">Pending</option>
                     <option value="closed">✓ Closed</option>
                   </select>
                 </div>
@@ -320,7 +321,7 @@ const SupportManagement: React.FC = () => {
                   )}
                   {selectedTicket.assignedEmail && !assignSaving && (
                     <div className="flex items-center gap-1.5 bg-sky-50 border border-sky-200 rounded-xl px-2.5 py-1.5 text-xs text-sky-700 font-medium shrink-0">
-                      <span>👤</span>
+                      <User className="w-3 h-3" />
                       <span>{selectedTicket.assignedAgentName}</span>
                       <span className="text-sky-400">·</span>
                       <span className="font-mono">{selectedTicket.assignedEmail}</span>
@@ -355,7 +356,7 @@ const SupportManagement: React.FC = () => {
                     return (
                       <div key={msg.id} className={`flex gap-2 items-end ${isAdmin ? 'flex-row-reverse' : ''}`}>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isAdmin ? 'bg-sky-600 text-white' : 'bg-slate-700 text-white'}`}>
-                          {isAdmin ? '🛡' : initials}
+                        {isAdmin ? <Shield className="w-4 h-4" /> : initials}
                         </div>
                         <div className="max-w-sm">
                           <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed ${isAdmin ? 'bg-sky-600 text-white rounded-br-sm' : 'bg-slate-50 border border-slate-200 text-slate-800 rounded-bl-sm'}`}>

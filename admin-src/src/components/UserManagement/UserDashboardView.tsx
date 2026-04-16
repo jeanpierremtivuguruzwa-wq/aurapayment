@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useUsers } from '../../hooks/useUsers'
 import { useRealtimeOrders } from '../../hooks/useRealtimeOrders'
 import { useRealtimeTransactions } from '../../hooks/useRealtimeTransactions'
+import { Package, CheckCircle, Clock, XCircle, Inbox, Eye, Home, BarChart2 } from 'lucide-react'
 
 type Tab = 'overview' | 'orders' | 'transactions'
 
@@ -17,11 +18,11 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: 'bg-red-100 text-red-700 border-red-200',
 }
 
-const STATUS_ICON: Record<string, string> = {
-  pending:   '⏳',
-  uploaded:  '📤',
-  completed: '✅',
-  cancelled: '❌',
+const STATUS_ICON: Record<string, React.ReactNode> = {
+  pending:   <Clock className="w-5 h-5 text-amber-600" />,
+  uploaded:  <Package className="w-5 h-5 text-sky-600" />,
+  completed: <CheckCircle className="w-5 h-5 text-green-600" />,
+  cancelled: <XCircle className="w-5 h-5 text-red-500" />,
 }
 
 function fmtDate(ts: any) {
@@ -79,7 +80,7 @@ const UserDashboardView: React.FC<Props> = ({ userId, onBack }) => {
 
       {/* ── Admin Preview Banner ── */}
       <div className="flex items-center gap-3 bg-gradient-to-r from-indigo-600 to-sky-600 text-white px-5 py-3 rounded-2xl shadow-lg">
-        <span className="text-2xl">👁</span>
+        <Eye className="w-6 h-6 text-white" />
         <div className="flex-1">
           <p className="font-semibold text-sm">Admin Preview Mode</p>
           <p className="text-indigo-100 text-xs">
@@ -128,7 +129,7 @@ const UserDashboardView: React.FC<Props> = ({ userId, onBack }) => {
                 user?.role === 'agent' ? 'bg-amber-100 text-amber-800 border-amber-200' :
                                          'bg-sky-50 text-sky-700 border-sky-200'
               }`}>
-                {user?.role === 'admin' ? '🛡 Admin' : user?.role === 'agent' ? '🤝 Agent' : '👤 User'}
+                {user?.role === 'admin' ? 'Admin' : user?.role === 'agent' ? 'Agent' : 'User'}
               </span>
               <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
                 status === 'active'    ? 'bg-green-100 text-green-800 border-green-200' :
@@ -164,13 +165,13 @@ const UserDashboardView: React.FC<Props> = ({ userId, onBack }) => {
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total Orders',    value: userOrders.length,  icon: '📦', bg: 'bg-slate-50',   border: 'border-slate-200',   text: 'text-slate-800'  },
-          { label: 'Completed',       value: completedOrders,    icon: '✅', bg: 'bg-green-50',   border: 'border-green-200',   text: 'text-green-800'  },
-          { label: 'Pending',         value: pendingOrders,      icon: '⏳', bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800'  },
-          { label: 'Cancelled',       value: cancelledOrders,    icon: '❌', bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-700'    },
+          { label: 'Total Orders',    value: userOrders.length,  icon: <Package className="w-6 h-6" />,     bg: 'bg-slate-50',   border: 'border-slate-200',   text: 'text-slate-800'  },
+          { label: 'Completed',       value: completedOrders,    icon: <CheckCircle className="w-6 h-6" />, bg: 'bg-green-50',   border: 'border-green-200',   text: 'text-green-800'  },
+          { label: 'Pending',         value: pendingOrders,      icon: <Clock className="w-6 h-6" />,       bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800'  },
+          { label: 'Cancelled',       value: cancelledOrders,    icon: <XCircle className="w-6 h-6" />,     bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-700'    },
         ].map(s => (
           <div key={s.label} className={`rounded-xl border px-4 py-3.5 ${s.bg} ${s.border} flex items-center gap-3`}>
-            <span className="text-2xl">{s.icon}</span>
+              <span className="flex items-center text-slate-600">{s.icon}</span>
             <div>
               <div className={`text-2xl font-bold leading-none ${s.text}`}>{s.value}</div>
               <div className="text-xs text-slate-500 mt-0.5 font-medium">{s.label}</div>
@@ -199,10 +200,10 @@ const UserDashboardView: React.FC<Props> = ({ userId, onBack }) => {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="flex border-b border-slate-100">
           {([
-            { key: 'overview',      label: 'Overview',      icon: '🏠' },
-            { key: 'orders',        label: `Orders (${userOrders.length})`,           icon: '📦' },
-            { key: 'transactions',  label: `Transactions (${userTxns.length})`,       icon: '📊' },
-          ] as { key: Tab; label: string; icon: string }[]).map(t => (
+            { key: 'overview',      label: 'Overview',      icon: <Home className="w-4 h-4" /> },
+            { key: 'orders',        label: `Orders (${userOrders.length})`,           icon: <Package className="w-4 h-4" /> },
+            { key: 'transactions',  label: `Transactions (${userTxns.length})`,       icon: <BarChart2 className="w-4 h-4" /> },
+          ] as { key: Tab; label: string; icon: React.ReactNode }[]).map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
@@ -226,7 +227,7 @@ const UserDashboardView: React.FC<Props> = ({ userId, onBack }) => {
               <h3 className="font-semibold text-slate-800 text-sm">Recent Orders</h3>
               {userOrders.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="text-4xl mb-2">📭</div>
+                  <Inbox className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                   <p className="text-slate-500">No orders yet</p>
                   <p className="text-slate-400 text-xs mt-1">This user hasn't placed any orders.</p>
                 </div>
@@ -235,7 +236,7 @@ const UserDashboardView: React.FC<Props> = ({ userId, onBack }) => {
                   {userOrders.slice(0, 5).map(order => (
                     <div key={order.id} className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
                       <div className="flex items-center gap-3">
-                        <span className="text-xl">{STATUS_ICON[order.status] ?? '📦'}</span>
+                        <span className="flex items-center">{STATUS_ICON[order.status] ?? <Package className="w-5 h-5 text-slate-400" />}</span>
                         <div>
                           <p className="text-sm font-medium text-slate-800">
                             {order.sendAmount?.toLocaleString()} {order.sendCurrency} → {order.receiveAmount?.toLocaleString()} {order.receiveCurrency}
@@ -266,7 +267,7 @@ const UserDashboardView: React.FC<Props> = ({ userId, onBack }) => {
             <div>
               {userOrders.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="text-4xl mb-2">📭</div>
+                  <Inbox className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                   <p className="text-slate-500">No orders found for this user.</p>
                 </div>
               ) : (
@@ -324,7 +325,7 @@ const UserDashboardView: React.FC<Props> = ({ userId, onBack }) => {
             <div>
               {userTxns.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="text-4xl mb-2">📭</div>
+                  <Inbox className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                   <p className="text-slate-500">No transactions found for this user.</p>
                 </div>
               ) : (

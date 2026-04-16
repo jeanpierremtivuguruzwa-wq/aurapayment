@@ -455,3 +455,110 @@ export const notifyUserOnOrderComplete = firestoreTriggers.onDocumentUpdated(
     return null;
   }
 );
+
+// ─── Email user when support agent/admin replies to their ticket ───────────────
+// Fires when a new message is created in supportTickets/{ticketId}/messages/.
+// If the message role is 'admin' or 'agent', we email the user so they know
+// the support team has replied and they should visit the support page.
+export const notifyUserOnSupportReply = firestoreTriggers.onDocumentCreated(
+  "supportTickets/{ticketId}/messages/{messageId}",
+  async (event) => {
+    const msg = event.data?.data();
+    if (!msg) return null;
+
+    // Only send when admin or agent replies – never on user messages
+    if (msg.role === "user") return null;
+
+    const ticketId = event.params.ticketId;
+    const db = admin.firestore();
+
+    // Fetch parent ticket to get user's email and details
+    const ticketSnap = await db.collection("supportTickets").doc(ticketId).get();
+    if (!ticketSnap.exists) {
+      console.log(`[supportReply] Ticket ${ticketId} not found – skipping.`);
+      return null;
+    }
+
+    const ticket = ticketSnap.data()!;
+    const userEmail = ticket.userEmail as string | undefined;
+    if (!userEmail) {
+      console.log(`[supportReply] No userEmail on ticket ${ticketId} – skipping.`);
+      return null;
+    }
+
+    const userName    = (ticket.userName as string) || "";
+    const subjectKey  = (ticket.subject as string) || "general";
+    const replyText   = (msg.text as string) || "";
+    const senderName  = (msg.senderName as string) || "Support Team";
+    const supportLink = "https://aura-payment.web.app/support.html";
+
+    const CATEGORY: Record<string, string> = {
+      transaction_delay: "Transaction taking too long",
+      proof_issue:       "Problem with proof of payment",
+      wrong_amount:      "Wrong amount received",
+      payment_failed:    "Payment failed",
+      account_issue:     "Account issue",
+      general:           "General question",
+      other:             "Other",
+    };
+    const topicLabel = CATEGORY[subjectKey] || subjectKey;
+
+    const emailSubject = `Reply from Aura Support – ${topicLabel}`;
+
+    const html = `
+      <div style="font-family:sans-serif;max-width:600px;margin:auto;color:#1a202c;">
+        <div style="background:#0b1b3a;padding:24px 32px;border-radius:12px 12px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">Aura Payment</h1>
+          <p style="color:#90cdf4;margin:4px 0 0;font-size:14px;">Support Team</p>
+        </div>
+        <div style="background:#f7fafc;padding:32px;border-radius:0 0 12px 12px;border:1px solid #e2e8f0;border-top:none;">
+
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:18px 22px;margin-bottom:24px;">
+            <p style="margin:0;font-size:13px;color:#1e40af;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Support Reply</p>
+            <p style="margin:6px 0 0;font-size:18px;font-weight:700;color:#1e3a8a;">${topicLabel}</p>
+          </div>
+
+          <p style="color:#4a5568;margin-top:0;">
+            Hi${userName ? " " + userName : ""},<br><br>
+            Our support team has replied to your enquiry. Here is their message:
+          </p>
+
+          <div style="background:white;border-left:4px solid #0b1b3a;border-radius:6px;padding:18px 22px;margin:20px 0;color:#1a202c;font-size:15px;line-height:1.6;">
+            ${replyText.replace(/\n/g, "<br>")}
+          </div>
+
+          <p style="color:#718096;font-size:14px;">
+            — <strong style="color:#0b1b3a;">${senderName}</strong>, Aura Payment Support
+          </p>
+
+          <a href="${supportLink}" style="display:inline-block;margin-top:8px;background:#0b1b3a;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+            View Your Support Ticket →
+          </a>
+
+          <p style="margin-top:28px;font-size:13px;color:#718096;">
+            You can reply directly from the <a href="${supportLink}" style="color:#0b1b3a;font-weight:600;">support page</a>
+            on our website. Our team is here to help and your issue is being handled.<br><br>
+            Thank you for your patience.
+          </p>
+
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
+          <p style="font-size:11px;color:#a0aec0;">
+            Aura Payment · <a href="https://aura-payment.web.app" style="color:#a0aec0;">aura-payment.web.app</a><br>
+            This email was sent because you submitted a support request. Please do not reply to this email.
+          </p>
+        </div>
+      </div>
+    `;
+
+    await db.collection("mail").add({
+      to:      [userEmail],
+      message: { subject: emailSubject, html },
+      type:    "support_reply",
+      ticketId,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[supportReply] Email queued → ${userEmail}, ticket ${ticketId}`);
+    return null;
+  }
+);

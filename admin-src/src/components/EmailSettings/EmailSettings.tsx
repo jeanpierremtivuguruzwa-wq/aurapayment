@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore'
 import { db } from '../../services/firebase'
+import { Mail, Package, Inbox, User } from 'lucide-react'
 
 interface MailDoc {
   id: string
@@ -24,13 +25,13 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   PROCESSING: { label: '⏳ Processing', cls: 'bg-blue-100 text-blue-800 border border-blue-200' },
   PENDING:    { label: '⏳ Pending',    cls: 'bg-amber-100 text-amber-800 border border-amber-200' },
   ERROR:      { label: '✗ Failed',     cls: 'bg-red-100 text-red-800 border border-red-200' },
-  RETRY:      { label: '🔄 Retrying',  cls: 'bg-orange-100 text-orange-800 border border-orange-200' },
+  RETRY:      { label: 'Retrying',  cls: 'bg-orange-100 text-orange-800 border border-orange-200' },
 }
 
 const TYPE_BADGE: Record<string, string> = {
   order_completed:    '✅ Order Completed',
   order_cancelled:    '❌ Order Cancelled',
-  proof_upload:       '📎 Proof Upload',
+  proof_upload:       'Proof Upload',
   new_order:          '🆕 New Order',
 }
 
@@ -88,7 +89,7 @@ const EmailSettings: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">📧 Email Notifications</h2>
+          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Mail className="w-6 h-6" /> Email Notifications</h2>
           <p className="text-slate-500 text-sm mt-1">
             Automatic emails sent to users when their orders are completed or cancelled.
           </p>
@@ -102,7 +103,7 @@ const EmailSettings: React.FC = () => {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-sky-700">
           <div className="flex items-start gap-3">
-            <span className="text-2xl">📦</span>
+            <Package className="w-8 h-8" />
             <div>
               <p className="font-semibold">Order Placed</p>
               <p className="text-sky-600">Admin & agents receive a notification email</p>
@@ -128,11 +129,11 @@ const EmailSettings: React.FC = () => {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: 'Total Sent',      value: stats.total,     icon: '📧', cls: 'text-slate-700' },
+          { label: 'Total Sent',      value: stats.total,     icon: <Mail className="w-5 h-5" />, cls: 'text-slate-700' },
           { label: 'Delivered',       value: stats.delivered, icon: '✓',  cls: 'text-green-700' },
           { label: 'Pending',         value: stats.pending,   icon: '⏳', cls: 'text-amber-700' },
           { label: 'Failed',          value: stats.failed,    icon: '✗',  cls: 'text-red-700' },
-          { label: 'To Users',        value: stats.toUsers,   icon: '👤', cls: 'text-sky-700' },
+          { label: 'To Users',        value: stats.toUsers,   icon: <User className="w-5 h-5" />, cls: 'text-sky-700' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm">
             <div className="text-2xl mb-1">{s.icon}</div>
@@ -170,7 +171,7 @@ const EmailSettings: React.FC = () => {
           <div className="p-8 text-center text-slate-500">Loading email log…</div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center">
-            <div className="text-5xl mb-3">📭</div>
+            <Inbox className="w-12 h-12 mx-auto mb-3 text-slate-300" />
             <p className="text-slate-500 font-medium">No emails logged yet</p>
             <p className="text-slate-400 text-sm mt-1">
               Emails will appear here automatically when orders are completed or cancelled
@@ -192,7 +193,7 @@ const EmailSettings: React.FC = () => {
               <tbody className="divide-y divide-slate-50">
                 {filtered.map(email => {
                   const state = getState(email)
-                  const typeLabel = email.type ? (TYPE_BADGE[email.type] ?? email.type) : '📧 Notification'
+                  const typeLabel = email.type ? (TYPE_BADGE[email.type] ?? email.type) : 'Notification'
                   return (
                     <tr key={email.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3">

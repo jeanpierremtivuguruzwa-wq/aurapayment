@@ -1,24 +1,53 @@
 import React from 'react'
 import { useAgents } from '../../hooks/useAgents'
 import { AgentPermission } from '../../types/Agent'
+import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore'
+import { db } from '../../services/firebase'
+import { BarChart2, Package, Users, ArrowLeftRight, CreditCard, UserCheck, TrendingUp, MessageCircle, Wallet, Landmark, Bell, Headphones, UserCog, Ban } from 'lucide-react'
 
-const ALL_PERMISSIONS: { key: AgentPermission; label: string; desc: string; icon: string; default?: boolean }[] = [
-  { key: 'transactions',        label: 'Transactions',          desc: 'View & manage transactions',            icon: '📊', default: true },
-  { key: 'orders',              label: 'Orders',                desc: 'View, complete & cancel orders',        icon: '📦' },
-  { key: 'users',               label: 'User Management',       desc: 'View registered users',                 icon: '👤' },
-  { key: 'currency',            label: 'Currency Pairs',        desc: 'View & edit currency rates',            icon: '💱' },
-  { key: 'payments',            label: 'Payment Methods',       desc: 'View & edit payment methods',           icon: '💳' },
-  { key: 'cardholders',         label: 'Cardholders',           desc: 'View & manage cardholders',             icon: '👥' },
-  { key: 'cardholder-activity', label: 'Cardholder Activity',   desc: 'View cardholder transaction activity',  icon: '📈' },
-  { key: 'chat',                label: 'AuraChat',              desc: 'Access the internal chat system',       icon: '💬' },
-  { key: 'wallet',              label: 'AuraWallet',            desc: 'View & manage Aura wallet records',     icon: '💰' },
-  { key: 'currency-assignments',label: 'Currency Assignments',  desc: 'Manage cardholder currency assignments', icon: '🏦' },
-  { key: 'notifications',       label: 'Notifications',         desc: 'Manage notification recipients',        icon: '🔔' },
-  { key: 'support',             label: 'User Support',          desc: 'Answer user support tickets and chat',  icon: '🎧' },
+/** Returns the count of orders completed this calendar month, keyed by claimedBy (agent id or 'admin') */
+function useMonthlyCompletedOrders(): Record<string, number> {
+  const [counts, setCounts] = React.useState<Record<string, number>>({})
+
+  React.useEffect(() => {
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const q = query(
+      collection(db, 'orders'),
+      where('status', '==', 'completed'),
+      where('completedAt', '>=', Timestamp.fromDate(startOfMonth))
+    )
+    return onSnapshot(q, (snap) => {
+      const c: Record<string, number> = {}
+      snap.docs.forEach(d => {
+        const claimedBy = d.data().claimedBy as string | undefined
+        if (claimedBy) c[claimedBy] = (c[claimedBy] || 0) + 1
+      })
+      setCounts(c)
+    }, () => {}) // ignore errors silently (index might not exist yet)
+  }, [])
+
+  return counts
+}
+
+const ALL_PERMISSIONS: { key: AgentPermission; label: string; desc: string; icon: React.ReactNode; default?: boolean }[] = [
+  { key: 'transactions',        label: 'Transactions',          desc: 'View & manage transactions',            icon: <BarChart2 className="w-4 h-4" />, default: true },
+  { key: 'orders',              label: 'Orders',                desc: 'View, complete & cancel orders',        icon: <Package className="w-4 h-4" /> },
+  { key: 'users',               label: 'User Management',       desc: 'View registered users',                 icon: <Users className="w-4 h-4" /> },
+  { key: 'currency',            label: 'Currency Pairs',        desc: 'View & edit currency rates',            icon: <ArrowLeftRight className="w-4 h-4" /> },
+  { key: 'payments',            label: 'Payment Methods',       desc: 'View & edit payment methods',           icon: <CreditCard className="w-4 h-4" /> },
+  { key: 'cardholders',         label: 'Cardholders',           desc: 'View & manage cardholders',             icon: <UserCheck className="w-4 h-4" /> },
+  { key: 'cardholder-activity', label: 'Cardholder Activity',   desc: 'View cardholder transaction activity',  icon: <TrendingUp className="w-4 h-4" /> },
+  { key: 'chat',                label: 'AuraChat',              desc: 'Access the internal chat system',       icon: <MessageCircle className="w-4 h-4" /> },
+  { key: 'wallet',              label: 'AuraWallet',            desc: 'View & manage Aura wallet records',     icon: <Wallet className="w-4 h-4" /> },
+  { key: 'currency-assignments',label: 'Currency Assignments',  desc: 'Manage cardholder currency assignments', icon: <Landmark className="w-4 h-4" /> },
+  { key: 'notifications',       label: 'Notifications',         desc: 'Manage notification recipients',        icon: <Bell className="w-4 h-4" /> },
+  { key: 'support',             label: 'User Support',          desc: 'Answer user support tickets and chat',  icon: <Headphones className="w-4 h-4" /> },
 ]
 
 const AgentManagement: React.FC = () => {
   const { agents, permissionRequests, loading, addAgent, updatePermissions, updateStatus, resolveRequest } = useAgents()
+  const monthlyCompleted = useMonthlyCompletedOrders()
 
   // Add agent form
   const [showForm, setShowForm] = React.useState(false)
@@ -151,7 +180,7 @@ const AgentManagement: React.FC = () => {
       <div className="card-base p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">🕵️ Agent Management</h2>
+            <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2"><UserCog className="w-5 h-5" /> Agent Management</h2>
             <p className="text-sm text-slate-500 mt-1">Assign and manage agent permissions</p>
           </div>
           <button
@@ -211,7 +240,7 @@ const AgentManagement: React.FC = () => {
       {pendingRequests.length > 0 && (
         <div className="card-base p-6 border-l-4 border-amber-400 bg-amber-50">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-lg">🔔</span>
+            <Bell className="w-5 h-5 text-amber-600" />
             <h3 className="font-semibold text-amber-900">Pending Permission Requests</h3>
             <span className="bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{pendingRequests.length}</span>
           </div>
@@ -330,7 +359,7 @@ const AgentManagement: React.FC = () => {
 
         {agents.length === 0 ? (
           <div className="text-center py-14">
-            <div className="text-5xl mb-3">🕵️</div>
+            <UserCog className="w-12 h-12 mx-auto mb-3 text-slate-300" />
             <p className="text-slate-500 text-lg">No agents yet</p>
             <p className="text-slate-400 text-sm mt-1">Click "+ Add Agent" to create your first agent account.</p>
           </div>
@@ -343,6 +372,7 @@ const AgentManagement: React.FC = () => {
                   <th className="px-4 py-3 text-left font-semibold text-slate-600">Email</th>
                   <th className="px-4 py-3 text-left font-semibold text-slate-600">Permissions</th>
                   <th className="px-4 py-3 text-left font-semibold text-slate-600 whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600 whitespace-nowrap">Orders This Month</th>
                   <th className="px-4 py-3 text-left font-semibold text-slate-600 whitespace-nowrap">Added</th>
                   <th className="px-4 py-3 text-left font-semibold text-slate-600">Actions</th>
                 </tr>
@@ -451,7 +481,22 @@ const AgentManagement: React.FC = () => {
                         {formatDate(agent.createdAt)}
                       </td>
 
-                      {/* Actions */}
+                      {/* Monthly completed orders */}
+                      <td className="px-4 py-4">
+                        {(() => {
+                          const count = monthlyCompleted[agent.id] || 0
+                          return (
+                            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
+                              count > 0
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {count} order{count !== 1 ? 's' : ''}
+                            </span>
+                          )
+                        })()}
+                      </td>
+
                       <td className="px-4 py-4">
                         <div className="flex gap-1.5 items-center flex-wrap">
                           {status === 'suspended' ? (
@@ -468,7 +513,7 @@ const AgentManagement: React.FC = () => {
                               onClick={() => handleStatusToggle(agent.id, status)}
                               className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors disabled:opacity-50"
                             >
-                              {isLoading ? '…' : '🚫 Suspend'}
+                              {isLoading ? '…' : <><Ban className="w-3.5 h-3.5" /> Suspend</>}
                             </button>
                           )}
                         </div>

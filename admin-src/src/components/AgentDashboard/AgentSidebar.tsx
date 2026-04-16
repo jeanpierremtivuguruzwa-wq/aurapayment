@@ -2,29 +2,34 @@ import React from 'react'
 import { signOut } from 'firebase/auth'
 import { auth } from '../../services/firebase'
 import { Agent, AgentPermission } from '../../types/Agent'
+import {
+  BarChart2, Activity, Package, Users, ArrowLeftRight, CreditCard,
+  UserCheck, TrendingUp, MessageCircle, Wallet, Landmark, Bell,
+  Headphones, ShieldCheck, Lock, LogOut,
+} from 'lucide-react'
 
 interface NavItem {
   id: string
   label: string
-  icon: string
+  icon: React.ReactNode
   requiredPermission: AgentPermission | null // null = always accessible
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'transactions',        label: 'All Transactions',      icon: '📊', requiredPermission: null },
-  { id: 'live',                label: 'Live Activity',         icon: '📋', requiredPermission: null },
-  { id: 'orders',              label: 'Orders',                icon: '📦', requiredPermission: 'orders' },
-  { id: 'users',               label: 'User Management',       icon: '👤', requiredPermission: 'users' },
-  { id: 'pairs',               label: 'Currency Pairs',        icon: '💱', requiredPermission: 'currency' },
-  { id: 'methods',             label: 'Payment Methods',       icon: '💳', requiredPermission: 'payments' },
-  { id: 'cardholders',         label: 'Cardholders',           icon: '👥', requiredPermission: 'cardholders' },
-  { id: 'cardholder-activity', label: 'Cardholder Activity',   icon: '📈', requiredPermission: 'cardholder-activity' },
-  { id: 'chat',                label: 'AuraChat',              icon: '💬', requiredPermission: 'chat' },
-  { id: 'wallet',              label: 'AuraWallet',            icon: '💰', requiredPermission: 'wallet' },
-  { id: 'currency-assignments',label: 'Currency Assignments',  icon: '🏦', requiredPermission: 'currency-assignments' },
-  { id: 'notifications',       label: 'Notifications',         icon: '🔔', requiredPermission: 'notifications' },
-  { id: 'support',             label: 'User Support',          icon: '🎧', requiredPermission: 'support' },
-  { id: 'profile',             label: 'My Profile',            icon: '🛡', requiredPermission: null },
+  { id: 'transactions',        label: 'All Transactions',      icon: <BarChart2 className="w-4.5 h-4.5" />,      requiredPermission: null },
+  { id: 'live',                label: 'Live Activity',         icon: <Activity className="w-4.5 h-4.5" />,       requiredPermission: null },
+  { id: 'orders',              label: 'Orders',                icon: <Package className="w-4.5 h-4.5" />,        requiredPermission: 'orders' },
+  { id: 'users',               label: 'User Management',       icon: <Users className="w-4.5 h-4.5" />,          requiredPermission: 'users' },
+  { id: 'pairs',               label: 'Currency Pairs',        icon: <ArrowLeftRight className="w-4.5 h-4.5" />, requiredPermission: 'currency' },
+  { id: 'methods',             label: 'Payment Methods',       icon: <CreditCard className="w-4.5 h-4.5" />,     requiredPermission: 'payments' },
+  { id: 'cardholders',         label: 'Cardholders',           icon: <UserCheck className="w-4.5 h-4.5" />,      requiredPermission: 'cardholders' },
+  { id: 'cardholder-activity', label: 'Cardholder Activity',   icon: <TrendingUp className="w-4.5 h-4.5" />,     requiredPermission: 'cardholder-activity' },
+  { id: 'chat',                label: 'AuraChat',              icon: <MessageCircle className="w-4.5 h-4.5" />,  requiredPermission: 'chat' },
+  { id: 'wallet',              label: 'AuraWallet',            icon: <Wallet className="w-4.5 h-4.5" />,         requiredPermission: 'wallet' },
+  { id: 'currency-assignments',label: 'Currency Assignments',  icon: <Landmark className="w-4.5 h-4.5" />,       requiredPermission: 'currency-assignments' },
+  { id: 'notifications',       label: 'Notifications',         icon: <Bell className="w-4.5 h-4.5" />,           requiredPermission: 'notifications' },
+  { id: 'support',             label: 'User Support',          icon: <Headphones className="w-4.5 h-4.5" />,     requiredPermission: 'support' },
+  { id: 'profile',             label: 'My Profile',            icon: <ShieldCheck className="w-4.5 h-4.5" />,    requiredPermission: null },
 ]
 
 interface Props {
@@ -91,10 +96,10 @@ const AgentSidebar: React.FC<Props> = ({ agent, activeSection, onSectionChange }
                     : 'text-slate-500 hover:bg-slate-800/60 cursor-pointer'
               }`}
             >
-              <span className="text-lg flex-shrink-0">{item.icon}</span>
+              <span className="flex-shrink-0 flex items-center">{item.icon}</span>
               <span className="flex-1 truncate">{item.label}</span>
               {!allowed && (
-                <span className="text-xs text-slate-500">🔒</span>
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
               )}
             </button>
           )
@@ -107,7 +112,7 @@ const AgentSidebar: React.FC<Props> = ({ agent, activeSection, onSectionChange }
           onClick={handleSignOut}
           className="w-full text-left px-4 py-2.5 rounded-lg text-slate-400 hover:bg-red-900/30 hover:text-red-400 transition-colors text-sm font-medium flex items-center gap-2"
         >
-          <span>🚪</span>
+          <LogOut className="w-4 h-4" />
           <span>Sign Out</span>
         </button>
         <p className="text-xs text-slate-500 text-center">© 2026 Aura Payment</p>

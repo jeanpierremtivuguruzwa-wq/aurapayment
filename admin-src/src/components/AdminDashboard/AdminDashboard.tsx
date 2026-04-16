@@ -3,6 +3,7 @@ import { collection, onSnapshot, query, orderBy, limit, updateDoc, doc } from 'f
 import { db } from '../../services/firebase'
 import { Order, OrderStatus } from '../../types/Order'
 import { CurrencyPair } from '../../types/CurrencyPair'
+import { Inbox, Zap } from 'lucide-react'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -24,10 +25,10 @@ function fmt(n: number, currency?: string): string {
 }
 
 const STATUS_META: Record<OrderStatus, { label: string; dot: string; bg: string; text: string; border: string }> = {
-  pending:   { label: 'Pending',   dot: '🟡', bg: 'bg-amber-50',  text: 'text-amber-800',  border: 'border-amber-200' },
-  uploaded:  { label: 'Uploaded',  dot: '🔵', bg: 'bg-blue-50',   text: 'text-blue-800',   border: 'border-blue-200'  },
-  completed: { label: 'Completed', dot: '🟢', bg: 'bg-green-50',  text: 'text-green-800',  border: 'border-green-200' },
-  cancelled: { label: 'Cancelled', dot: '🔴', bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200'   },
+  pending:   { label: 'Pending',   dot: 'bg-amber-400', bg: 'bg-amber-50',  text: 'text-amber-800',  border: 'border-amber-200' },
+  uploaded:  { label: 'Uploaded',  dot: 'bg-blue-400',  bg: 'bg-blue-50',   text: 'text-blue-800',   border: 'border-blue-200'  },
+  completed: { label: 'Completed', dot: 'bg-green-500', bg: 'bg-green-50',  text: 'text-green-800',  border: 'border-green-200' },
+  cancelled: { label: 'Cancelled', dot: 'bg-red-500',   bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200'   },
 }
 
 // ── Order card ────────────────────────────────────────────────────────────────
@@ -57,8 +58,8 @@ const OrderCard: React.FC<{ order: Order; isNew: boolean }> = ({ order, isNew })
           <p className="text-xs font-mono text-slate-500">#{order.orderId || order.id.slice(0, 8).toUpperCase()}</p>
           <p className="font-semibold text-slate-900 text-sm mt-0.5 leading-tight">{order.senderName || order.userEmail || '—'}</p>
         </div>
-        <span className={`shrink-0 inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${s.bg} ${s.text} ${s.border}`}>
-          {s.dot} {s.label}
+        <span className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${s.bg} ${s.text} ${s.border}`}>
+          <span className={`w-2 h-2 rounded-full ${s.dot}`} /> {s.label}
         </span>
       </div>
 
@@ -233,7 +234,7 @@ const AdminDashboard: React.FC = () => {
                       : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
                   }`}
                 >
-                  {f === 'active' ? `🟡 Active (${stats.pending + stats.uploaded})` : f === 'all' ? `All (${stats.total})` : f === 'pending' ? `Pending (${stats.pending})` : f === 'uploaded' ? `Uploaded (${stats.uploaded})` : f === 'completed' ? `Done (${stats.completed})` : `Cancelled (${stats.cancelled})`}
+              {f === 'active' ? `Active (${stats.pending + stats.uploaded})` : f === 'all' ? `All (${stats.total})` : f === 'pending' ? `Pending (${stats.pending})` : f === 'uploaded' ? `Uploaded (${stats.uploaded})` : f === 'completed' ? `Done (${stats.completed})` : `Cancelled (${stats.cancelled})`}
                 </button>
               ))}
             </div>
@@ -250,7 +251,7 @@ const AdminDashboard: React.FC = () => {
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
-              <div className="text-4xl mb-3">📭</div>
+              <Inbox className="w-10 h-10 mx-auto mb-3 text-slate-300" />
               <p className="text-slate-500">No orders {statusFilter === 'active' ? 'in progress — all done!' : statusFilter !== 'all' ? `with status "${statusFilter}"` : 'yet'}</p>
             </div>
           ) : (
@@ -308,7 +309,7 @@ const AdminDashboard: React.FC = () => {
                       <div className="text-right">
                         <p className="font-bold text-slate-800 text-lg leading-none">{pair.rate}</p>
                         {pair.urgent && (
-                          <span className="text-[10px] text-orange-600 font-semibold">⚡ Urgent</span>
+                          <span className="flex items-center gap-0.5 text-orange-500 text-xs"><Zap className="w-3 h-3" /> Urgent</span>
                         )}
                       </div>
                     </div>

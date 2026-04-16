@@ -27,6 +27,7 @@ import DeliveryOptions from './components/DeliveryOptions/DeliveryOptions'
 import SupportManagement from './components/SupportManagement/SupportManagement'
 import EmailSettings from './components/EmailSettings/EmailSettings'
 import { LanguageProvider } from './context/LanguageContext'
+import { Loader2, Lock, Ban } from 'lucide-react'
 
 type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'user-dashboard' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet' | 'public-dashboard' | 'settings' | 'delivery-options' | 'support' | 'email'
 type AuthState = 'loading' | 'admin' | 'agent' | 'unauthenticated' | 'unauthorized'
@@ -144,7 +145,7 @@ function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
+          <Loader2 className="w-10 h-10 mb-4 mx-auto text-slate-400 animate-spin" />
           <p className="text-slate-600 font-medium">Loading admin dashboard...</p>
         </div>
       </div>
@@ -155,7 +156,7 @@ function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center">
-          <div className="text-4xl mb-4">🔒</div>
+          <Lock className="w-10 h-10 mb-4 mx-auto text-slate-400" />
           <h2 className="text-xl font-bold text-slate-800 mb-2">Sign In Required</h2>
           <p className="text-slate-500 mb-6 text-sm">Please sign in to access the admin dashboard.</p>
           <a href="../signin.html" className="block bg-sky-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-sky-700 transition-colors">
@@ -170,7 +171,7 @@ function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full text-center">
-          <div className="text-4xl mb-4">🚫</div>
+          <Ban className="w-10 h-10 mb-4 mx-auto text-slate-400" />
           <h2 className="text-xl font-bold text-slate-800 mb-2">Access Denied</h2>
           <p className="text-slate-500 mb-6 text-sm">You do not have permission to access the admin dashboard.</p>
           <a href="../dashboard.html" className="block bg-slate-700 text-white px-6 py-3 rounded-lg font-medium hover:bg-slate-800 transition-colors">
@@ -208,7 +209,7 @@ function App() {
       case 'pairs': return <CurrencyPairs />
       case 'methods': return <PaymentMethods />
       case 'cardholders': return <CardholdersList />
-      case 'orders': return <OrderManagement />
+      case 'orders': return <OrderManagement isAdmin={true} />
       case 'transactions': return <AllTransactions />
       case 'users': return <UserManagement onViewUserDashboard={handleViewUserDashboard} />
       case 'user-dashboard': return viewingUserId
