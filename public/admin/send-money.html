@@ -605,7 +605,7 @@
                 if (updated.feeType === 'flat') fee = updated.fee || 0;
                 else if (updated.feeType === 'percent') fee = sendAmount * (updated.fee || 0) / 100;
 
-                const effectiveRate = updated.rate * (1 + (updated.margin || 0) / 100);
+                const effectiveRate = updated.rate;
                 const receiveAmount = Math.max(0, (sendAmount - fee) * effectiveRate);
 
                 transactionData.rate = effectiveRate;
@@ -695,7 +695,7 @@
                 }
             }
             const effectiveRate = selectedPair
-                ? selectedPair.rate * (1 + (selectedPair.margin || 0) / 100)
+                ? selectedPair.rate
                 : liveRate;
             const receiveAmount = Math.max(0, (sendAmount - fee) * effectiveRate);
 
@@ -852,16 +852,22 @@
             const container = document.getElementById('paymentOptions');
             const detailsDiv = document.getElementById('paymentDetails');
 
+            const sendCurrency = transactionData.sendCurrency || '';
+            if (!sendCurrency) {
+                container.innerHTML = `<p style="color: #e53e3e;">${t('send_no_method')}</p>`;
+                return;
+            }
+
             container.innerHTML = `<p style="text-align: center; color: #718096;">${t('send_loading_methods')}</p>`;
 
-            // Fetch active payment methods from Firestore
+            // Fetch active payment methods matching the sender's currency
             db.collection('paymentMethods')
                 .where('active', '==', true)
-                .where('currency', '==', transactionData.sendCurrency)
+                .where('currency', '==', sendCurrency)
                 .get()
                 .then(snapshot => {
                     if (snapshot.empty) {
-                        container.innerHTML = `<p style="color: #e53e3e;">${t('send_no_method')}</p>`;
+                        container.innerHTML = `<p style="color: #e53e3e;">${t('send_no_method')} (${sendCurrency})</p>`;
                         return;
                     }
 

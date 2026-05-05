@@ -251,6 +251,79 @@ export const processRecurringPayments = onSchedule(
   }
 );
 
+// ---------- Auto-sync currency rates from currencylayer ──────────────────────
+// Runs every 60 minutes. Reads API key from appSettings/main.currencyLayerKey,
+// fetches live USD-based quotes, computes cross rates applying per-pair spread,
+// and batch-updates all active currencyPair documents so the public dashboard
+// shows live rates without any manual admin action.
+const TRACKED_CURRENCIES = ["XOF","XAF","RUB","EUR","GBP","CNY","AED","GHS","NGN","USD"];
+function crossRate(quotes, from, to) {
+  const norm = (c) => (c === "USDT" ? "USD" : c);
+  const f = norm(from);
+  const t = norm(to);
+  const fromRate = f === "USD" ? 1 : quotes[`USD${f}`];
+  const toRate   = t === "USD" ? 1 : quotes[`USD${t}`];
+  if (!fromRate || !toRate) return null;
+  return toRate / fromRate;
+}
+export const syncCurrencyRates = onSchedule({
+  schedule: "every 60 minutes",
+  timeZone: "UTC",
+  timeoutSeconds: 120,
+}, async () => {
+  const settingsSnap = await db.collection("appSettings").doc("main").get();
+  const apiKey = settingsSnap.data()?.currencyLayerKey;
+  if (!apiKey) {
+    console.log("syncCurrencyRates: no API key set — skipping.");
+    return;
+  }
+
+  const symbols = TRACKED_CURRENCIES.filter(c => c !== "USDT").join(",");
+  const url = `http://api.currencylayer.com/live?access_key=${apiKey}&currencies=${symbols}&source=USD&format=1`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.error(`syncCurrencyRates: HTTP ${res.status}`);
+    return;
+  }
+  const json = await res.json();
+  if (!json.success) {
+    console.error("syncCurrencyRates: API error —", json.error?.info);
+    return;
+  }
+  const quotes = json.quotes ?? {};
+  console.log(`syncCurrencyRates: fetched ${Object.keys(quotes).length} quotes`);
+
+  const pairsSnap = await db.collection("currencyPairs")
+    .where("active", "==", true).get();
+
+  const batch = db.batch();
+  let updated = 0, skipped = 0;
+
+  for (const doc of pairsSnap.docs) {
+    const pair = doc.data();
+    const market = crossRate(quotes, pair.from, pair.to);
+    if (market === null) { skipped++; continue; }
+
+    let newRate;
+    if (pair.spreadType === "percent") {
+      newRate = market * (1 - (pair.spread ?? 0) / 100);
+    } else {
+      newRate = market - (pair.spread ?? 0);
+    }
+    if (newRate <= 0) { skipped++; continue; }
+
+    batch.update(doc.ref, {
+      rate: parseFloat(newRate.toFixed(6)),
+      syncedAt: admin.firestore.FieldValue.serverTimestamp(),
+      syncSource: "currencylayer",
+    });
+    updated++;
+  }
+
+  await batch.commit();
+  console.log(`syncCurrencyRates: updated=${updated}, skipped=${skipped}`);
+});
+
 // ---------- Email Notification on Proof Upload ----------
 // Fires when an order's status changes to 'uploaded' (client submitted payment proof).
 // Reads all active notificationRecipients from Firestore, then writes to the `mail`

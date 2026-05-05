@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useFirestoreQuery } from '../../hooks/useFirestoreQuery'
 import { CurrencyPair } from '../../types/CurrencyPair'
-import { TrendingUp, Trash2, Smartphone, DollarSign, BarChart2, Search, Globe } from 'lucide-react'
+import { TrendingUp, Trash2, Smartphone, DollarSign, Search, Globe, RefreshCw, Zap } from 'lucide-react'
 import {
   addCurrencyPair,
   deactivateAllPairs,
@@ -11,6 +11,13 @@ import {
   RateHistoryEntry,
   updateCurrencyPair,
 } from '../../services/currencyService'
+import {
+  fetchMarketQuotes,
+  crossRate,
+  saveApiKey,
+  loadApiKey,
+  MarketQuotes,
+} from '../../services/currencyLayerService'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CURRENCY PAIRS  –  CFA Franc corridors (RUB ↔ XOF / XAF)
@@ -60,6 +67,23 @@ const EXPECTED_XOF_RUB: ExpectedCorridor[] = XOF_COUNTRIES.map(c => ({
   from: 'XOF', to: 'RUB', country: c.country, countryCode: c.countryCode, flag: c.flag,
 }))
 const TOTAL_EXPECTED = EXPECTED_RUB_XAF.length + EXPECTED_RUB_XOF.length + EXPECTED_XAF_RUB.length + EXPECTED_XOF_RUB.length // 28
+
+// ── Additional sending currencies (each gets XOF + XAF corridors) ────────────
+const EXTRA_SENDING = [
+  { code: 'USD',  name: 'US Dollar'     },
+  { code: 'EUR',  name: 'Euro'          },
+  { code: 'GBP',  name: 'British Pound' },
+  { code: 'USDT', name: 'Tether (USDT)' },
+  { code: 'CNY',  name: 'Chinese Yuan'  },
+  { code: 'AED',  name: 'UAE Dirham'    },
+]
+
+function buildCorridors(from: string) {
+  return {
+    xof: XOF_COUNTRIES.map(c => ({ from, to: 'XOF', country: c.country, countryCode: c.countryCode, flag: c.flag })) as ExpectedCorridor[],
+    xaf: XAF_COUNTRIES.map(c => ({ from, to: 'XAF', country: c.country, countryCode: c.countryCode, flag: c.flag })) as ExpectedCorridor[],
+  }
+}
 
 /** Merge a list of expected corridors with live Firestore pairs.
  *  Returns CurrencyPair[] where unmatched corridors have id='' (placeholder). */
@@ -174,7 +198,7 @@ function PairRow({
   onDelete,
   onDeliveryChange,
   onFeeChange,
-  onMarginChange,
+  onSpreadChange,
   onViewHistory,
 }: {
   pair: CurrencyPair
@@ -184,12 +208,12 @@ function PairRow({
   onDelete:        (id: string) => void
   onDeliveryChange:(id: string, methods: string[]) => void
   onFeeChange: (id: string, fee: number, feeType: 'flat' | 'percent') => void
-  onMarginChange: (id: string, margin: number) => void
+  onSpreadChange: (id: string, spread: number, spreadType: 'flat' | 'percent') => void
   onViewHistory: (pair: CurrencyPair) => void
 }) {
   const [rate, setRate]     = useState(String(pair.rate))
   const [fee, setFee]       = useState(String(pair.fee ?? 0))
-  const [margin, setMargin] = useState(String(pair.margin ?? 0))
+  const [spread, setSpread] = useState(String(pair.spread ?? 0))
   const [deleting, setDeleting] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const active    = pair.active !== false
@@ -198,15 +222,15 @@ function PairRow({
   // Sync local inputs when Firestore updates the pair prop (only when not focused)
   const rateFocused   = React.useRef(false)
   const feeFocused    = React.useRef(false)
-  const marginFocused = React.useRef(false)
-  useEffect(() => { if (!rateFocused.current)   setRate(String(pair.rate))           }, [pair.rate])
-  useEffect(() => { if (!feeFocused.current)     setFee(String(pair.fee ?? 0))       }, [pair.fee])
-  useEffect(() => { if (!marginFocused.current)  setMargin(String(pair.margin ?? 0)) }, [pair.margin])
+  const spreadFocused = React.useRef(false)
+  useEffect(() => { if (!rateFocused.current)   setRate(String(pair.rate))       }, [pair.rate])
+  useEffect(() => { if (!feeFocused.current)     setFee(String(pair.fee ?? 0))   }, [pair.fee])
+  useEffect(() => { if (!spreadFocused.current)  setSpread(String(pair.spread ?? 0)) }, [pair.spread])
 
   // Debounced save timers – ensures typing without blurring still persists to Firestore
   const rateTimer   = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const feeTimer    = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const marginTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const spreadTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleRateInput = (val: string) => {
     setRate(val)
@@ -226,18 +250,18 @@ function PairRow({
     }, 200)
   }
 
-  const handleMarginInput = (val: string) => {
-    setMargin(val)
-    if (marginTimer.current) clearTimeout(marginTimer.current)
-    marginTimer.current = setTimeout(() => {
+  const handleSpreadInput = (val: string) => {
+    setSpread(val)
+    if (spreadTimer.current) clearTimeout(spreadTimer.current)
+    spreadTimer.current = setTimeout(() => {
       const n = parseFloat(val)
-      if (!isNaN(n) && n >= 0) onMarginChange(pair.id, n)
+      if (!isNaN(n) && n >= 0) onSpreadChange(pair.id, n, pair.spreadType ?? 'flat')
     }, 200)
   }
 
   const saveRateNow   = (val: string) => { if (rateTimer.current)   clearTimeout(rateTimer.current);   const n = parseFloat(val); if (!isNaN(n) && n > 0)  onRateChange(pair.id, n) }
   const saveFeeNow    = (val: string) => { if (feeTimer.current)    clearTimeout(feeTimer.current);    const n = parseFloat(val); if (!isNaN(n) && n >= 0) onFeeChange(pair.id, n, pair.feeType ?? 'flat') }
-  const saveMarginNow = (val: string) => { if (marginTimer.current) clearTimeout(marginTimer.current); const n = parseFloat(val); if (!isNaN(n) && n >= 0) onMarginChange(pair.id, n) }
+  const saveSpreadNow = (val: string) => { if (spreadTimer.current) clearTimeout(spreadTimer.current); const n = parseFloat(val); if (!isNaN(n) && n >= 0) onSpreadChange(pair.id, n, pair.spreadType ?? 'flat') }
 
   // Display label
   const countryLabel = pair.country ?? pair.countryCode ?? ''
@@ -359,7 +383,7 @@ function PairRow({
         </div>
       </div>
 
-      {/* ── Expanded: delivery, fee, margin ── */}
+      {/* ── Expanded: delivery, fee, spread ── */}
       {expanded && (
         <div className="px-6 py-4 bg-indigo-50/40 border-b border-indigo-100">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -389,7 +413,7 @@ function PairRow({
               <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide flex items-center gap-1"><DollarSign className="w-3.5 h-3.5" /> Transaction Fee</p>
               <div className="flex items-center gap-2">
                 <input
-                  type="number" step="0.01" min="0"
+                  type="number" step="0.01" min="-100"
                   value={fee}
                   onChange={e => handleFeeInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); saveFeeNow(fee) } }}
@@ -416,37 +440,54 @@ function PairRow({
               </div>
               <p className="text-[10px] text-slate-400 mt-1">
                 {pair.feeType === 'percent'
-                  ? `${pair.fee ?? 0}% of transfer`
-                  : `Fixed ${pair.fee ?? 0} ${pair.from}`}
+                  ? `${parseFloat(fee) > 0 ? '+' : ''}${fee || 0}% of send amount${parseFloat(fee) < 0 ? ' (discount)' : ''}`
+                  : `Fixed ${fee || 0} ${pair.from}${parseFloat(fee) < 0 ? ' (discount)' : ''}`}
               </p>
             </div>
 
-            {/* Margin */}
+            {/* Live Rate Discount */}
             <div>
-              <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide flex items-center gap-1"><BarChart2 className="w-3.5 h-3.5" /> Rate Margin</p>
+              <p className="text-xs font-bold text-slate-600 mb-2 uppercase tracking-wide flex items-center gap-1">
+                <Zap className="w-3.5 h-3.5 text-sky-500" /> Live Rate Discount
+              </p>
               <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-400 font-mono select-none">−</span>
                 <input
-                  type="number" step="0.01" min="0" max="100"
-                  value={margin}
-                  onChange={e => handleMarginInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); saveMarginNow(margin) } }}
-                  onFocus={() => { marginFocused.current = true }}
+                  type="number" step="0.0001" min="0"
+                  value={spread}
+                  onChange={e => handleSpreadInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); saveSpreadNow(spread) } }}
+                  onFocus={() => { spreadFocused.current = true }}
                   onBlur={() => {
-                    marginFocused.current = false
-                    if (marginTimer.current) { clearTimeout(marginTimer.current); marginTimer.current = null }
-                    const n = parseFloat(margin)
-                    if (!isNaN(n) && n >= 0) onMarginChange(pair.id, n)
+                    spreadFocused.current = false
+                    if (spreadTimer.current) { clearTimeout(spreadTimer.current); spreadTimer.current = null }
+                    const n = parseFloat(spread)
+                    if (!isNaN(n) && n >= 0) onSpreadChange(pair.id, n, pair.spreadType ?? 'flat')
                   }}
-                  className="w-24 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  className="w-24 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 font-mono"
                 />
-                <span className="text-xs text-slate-400">%</span>
+                <select
+                  value={pair.spreadType ?? 'flat'}
+                  onChange={e => {
+                    const n = parseFloat(spread)
+                    if (!isNaN(n) && n >= 0) onSpreadChange(pair.id, n, e.target.value as 'flat' | 'percent')
+                  }}
+                  className="px-2 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-sky-300"
+                >
+                  <option value="flat">{pair.to}</option>
+                  <option value="percent">%</option>
+                </select>
               </div>
               <p className="text-[10px] text-slate-400 mt-1">
-                Effective: <span className="font-mono font-semibold text-indigo-700">
-                  {(pair.rate * (1 + (parseFloat(margin) || 0) / 100)).toFixed(4)}
-                </span>
+                {parseFloat(spread) > 0
+                  ? pair.spreadType === 'percent'
+                    ? `Live rate × (1 − ${spread}%) applied on sync`
+                    : `Live rate − ${spread} ${pair.to} applied on sync`
+                  : 'No discount — full live rate used on sync'
+                }
               </p>
             </div>
+
           </div>
         </div>
       )}
@@ -500,6 +541,98 @@ function CurrencyCard({
               />
         )}
       </div>
+    </div>
+  )
+}
+
+// ── CollapsibleCurrencyGroup ─────────────────────────────────────────────────
+
+function CollapsibleCurrencyGroup({
+  currency, currencyName, xafPairs, xofPairs, rowProps, searchTerm,
+}: {
+  currency: string
+  currencyName: string
+  xafPairs: CurrencyPair[]
+  xofPairs: CurrencyPair[]
+  rowProps: Omit<Parameters<typeof PairRow>[0], 'pair'>
+  searchTerm: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const configuredCount = [...xafPairs, ...xofPairs].filter(p => p.id !== '').length
+  const totalCount = xafPairs.length + xofPairs.length
+
+  const filter = (list: CurrencyPair[]) => {
+    if (!searchTerm.trim()) return list
+    const q = searchTerm.toLowerCase()
+    return list.filter(p =>
+      (p.country ?? '').toLowerCase().includes(q) ||
+      (p.countryCode ?? '').toLowerCase().includes(q) ||
+      p.from.toLowerCase().includes(q) ||
+      p.to.toLowerCase().includes(q)
+    )
+  }
+
+  const filtXaf = filter(xafPairs)
+  const filtXof = filter(xofPairs)
+  if (filtXaf.length === 0 && filtXof.length === 0) return null
+
+  // Auto-expand when a search term is active
+  const isExpanded = searchTerm.trim() ? true : expanded
+
+  return (
+    <div className="bg-white rounded-3xl border border-[#edf2f7] overflow-hidden" style={{boxShadow:'0 1px 2px rgba(0,0,0,0.03)'}}>
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center justify-between px-6 py-[18px] bg-[#fafcff] border-b border-[#edf2f7] hover:bg-indigo-50/40 transition-colors"
+      >
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <span className="text-2xl font-bold text-[#0f172a]">{currency}</span>
+          <span className="text-[15px] text-[#5c6e8c] font-medium">{currencyName}</span>
+          <span className="text-[13px] text-[#94a3b8] font-mono">{currency} → XOF / XAF</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`text-[13px] font-semibold px-3 py-1 rounded-[40px] ${
+            configuredCount > 0 ? 'bg-[#eef2ff] text-[#1e40af]' : 'bg-gray-100 text-gray-400'
+          }`}>{configuredCount} / {totalCount} configured</span>
+          <span className="text-slate-400 text-[13px]">{isExpanded ? '▲' : '▼ expand'}</span>
+        </div>
+      </button>
+      {isExpanded && (
+        <div>
+          {filtXaf.length > 0 && (
+            <>
+              <div className="px-6 py-2 bg-slate-50 border-b border-[#edf2f7]">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{currency} → XAF · Central African CFA Franc</span>
+              </div>
+              {filtXaf.map(pair =>
+                pair.id !== ''
+                  ? <PairRow key={pair.id} pair={pair} {...rowProps} />
+                  : <PlaceholderPairRow
+                      key={`ph_${pair.from}_${pair.to}_${pair.countryCode}`}
+                      pair={pair}
+                      onAdded={() => {}}
+                    />
+              )}
+            </>
+          )}
+          {filtXof.length > 0 && (
+            <>
+              <div className="px-6 py-2 bg-slate-50 border-b border-[#edf2f7]">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{currency} → XOF · West African CFA Franc</span>
+              </div>
+              {filtXof.map(pair =>
+                pair.id !== ''
+                  ? <PairRow key={pair.id} pair={pair} {...rowProps} />
+                  : <PlaceholderPairRow
+                      key={`ph_${pair.from}_${pair.to}_${pair.countryCode}`}
+                      pair={pair}
+                      onAdded={() => {}}
+                    />
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -908,11 +1041,246 @@ function BulkRateEdit({ pairs, onClose }: { pairs: CurrencyPair[]; onClose: () =
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
+
+// ── MarketRatesPanel ──────────────────────────────────────────────────────────
+
+function MarketRatesPanel({ pairs, onClose }: { pairs: CurrencyPair[]; onClose: () => void }) {
+  const [apiKey, setApiKey]       = useState('')
+  const [quotes, setQuotes]       = useState<MarketQuotes | null>(null)
+  const [fetching, setFetching]   = useState(false)
+  const [fetchErr, setFetchErr]   = useState('')
+  const [savingKey, setSavingKey] = useState(false)
+  const [keySaved, setKeySaved]   = useState(false)
+  const [applying, setApplying]   = useState(false)
+  const [applyResult, setApplyResult] = useState('')
+
+  // Local spread overrides: pairId → { value, type }
+  const [spreads, setSpreads] = useState<Record<string, { value: string; type: 'flat' | 'percent' }>>({})
+
+  // Load stored API key on mount — auto-fetch if key already exists
+  useEffect(() => {
+    loadApiKey().then(k => {
+      if (!k) return
+      setApiKey(k)
+      // Auto-fetch rates immediately when a saved key is found
+      setFetching(true)
+      setFetchErr('')
+      fetchMarketQuotes(k)
+        .then(q => setQuotes(q))
+        .catch((e: any) => setFetchErr(e?.message ?? 'Auto-fetch failed'))
+        .finally(() => setFetching(false))
+    })
+  }, [])
+
+  const handleSaveKey = async () => {
+    if (!apiKey.trim()) return
+    setSavingKey(true)
+    try { await saveApiKey(apiKey.trim()); setKeySaved(true); setTimeout(() => setKeySaved(false), 2000) }
+    catch (e: any) { setFetchErr(e?.message ?? 'Failed to save key') }
+    finally { setSavingKey(false) }
+  }
+
+  const handleFetch = async () => {
+    if (!apiKey.trim()) { setFetchErr('Enter your currencylayer API key first'); return }
+    setFetching(true); setFetchErr('')
+    try {
+      const q = await fetchMarketQuotes(apiKey.trim())
+      setQuotes(q)
+    } catch (e: any) {
+      setFetchErr(e?.message ?? 'Failed to fetch rates')
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  // Compute per-pair: market rate, spread, resulting rate
+  const rows = useMemo(() => {
+    if (!quotes) return []
+    const seen = new Set<string>()
+    return pairs.filter(p => {
+      const key = `${p.from}_${p.to}_${p.countryCode ?? ''}`
+      if (seen.has(key)) return false
+      seen.add(key); return true
+    }).map(p => {
+      const market = crossRate(quotes.raw, p.from, p.to)
+      const sp = spreads[p.id] ?? { value: String(p.spread ?? 0), type: p.spreadType ?? 'flat' }
+      const spVal = parseFloat(sp.value) || 0
+      const resulting = market == null ? null
+        : sp.type === 'percent'
+          ? market * (1 - spVal / 100)
+          : market - spVal
+      return { pair: p, market, sp, resulting }
+    })
+  }, [quotes, pairs, spreads])
+
+  const handleApplyAll = async () => {
+    if (!quotes || rows.length === 0) return
+    if (!confirm(`Apply market rates (with spreads) to ${rows.filter(r => r.resulting != null).length} pairs?`)) return
+    setApplying(true); setApplyResult('')
+    let ok = 0; let fail = 0
+    for (const { pair, market, sp, resulting } of rows) {
+      if (market == null || resulting == null) { fail++; continue }
+      const newRate = parseFloat(resulting.toFixed(4))
+      try {
+        await logRateChange(pair, pair.rate, newRate, 'admin (market sync)')
+        await updateCurrencyPair(pair.id, {
+          rate: newRate,
+          spread: parseFloat(sp.value) || 0,
+          spreadType: sp.type,
+        })
+        ok++
+      } catch { fail++ }
+    }
+    setApplying(false)
+    setApplyResult(`✅ Updated ${ok} pairs${fail > 0 ? ` · ❌ ${fail} failed` : ''}`)
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-sky-200 shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 bg-sky-50 border-b border-sky-100">
+        <div className="flex items-center gap-2">
+          <Zap className="w-5 h-5 text-sky-600" />
+          <h3 className="font-bold text-slate-800">Live Market Rates — currencylayer</h3>
+        </div>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-lg">✕</button>
+      </div>
+
+      <div className="p-6 space-y-5">
+        {/* API Key */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">currencylayer API Key</label>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder="Paste your API key here…"
+              className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-300 font-mono"
+            />
+            <button
+              onClick={handleSaveKey}
+              disabled={savingKey || !apiKey.trim()}
+              className="px-4 py-2 bg-slate-700 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 disabled:opacity-50 transition-colors"
+            >{savingKey ? 'Saving…' : keySaved ? '✓ Saved' : 'Save Key'}</button>
+            <button
+              onClick={handleFetch}
+              disabled={fetching}
+              className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-xl text-sm font-semibold hover:bg-sky-700 disabled:opacity-50 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${fetching ? 'animate-spin' : ''}`} />
+              {fetching ? 'Fetching…' : 'Fetch Rates'}
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1.5">
+            Get a free key at{' '}
+            <a href="https://currencylayer.com" target="_blank" rel="noopener noreferrer" className="text-sky-600 underline">currencylayer.com</a>.
+            Free plan uses USD as base — all cross rates are derived automatically.
+          </p>
+          {fetchErr && <p className="text-xs text-red-600 mt-1.5 font-medium">{fetchErr}</p>}
+        </div>
+
+        {/* Live rates table */}
+        {quotes && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-slate-500">
+                Fetched {new Date(quotes.fetchedAt).toLocaleTimeString()} — {rows.length} pair(s)
+              </p>
+              <button
+                onClick={handleApplyAll}
+                disabled={applying}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+              >
+                <Zap className="w-4 h-4" />
+                {applying ? 'Applying…' : `Sync All to Firestore (${rows.filter(r => r.resulting != null).length})`}
+              </button>
+            </div>
+            {applyResult && <p className="text-sm font-medium text-emerald-700 mb-3">{applyResult}</p>}
+
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Pair</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Market Rate</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Spread (−)</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Your Rate</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase">Diff</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ pair, market, sp, resulting }) => {
+                    const diff = market != null && resulting != null ? resulting - market : null
+                    return (
+                      <tr key={pair.id} className="border-b border-slate-100 hover:bg-slate-50">
+                        {/* Pair */}
+                        <td className="px-4 py-2.5">
+                          <p className="font-mono font-semibold text-slate-800 text-xs">{pair.from} → {pair.to}</p>
+                          <p className="text-[11px] text-slate-400">{pair.flag} {pair.country}</p>
+                        </td>
+                        {/* Market rate */}
+                        <td className="px-4 py-2.5 text-right">
+                          <span className="font-mono text-slate-600 text-xs">
+                            {market != null ? market.toFixed(4) : <span className="text-red-400">N/A</span>}
+                          </span>
+                        </td>
+                        {/* Spread inputs */}
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-1 justify-center">
+                            <input
+                              type="number"
+                              step="0.0001"
+                              value={sp.value}
+                              onChange={e => setSpreads(s => ({ ...s, [pair.id]: { ...sp, value: e.target.value } }))}
+                              className="w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs text-right font-mono focus:outline-none focus:ring-2 focus:ring-sky-300"
+                            />
+                            <select
+                              value={sp.type}
+                              onChange={e => setSpreads(s => ({ ...s, [pair.id]: { ...sp, type: e.target.value as 'flat' | 'percent' } }))}
+                              className="px-1.5 py-1 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-sky-300"
+                            >
+                              <option value="flat">{pair.to}</option>
+                              <option value="percent">%</option>
+                            </select>
+                          </div>
+                        </td>
+                        {/* Resulting rate */}
+                        <td className="px-4 py-2.5 text-right">
+                          {resulting != null
+                            ? <span className={`font-mono font-bold text-xs ${resulting < 0 ? 'text-red-600' : 'text-emerald-700'}`}>{resulting.toFixed(4)}</span>
+                            : <span className="text-slate-300 text-xs">—</span>
+                          }
+                        </td>
+                        {/* Diff */}
+                        <td className="px-4 py-2.5 text-right">
+                          {diff != null
+                            ? <span className={`text-[11px] font-semibold ${diff < 0 ? 'text-red-500' : 'text-slate-400'}`}>
+                                {diff > 0 ? '+' : ''}{diff.toFixed(4)}
+                              </span>
+                            : null
+                          }
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 const CurrencyPairs: React.FC = () => {
   const { data: pairs, loading } = useFirestoreQuery<CurrencyPair>('currencyPairs')
   const [searchTerm, setSearchTerm]       = useState('')
   const [showAdd, setShowAdd]             = useState(false)
   const [showBulk, setShowBulk]           = useState(false)
+  const [showMarket, setShowMarket]       = useState(false)
   const [deactivating, setDeactivating]   = useState(false)
   const [historyPair, setHistoryPair] = useState<CurrencyPair | null>(null)
 
@@ -930,8 +1298,22 @@ const CurrencyPairs: React.FC = () => {
   const mergedXofRub = useMemo(() =>
     mergeWithLive(EXPECTED_XOF_RUB, pairs).sort((a, b) => (a.country ?? '').localeCompare(b.country ?? '')), [pairs])
 
+  // Extra sending currency corridors (USD, EUR, GBP, USDT, CNY, AED)
+  const extraCorridors = useMemo(() =>
+    EXTRA_SENDING.map(c => {
+      const { xof, xaf } = buildCorridors(c.code)
+      return {
+        ...c,
+        xof: mergeWithLive(xof, pairs).sort((a, b) => (a.country ?? '').localeCompare(b.country ?? '')),
+        xaf: mergeWithLive(xaf, pairs).sort((a, b) => (a.country ?? '').localeCompare(b.country ?? '')),
+      }
+    }), [pairs])
+
   // Custom (non-static) corridor groups
-  const STATIC_CORRIDORS = useMemo(() => new Set(['RUB_XAF', 'RUB_XOF', 'XAF_RUB', 'XOF_RUB']), [])
+  const STATIC_CORRIDORS = useMemo(() => new Set([
+    'RUB_XAF', 'RUB_XOF', 'XAF_RUB', 'XOF_RUB',
+    ...EXTRA_SENDING.flatMap(c => [`${c.code}_XAF`, `${c.code}_XOF`]),
+  ]), [])
 
   const customGroups = useMemo(() => {
     const custom = pairs.filter(p => !STATIC_CORRIDORS.has(`${p.from}_${p.to}`))
@@ -962,9 +1344,11 @@ const CurrencyPairs: React.FC = () => {
   const filteredXofRub = filterBySearch(mergedXofRub)
 
   const customPairsFlat = Object.values(customGroups).flat()
-  const bulkPairs = [...mergedRubXaf, ...mergedRubXof, ...mergedXafRub, ...mergedXofRub, ...customPairsFlat].filter(p => p.id !== '')
+  const extraFlat = extraCorridors.flatMap(c => [...c.xaf, ...c.xof])
+  const bulkPairs = [...mergedRubXaf, ...mergedRubXof, ...mergedXafRub, ...mergedXofRub, ...customPairsFlat, ...extraFlat].filter(p => p.id !== '')
   const customTotal = Object.values(customGroups).reduce((s, g) => s + filterBySearch(g).length, 0)
-  const totalVisible = filteredRubXaf.length + filteredRubXof.length + filteredXafRub.length + filteredXofRub.length + customTotal
+  const extraTotal  = extraCorridors.reduce((s, c) => s + filterBySearch([...c.xaf, ...c.xof]).length, 0)
+  const totalVisible = filteredRubXaf.length + filteredRubXof.length + filteredXafRub.length + filteredXofRub.length + customTotal + extraTotal
 
   // ── handlers ──────────────────────────────────────────────────────────────
 
@@ -978,7 +1362,7 @@ const CurrencyPairs: React.FC = () => {
   const handleDelete         = (id: string)                                           => deleteCurrencyPair(id)
   const handleDeliveryChange = (id: string, deliveryMethods: string[])               => updateCurrencyPair(id, { deliveryMethods })
   const handleFeeChange      = (id: string, fee: number, feeType: 'flat' | 'percent') => updateCurrencyPair(id, { fee, feeType })
-  const handleMarginChange   = (id: string, margin: number)                          => updateCurrencyPair(id, { margin })
+  const handleSpreadChange   = (id: string, spread: number, spreadType: 'flat' | 'percent') => updateCurrencyPair(id, { spread, spreadType })
 
   const rowProps = {
     onRateChange:    handleRateChange,
@@ -987,7 +1371,7 @@ const CurrencyPairs: React.FC = () => {
     onDelete:        handleDelete,
     onDeliveryChange: handleDeliveryChange,
     onFeeChange:     handleFeeChange,
-    onMarginChange:  handleMarginChange,
+    onSpreadChange:  handleSpreadChange,
     onViewHistory:   setHistoryPair,
   }
 
@@ -1017,8 +1401,8 @@ const CurrencyPairs: React.FC = () => {
         </div>
         <div className="bg-white rounded-[20px] border border-[#eef2f6] px-6 py-5 flex-1 min-w-[170px]" style={{boxShadow:'0 1px 2px rgba(0,0,0,0.04)'}}>
           <p className="text-[12px] font-semibold uppercase tracking-[0.8px] text-[#6b7a8f] mb-2">Sending Currencies</p>
-          <p className="text-[38px] font-bold text-[#0f172a] leading-none">3</p>
-          <p className="text-[12px] text-[#5c6e8c] mt-1.5">RUB · XAF · XOF</p>
+          <p className="text-[38px] font-bold text-[#0f172a] leading-none">{1 + EXTRA_SENDING.length}</p>
+          <p className="text-[12px] text-[#5c6e8c] mt-1.5">RUB · {EXTRA_SENDING.map(c => c.code).join(' · ')}</p>
         </div>
         <div className="bg-white rounded-[20px] border border-[#eef2f6] px-6 py-5 flex-1 min-w-[170px]" style={{boxShadow:'0 1px 2px rgba(0,0,0,0.04)'}}>
           <p className="text-[12px] font-semibold uppercase tracking-[0.8px] text-[#6b7a8f] mb-2">Total Corridors</p>
@@ -1042,6 +1426,15 @@ const CurrencyPairs: React.FC = () => {
           Deactivate All
         </button>
         <button
+          onClick={() => setShowMarket(m => !m)}
+          className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm font-semibold transition-all ${
+            showMarket ? 'bg-sky-50 border-sky-300 text-sky-700' : 'border-sky-200 text-sky-700 hover:bg-sky-50'
+          }`}
+        >
+          <RefreshCw className="w-4 h-4" />
+          Live Rates
+        </button>
+        <button
           onClick={() => setShowBulk(b => !b)}
           className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm font-semibold transition-all ${
             showBulk ? 'bg-amber-50 border-amber-300 text-amber-700' : 'border-amber-200 text-amber-700 hover:bg-amber-50'
@@ -1061,6 +1454,11 @@ const CurrencyPairs: React.FC = () => {
           <h3 className="font-bold text-slate-900 mb-4">Add Currency Pair</h3>
           <AddPairForm onAdded={() => setShowAdd(false)} />
         </div>
+      )}
+
+      {/* ── Live Market Rates (currencylayer) ── */}
+      {showMarket && (
+        <MarketRatesPanel pairs={bulkPairs} onClose={() => setShowMarket(false)} />
       )}
 
       {/* ── Bulk Rate Edit ── */}
@@ -1133,6 +1531,19 @@ const CurrencyPairs: React.FC = () => {
             onPairAdded={() => {}}
           />
         )}
+
+        {/* Extra sending currencies — collapsible groups */}
+        {extraCorridors.map(corridor => (
+          <CollapsibleCurrencyGroup
+            key={corridor.code}
+            currency={corridor.code}
+            currencyName={corridor.name}
+            xafPairs={corridor.xaf}
+            xofPairs={corridor.xof}
+            rowProps={rowProps}
+            searchTerm={searchTerm}
+          />
+        ))}
 
         {/* Dynamic custom corridor cards */}
         {Object.entries(customGroups).map(([key, groupPairs]) => {

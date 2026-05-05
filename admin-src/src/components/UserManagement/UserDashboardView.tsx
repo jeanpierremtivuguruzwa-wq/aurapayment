@@ -78,6 +78,15 @@ const UserDashboardView: React.FC<Props> = ({ userId, onBack }) => {
   return (
     <div className="space-y-5">
 
+      {/* ── Clean breadcrumb back link ── */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-slate-400 hover:text-slate-700 text-sm font-medium transition-colors"
+      >
+        <span className="text-base leading-none">←</span>
+        <span>Back to Users</span>
+      </button>
+
       {/* ── Admin Preview Banner ── */}
       <div className="flex items-center gap-3 bg-gradient-to-r from-indigo-600 to-sky-600 text-white px-5 py-3 rounded-2xl shadow-lg">
         <Eye className="w-6 h-6 text-white" />
@@ -88,12 +97,6 @@ const UserDashboardView: React.FC<Props> = ({ userId, onBack }) => {
             No account changes are being made.
           </p>
         </div>
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors border border-white/30"
-        >
-          ← Back to Users
-        </button>
       </div>
 
       {/* ── User Profile Card ── */}

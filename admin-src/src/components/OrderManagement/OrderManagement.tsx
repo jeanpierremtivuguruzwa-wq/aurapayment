@@ -385,46 +385,75 @@ const OrderManagement: React.FC<Props> = ({ agent = null, isAdmin = false }) => 
                     </tr>
 
                     {/* Expanded Details Row */}
-                    {expandedId === order.id && (
-                      <tr className="bg-sky-50/60">
+                    {expandedId === order.id && (() => {
+                      const providerDisplay = (order as any).providerName || order.provider || '—'
+                      const destFlag = (order as any).flag || ''
+                      const destCountry = (order as any).country || ''
+                      const destCurrency = order.receiveCurrency || ''
+                      const isBank = (order.deliveryMethod as string) === 'bank' || order.deliveryMethod === 'bank-transfer'
+                      const isMobile = (order.deliveryMethod as string) === 'mobile' || order.deliveryMethod === 'mobile-money'
+                      return (
+                      <tr className="bg-slate-50">
                         <td colSpan={8} className="px-6 py-5">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+
+                          {/* ── Top grid: key transaction info ── */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
                             <div>
-                              <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Recipient Name</p>
-                              <p className="text-slate-900 font-medium">{order.recipientName || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Destination</p>
+                              <p className="text-slate-900 font-semibold text-sm">
+                                {destFlag && <span className="mr-1">{destFlag}</span>}
+                                {destCountry || destCurrency}
+                              </p>
+                              <p className="text-xs text-slate-500 font-mono mt-0.5">{destCurrency}</p>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Provider</p>
-                              <p className="text-slate-900 font-medium">{order.provider || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Recipient</p>
+                              <p className="text-slate-900 font-medium text-sm">{order.recipientName || '—'}</p>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Delivery Method</p>
-                              <p className="text-slate-900 font-medium capitalize">{order.deliveryMethod || '—'}</p>
+                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Delivery Method</p>
+                              <p className="text-slate-900 font-medium text-sm capitalize">
+                                {isBank ? '🏦 Bank Transfer' : isMobile ? '📱 Mobile Money' : order.deliveryMethod || '—'}
+                              </p>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Exchange Rate</p>
-                              <p className="text-slate-900 font-medium">
-                                {rate ? `1 ${order.sendCurrency} = ${fmt(rate, 4)} ${order.receiveCurrency}` : '—'}
+                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Exchange Rate</p>
+                              <p className="text-slate-900 font-medium text-sm">
+                                {rate ? `1 ${order.sendCurrency} = ${fmt(rate, 4)} ${destCurrency}` : '—'}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex gap-4 flex-wrap text-sm mb-4">
-                            {order.phoneNumber && (
-                              <div className="bg-white px-3 py-2 rounded-lg border border-slate-200">
-                                <span className="text-xs text-slate-500 block">Phone</span>
-                                <span className="font-medium">{order.phoneNumber}</span>
+                          {/* ── Recipient bank / mobile details ── */}
+                          <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                              {isBank ? '🏦 Recipient Bank Details' : isMobile ? '📱 Mobile Money Details' : 'Recipient Details'}
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                              <div>
+                                <p className="text-xs text-slate-500 mb-0.5">{isBank ? 'Bank' : 'Provider'}</p>
+                                <p className="font-semibold text-slate-900">{providerDisplay}</p>
                               </div>
-                            )}
-                            {order.accountNumber && (
-                              <div className="bg-white px-3 py-2 rounded-lg border border-slate-200">
-                                <span className="text-xs text-slate-500 block">Account Number</span>
-                                <span className="font-medium font-mono">{order.accountNumber}</span>
-                              </div>
-                            )}
+                              {order.accountNumber && (
+                                <div>
+                                  <p className="text-xs text-slate-500 mb-0.5">Account Number</p>
+                                  <p className="font-semibold text-slate-900 font-mono">{order.accountNumber}</p>
+                                </div>
+                              )}
+                              {order.phoneNumber && (
+                                <div>
+                                  <p className="text-xs text-slate-500 mb-0.5">Phone Number</p>
+                                  <p className="font-semibold text-slate-900">{order.phoneNumber}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* ── Proof + payment method ── */}
+                          <div className="flex gap-3 flex-wrap mb-4">
                             {order.paymentMethod && (
                               <div className="bg-white px-3 py-2 rounded-lg border border-slate-200">
-                                <span className="text-xs text-slate-500 block">Payment Method ID</span>
+                                <span className="text-xs text-slate-500 block">Payment Method</span>
                                 <span className="font-mono text-xs">{order.paymentMethod}</span>
                               </div>
                             )}
@@ -445,7 +474,7 @@ const OrderManagement: React.FC<Props> = ({ agent = null, isAdmin = false }) => 
                             )}
                           </div>
 
-                          <div className="text-xs text-slate-500 flex gap-4 flex-wrap">
+                          <div className="text-xs text-slate-400 flex gap-4 flex-wrap">
                             <span>Created: {formatDate(order.createdAt)}</span>
                             {order.claimedAt && (
                               <span className="text-sky-600">Claimed by {order.claimedByName || order.claimedBy}: {formatDate(order.claimedAt)}</span>
@@ -455,7 +484,8 @@ const OrderManagement: React.FC<Props> = ({ agent = null, isAdmin = false }) => 
                           </div>
                         </td>
                       </tr>
-                    )}
+                      )
+                    })()}
                   </React.Fragment>
                 )
               })}

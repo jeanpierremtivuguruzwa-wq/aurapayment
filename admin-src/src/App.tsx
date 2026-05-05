@@ -21,7 +21,6 @@ import AuraWallet from './components/AuraWallet/AuraWallet'
 import CurrencyCardholderAssignments from './components/CurrencyAssignments/CurrencyCardholderAssignments'
 import NotificationRecipients from './components/Notifications/NotificationRecipients'
 import CardholderActivity from './components/Cardholders/CardholderActivity'
-import UserDashboard from './components/UserDashboard/UserDashboard'
 import AppSettings from './components/AppSettings/AppSettings'
 import DeliveryOptions from './components/DeliveryOptions/DeliveryOptions'
 import SupportManagement from './components/SupportManagement/SupportManagement'
@@ -211,7 +210,8 @@ function App() {
       case 'cardholders': return <CardholdersList />
       case 'orders': return <OrderManagement isAdmin={true} />
       case 'transactions': return <AllTransactions />
-      case 'users': return <UserManagement onViewUserDashboard={handleViewUserDashboard} />
+      case 'users':
+      case 'public-dashboard': return <UserManagement onViewUserDashboard={handleViewUserDashboard} />
       case 'user-dashboard': return viewingUserId
         ? <UserDashboardView userId={viewingUserId} onBack={handleBackFromUserDashboard} />
         : null
@@ -222,7 +222,6 @@ function App() {
       case 'cardholder-activity': return <CardholderActivity />
       case 'chat': return <AuraChat />
       case 'wallet': return <AuraWallet />
-      case 'public-dashboard': return <UserDashboard />
       case 'settings': return <AppSettings />
       case 'delivery-options': return <DeliveryOptions />
       case 'support': return <SupportManagement />

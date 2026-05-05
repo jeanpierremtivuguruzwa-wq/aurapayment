@@ -672,7 +672,7 @@
         // ── Rate / fee helpers ────────────────────────────────────────────────
         function getEffectiveRate() {
             if (!selectedPair) return null;
-            return selectedPair.rate * (1 + (selectedPair.margin || 0) / 100);
+            return selectedPair.rate;
         }
 
         function calculateFee(amount) {

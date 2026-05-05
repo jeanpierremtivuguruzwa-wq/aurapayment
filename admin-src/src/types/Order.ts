@@ -11,6 +11,10 @@ export interface Order {
   receiveAmount: number
   recipientName: string
   provider: string
+  providerName?: string
+  country?: string
+  countryCode?: string
+  flag?: string
   phoneNumber?: string
   accountNumber?: string
   deliveryMethod: DeliveryMethod
