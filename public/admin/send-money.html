@@ -543,6 +543,25 @@
         const db = firebase.firestore();
         const storage = firebase.storage();
 
+        // Maps receiveCurrency → destination country metadata (for delivery options + display)
+        const CURRENCY_TO_DEST = {
+            RUB: { countryCode: 'RUS', country: 'Russia',         flag: '🇷🇺' },
+            NGN: { countryCode: 'NGA', country: 'Nigeria',        flag: '🇳🇬' },
+            GHS: { countryCode: 'GHA', country: 'Ghana',          flag: '🇬🇭' },
+            KES: { countryCode: 'KEN', country: 'Kenya',          flag: '🇰🇪' },
+            ETB: { countryCode: 'ETH', country: 'Ethiopia',       flag: '🇪🇹' },
+            MAD: { countryCode: 'MAR', country: 'Morocco',        flag: '🇲🇦' },
+            EGP: { countryCode: 'EGY', country: 'Egypt',          flag: '🇪🇬' },
+            ZAR: { countryCode: 'ZAF', country: 'South Africa',   flag: '🇿🇦' },
+            TZS: { countryCode: 'TZA', country: 'Tanzania',       flag: '🇹🇿' },
+            UGX: { countryCode: 'UGA', country: 'Uganda',         flag: '🇺🇬' },
+            XOF: { countryCode: 'SEN', country: 'West Africa',    flag: '🌍' },
+            XAF: { countryCode: 'CMR', country: 'Central Africa', flag: '🌍' },
+            USD: { countryCode: 'USA', country: 'United States',  flag: '🇺🇸' },
+            EUR: { countryCode: 'EUR', country: 'Europe',         flag: '🇪🇺' },
+            GBP: { countryCode: 'GBR', country: 'United Kingdom', flag: '🇬🇧' },
+        };
+
         // Global state
         let currentUser = null;
         let transactionData = {};
@@ -631,7 +650,7 @@
             feeEl.textContent     = fee > 0 ? `${sc} ${fee.toFixed(2)}` : 'None';
             rateEl.textContent    = `1 ${sc} = ${effectiveRate.toFixed(4)} ${rc}`;
             receiveEl.textContent = `${receiveAmount.toLocaleString(undefined, {maximumFractionDigits: 2})} ${rc}`;
-            if (countryEl && pair.country) countryEl.textContent = `${pair.flag || ''} ${t('send_destination')}: ${pair.country}`;
+            if (countryEl && transactionData.country) countryEl.textContent = `${transactionData.flag || ''} ${t('send_destination')}: ${transactionData.country}`;
             if (breakdownEl) breakdownEl.style.display = 'block';
         }
 
@@ -699,6 +718,12 @@
                 : liveRate;
             const receiveAmount = Math.max(0, (sendAmount - fee) * effectiveRate);
 
+            // Determine the TRUE destination from the receive currency
+            const destMeta = CURRENCY_TO_DEST[receiveCurrency] || null;
+            const destCountryCode = destMeta ? destMeta.countryCode : (selectedPair ? (selectedPair.countryCode || '') : '');
+            const destCountry     = destMeta ? destMeta.country     : (selectedPair ? (selectedPair.country     || '') : '');
+            const destFlag        = destMeta ? destMeta.flag        : (selectedPair ? (selectedPair.flag        || '') : '');
+
             transactionData = {
                 sendAmount: sendAmount,
                 sendCurrency: sendCurrency,
@@ -709,8 +734,9 @@
                 receiveAmount: receiveAmount,
                 selectedPair: selectedPair,
                 pairId: selectedPair ? selectedPair.id : null,
-                country: selectedPair ? (selectedPair.country || '') : '',
-                countryCode: selectedPair ? (selectedPair.countryCode || '') : '',
+                country: destCountry,
+                countryCode: destCountryCode,
+                flag: destFlag,
                 recipientName: '',
                 provider: '',
                 phoneNumber: '',
@@ -729,16 +755,15 @@
 
             // Show fee breakdown if pair available
             if (selectedPair) {
-                const symbol = receiveCurrency;
                 document.getElementById('displayFee').textContent =
                     fee > 0 ? `${sendCurrency} ${fee.toFixed(2)}` : t('send_none');
                 document.getElementById('displayRate').textContent =
                     `1 ${sendCurrency} = ${effectiveRate.toFixed(4)} ${receiveCurrency}`;
                 document.getElementById('displayReceive').textContent =
                     `${receiveAmount.toLocaleString(undefined, {maximumFractionDigits: 2})} ${receiveCurrency}`;
-                if (selectedPair.country) {
+                if (destCountry) {
                     document.getElementById('displayCountry').textContent =
-                        `${selectedPair.flag || ''} ${t('send_destination')}: ${selectedPair.country}`;
+                        `${destFlag} ${t('send_destination')}: ${destCountry}`;
                 }
                 document.getElementById('feeBreakdown').style.display = 'block';
             }

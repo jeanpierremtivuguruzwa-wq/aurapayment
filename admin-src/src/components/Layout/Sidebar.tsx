@@ -3,6 +3,7 @@ import {
   Home, ArrowLeftRight, CreditCard, Users, Activity, Package,
   BarChart2, User, Briefcase, MessageCircle, Wallet, Landmark,
   Bell, Truck, Globe, UserCircle, HelpCircle, Mail, Settings,
+  ShieldAlert, ScanSearch, Star,
   LucideIcon,
 } from 'lucide-react'
 import { useLanguage } from '../../context/LanguageContext'
@@ -33,8 +34,11 @@ const Sidebar: React.FC<Props> = ({ activeSection, onSectionChange }) => {
     { id: 'users',                label: t('userManagement'),      description: 'Manage user accounts',       Icon: User           },
     { id: 'public-dashboard',     label: t('userDashboard'),       description: 'View all user dashboards',   Icon: Globe          },
     { id: 'agents',               label: t('agentManagement'),     description: 'Agent roles & permissions',  Icon: Briefcase      },
+    { id: 'fraud-monitor',        label: 'AI Fraud Monitor',       description: 'Detect fraud & suspicious',  Icon: ShieldAlert    },
+    { id: 'proof-monitor',        label: 'AI Proof Monitor',       description: 'Review payment proofs',      Icon: ScanSearch     },
     { id: 'chat',                 label: t('auraChat'),            description: 'AI-powered support chat',    Icon: MessageCircle  },
     { id: 'wallet',               label: t('auraWallet'),          description: 'Balance & wallet ops',       Icon: Wallet         },
+    { id: 'bars',                 label: 'Aura Bars',              description: 'Loyalty discount system',    Icon: Star           },
     { id: 'currency-assignments', label: t('currencyAssignments'), description: 'Currency routing rules',     Icon: Landmark       },
     { id: 'notifications',        label: t('notifications'),       description: 'Alerts & messages',          Icon: Bell           },
     { id: 'delivery-options',     label: t('deliveryOptions'),     description: 'Delivery method settings',   Icon: Truck          },

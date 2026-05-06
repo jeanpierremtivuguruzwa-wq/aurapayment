@@ -926,15 +926,18 @@
                 const userData = JSON.parse(localStorage.getItem('currentUser'));
                 if (!userData) { window.location.href = 'signin.html'; return; }
 
+                // Allow admin/agent preview — skip redirect when ?preview=1
+                const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
+
                 // Redirect admin email to admin dashboard
                 const emailLower = (userData.email || '').toLowerCase();
-                if (emailLower === 'johnpion2000@gmail.com') {
+                if (!isPreview && emailLower === 'johnpion2000@gmail.com') {
                     window.location.href = 'admin/index.html';
                     return;
                 }
 
                 // Check if this user has admin/agent role in Firestore and redirect them
-                if (userData.uid) {
+                if (!isPreview && userData.uid) {
                     db.collection('users').doc(userData.uid).get().then(userDoc => {
                         if (userDoc.exists) {
                             const role = userDoc.data().role;

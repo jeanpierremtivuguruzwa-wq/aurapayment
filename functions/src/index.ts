@@ -2,6 +2,7 @@ import * as functions from "firebase-functions/v2/https";
 import * as firestoreTriggers from "firebase-functions/v2/firestore";
 import * as scheduler from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 admin.initializeApp();
 
@@ -674,3 +675,206 @@ export const notifyUserOnSupportReply = firestoreTriggers.onDocumentCreated(
     return null;
   }
 );
+
+// ─── Award Aura Bars on order completion ──────────────────────────────────────
+// Fires when an order status transitions to 'completed'.
+// Reads cashback settings from barsSettings/main, computes bars to award based
+// on the order's sendAmount × cashbackRate, then atomically updates the user's
+// barsWallets document and appends a barsHistory entry.
+export const awardBarsOnOrderComplete = firestoreTriggers.onDocumentUpdated(
+  "orders/{orderId}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after  = event.data?.after.data();
+
+    if (!before || !after) return null;
+    // Only fire when status transitions TO 'completed'
+    if (before.status === after.status) return null;
+    if (after.status !== "completed") return null;
+
+    const orderId  = event.params.orderId;
+    const db       = admin.firestore();
+
+    const userId       = (after.userId as string | undefined) ?? "";
+    const userEmail    = (after.userEmail as string | undefined) ?? "";
+    const userName     = (after.senderName as string | undefined) || (after.recipientName as string | undefined) || "";
+    const sendAmount   = Number(after.sendAmount ?? after.amount ?? 0);
+    const sendCurrency = (after.sendCurrency as string | undefined) ?? "USD";
+
+    if (!userId) {
+      console.log("[awardBars] No userId on order – skipping.", orderId);
+      return null;
+    }
+
+    // Load bars settings
+    const settingsSnap = await db.collection("barsSettings").doc("main").get();
+    const settings = {
+      cashbackRate:        (settingsSnap.data()?.cashbackRate        as number) ?? 0.02,
+      minOrderForCashback: (settingsSnap.data()?.minOrderForCashback as number) ?? 0,
+      maxCashbackPerOrder: (settingsSnap.data()?.maxCashbackPerOrder as number) ?? 500,
+      barsName:            (settingsSnap.data()?.barsName            as string) ?? "Aura Bars",
+      barsSymbol:          (settingsSnap.data()?.barsSymbol          as string) ?? "bars",
+    };
+
+    if (sendAmount < settings.minOrderForCashback) {
+      console.log(`[awardBars] Order below min (${sendAmount} < ${settings.minOrderForCashback}) – skipping.`);
+      return null;
+    }
+
+    const rawBars = sendAmount * settings.cashbackRate;
+    const barsToAward = Math.min(Math.round(rawBars), settings.maxCashbackPerOrder);
+
+    if (barsToAward <= 0) {
+      console.log("[awardBars] 0 bars to award – skipping.");
+      return null;
+    }
+
+    const walletId  = `${userId}_${sendCurrency}`;
+    const walletRef = db.collection("barsWallets").doc(walletId);
+    const histRef   = db.collection("barsHistory").doc();
+
+    await db.runTransaction(async (tx) => {
+      const walletSnap = await tx.get(walletRef);
+      const existing   = walletSnap.exists ? walletSnap.data() : null;
+
+      const prevBalance      = Number(existing?.balance       ?? 0);
+      const prevLifetime     = Number(existing?.lifetimeEarned ?? 0);
+      const newBalance       = prevBalance  + barsToAward;
+      const newLifetime      = prevLifetime + barsToAward;
+
+      tx.set(walletRef, {
+        userId,
+        userEmail,
+        userName,
+        currency:       sendCurrency,
+        balance:        newBalance,
+        lifetimeEarned: newLifetime,
+        frozen:         existing?.frozen ?? 0,
+        updatedAt:      admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      tx.set(histRef, {
+        userId,
+        currency:     sendCurrency,
+        delta:        barsToAward,
+        reason:       `Transfer cashback (${sendCurrency})`,
+        description:  `${settings.cashbackRate * 100}% cashback on transfer — +${barsToAward} ${settings.barsSymbol}`,
+        refId:        orderId,
+        balanceAfter: newBalance,
+        createdAt:    admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    console.log(`[awardBars] Awarded ${barsToAward} ${settings.barsSymbol} to user ${userId} for order ${orderId}`);
+    return null;
+  }
+);
+
+// ─── Gemini-powered password reset email ──────────────────────────────────────
+// Callable function: client sends { email }
+// 1. Generates a Firebase password reset link (Admin SDK)
+// 2. Calls Gemini to write a warm branded email body
+// 3. Writes to `mail` collection (consumed by firestore-send-email extension)
+export const sendPasswordResetCustomEmail = functions.onCall(
+  { cors: true },
+  async (request) => {
+    const db   = admin.firestore();
+    const auth = admin.auth();
+
+    const email = (request.data?.email as string | undefined)?.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new functions.HttpsError("invalid-argument", "A valid email address is required.");
+    }
+
+    // Verify the account exists before generating a link
+    try {
+      await auth.getUserByEmail(email);
+    } catch {
+      // Return a generic success to avoid user enumeration
+      return { success: true };
+    }
+
+    // Generate the reset link
+    let resetLink: string;
+    try {
+      resetLink = await auth.generatePasswordResetLink(email);
+    } catch (err: unknown) {
+      console.error("generatePasswordResetLink error:", err);
+      throw new functions.HttpsError("internal", "Could not generate reset link.");
+    }
+
+    // Read Gemini API key from Firestore appSettings
+    const settingsSnap = await db.collection("appSettings").doc("main").get();
+    const geminiKey = (settingsSnap.data()?.geminiKey as string | undefined) ?? "";
+
+    let htmlBody: string;
+
+    if (geminiKey) {
+      try {
+        const genAI = new GoogleGenerativeAI(geminiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `You are writing a professional password reset email for Aura Payment, a premium fintech company.
+Write a concise, warm, and professional HTML email body (no <html>/<head>/<body> tags — just the inner content).
+Include:
+- A short greeting
+- Clear explanation that they requested a password reset
+- A prominent CTA button linking to: ${resetLink}
+- Security note: if they didn't request this, they can ignore it
+- Professional sign-off from "The Aura Payment Team"
+Use clean inline styles. Color scheme: dark navy #0b1b3a and white. Keep it short and elegant.`;
+
+        const result = await model.generateContent(prompt);
+        htmlBody = result.response.text();
+      } catch (err) {
+        console.warn("Gemini failed, falling back to default template:", err);
+        htmlBody = defaultResetEmailHtml(resetLink);
+      }
+    } else {
+      htmlBody = defaultResetEmailHtml(resetLink);
+    }
+
+    // Queue the email via firestore-send-email extension
+    await db.collection("mail").add({
+      to: [email],
+      message: {
+        subject: "Reset your Aura Payment password",
+        html: htmlBody,
+      },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[passwordReset] Queued reset email for ${email}`);
+    return { success: true };
+  }
+);
+
+function defaultResetEmailHtml(resetLink: string): string {
+  return `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+      <div style="background:#0b1b3a;padding:32px 40px;text-align:center;">
+        <h1 style="color:#ffffff;font-size:1.6rem;margin:0;letter-spacing:-0.3px;">Aura Payment</h1>
+        <p style="color:rgba(255,255,255,0.6);font-size:0.8rem;margin:6px 0 0;letter-spacing:0.1em;text-transform:uppercase;">Security Notice</p>
+      </div>
+      <div style="padding:36px 40px;">
+        <h2 style="color:#0b1b3a;font-size:1.25rem;margin:0 0 12px;">Reset your password</h2>
+        <p style="color:#4a5568;font-size:0.95rem;line-height:1.6;margin:0 0 24px;">
+          We received a request to reset the password for your Aura Payment account.
+          Click the button below to create a new password. This link expires in 1 hour.
+        </p>
+        <div style="text-align:center;margin:32px 0;">
+          <a href="${resetLink}" style="display:inline-block;background:#0b1b3a;color:#ffffff;padding:14px 36px;border-radius:40px;font-size:1rem;font-weight:600;text-decoration:none;letter-spacing:0.02em;">
+            Reset Password →
+          </a>
+        </div>
+        <p style="color:#718096;font-size:0.82rem;line-height:1.6;margin:24px 0 0;padding-top:20px;border-top:1px solid #edf2f7;">
+          If you didn't request this, you can safely ignore this email — your password will remain unchanged.
+          For security, this link will expire in 1 hour.
+        </p>
+      </div>
+      <div style="background:#f7fafc;padding:20px 40px;text-align:center;border-top:1px solid #edf2f7;">
+        <p style="color:#a0aec0;font-size:0.78rem;margin:0;">© ${new Date().getFullYear()} Aura Payment. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+}

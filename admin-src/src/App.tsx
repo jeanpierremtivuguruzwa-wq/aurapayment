@@ -25,10 +25,13 @@ import AppSettings from './components/AppSettings/AppSettings'
 import DeliveryOptions from './components/DeliveryOptions/DeliveryOptions'
 import SupportManagement from './components/SupportManagement/SupportManagement'
 import EmailSettings from './components/EmailSettings/EmailSettings'
+import AIFraudMonitor from './components/AIFraudMonitor/AIFraudMonitor'
+import AIProofMonitor from './components/AIProofMonitor/AIProofMonitor'
+import AuraBars from './components/AuraBars/AuraBars'
 import { LanguageProvider } from './context/LanguageContext'
 import { Loader2, Lock, Ban } from 'lucide-react'
 
-type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'user-dashboard' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet' | 'public-dashboard' | 'settings' | 'delivery-options' | 'support' | 'email'
+type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'user-dashboard' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet' | 'bars' | 'public-dashboard' | 'settings' | 'delivery-options' | 'support' | 'email' | 'fraud-monitor' | 'proof-monitor'
 type AuthState = 'loading' | 'admin' | 'agent' | 'unauthenticated' | 'unauthorized'
 
 // The primary admin email — always has admin access
@@ -221,11 +224,14 @@ function App() {
       case 'notifications': return <NotificationRecipients />
       case 'cardholder-activity': return <CardholderActivity />
       case 'chat': return <AuraChat />
-      case 'wallet': return <AuraWallet />
+      case 'wallet': return <AuraWallet isAdmin={authState === 'admin'} />
       case 'settings': return <AppSettings />
       case 'delivery-options': return <DeliveryOptions />
       case 'support': return <SupportManagement />
       case 'email': return <EmailSettings />
+      case 'fraud-monitor': return <AIFraudMonitor />
+      case 'proof-monitor': return <AIProofMonitor />
+      case 'bars': return <AuraBars isAdmin={authState === 'admin'} />
       default: return null
     }
   }

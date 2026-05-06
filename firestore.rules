@@ -146,6 +146,36 @@ service cloud.firestore {
       }
     }
 
+    // App settings — admins/agents read; only admin SDK writes (Cloud Functions)
+    match /appSettings/{document} {
+      allow read: if isAdminOrAgent();
+      allow write: if isAdminOrAgent();
+    }
+
+    // AI Proof Monitor reviews — admins/agents only
+    match /proofReviews/{document} {
+      allow read, write: if isAdminOrAgent();
+    }
+
+    // AI Fraud Monitor reviews — admins/agents only
+    match /fraudReviews/{document} {
+      allow read, write: if isAdminOrAgent();
+    }
+
+    // Aura Bars loyalty — wallets readable by owner and admin; history readable by owner and admin
+    match /barsWallets/{document} {
+      allow read: if isAuth();
+      allow write: if isAuth();
+    }
+    match /barsHistory/{document} {
+      allow read: if isAdminOrAgent();
+      allow write: if isAuth();
+    }
+    match /barsSettings/{document} {
+      allow read: if isAuth();
+      allow write: if isAdminOrAgent();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
