@@ -1,20 +1,11 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import {
   collection, onSnapshot, query, orderBy, doc,
   updateDoc, addDoc, Timestamp, getDocs
 } from 'firebase/firestore'
-import { Headphones, Package, Shield, User, Bell, CheckCheck, X, MessageCircle } from 'lucide-react'
+import { Headphones, Package, Shield, User } from 'lucide-react'
 import { db } from '../../services/firebase'
 import { Agent } from '../../types/Agent'
-
-// ── LocalStorage helpers for tracking last-viewed timestamps ─────────────────
-const LS_KEY = 'support_seen'
-function loadSeen(): Record<string, number> {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} }
-}
-function saveSeen(map: Record<string, number>) {
-  localStorage.setItem(LS_KEY, JSON.stringify(map))
-}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface SupportTicket {
@@ -89,27 +80,8 @@ const SupportManagement: React.FC = () => {
   const [replySending, setReplySending] = useState(false)
   const [assignSaving, setAssignSaving] = useState(false)
   const [statusSaving, setStatusSaving] = useState(false)
-  const [seenAt, setSeenAt] = useState<Record<string, number>>(loadSeen)
-  const [barDismissed, setBarDismissed] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const msgUnsubRef = useRef<(() => void) | null>(null)
-
-  // ── Mark ticket as seen ───────────────────────────────────────────────────
-  const markSeen = useCallback((ticketId: string) => {
-    setSeenAt(prev => {
-      const next = { ...prev, [ticketId]: Date.now() }
-      saveSeen(next)
-      return next
-    })
-  }, [])
-
-  // Helper: does this ticket have a new user message admin hasn't seen yet?
-  const isNew = useCallback((ticket: SupportTicket): boolean => {
-    if (ticket.status === 'closed') return false
-    const updTs = ticket.updatedAt?.seconds ? ticket.updatedAt.seconds * 1000 : 0
-    const seen = seenAt[ticket.id] ?? 0
-    return updTs > seen
-  }, [seenAt])
 
   // ── Load agents ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -135,11 +107,6 @@ const SupportManagement: React.FC = () => {
     }, () => setLoading(false))
     return () => unsub()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Mark ticket seen when selected ───────────────────────────────────────
-  useEffect(() => {
-    if (selectedTicket) markSeen(selectedTicket.id)
-  }, [selectedTicket?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Load messages for selected ticket ────────────────────────────────────
   useEffect(() => {
@@ -226,83 +193,9 @@ const SupportManagement: React.FC = () => {
     closed:  tickets.filter(t => t.status === 'closed').length,
   }
 
-  // Tickets that have new user messages admin hasn't seen — only open/pending
-  const newTickets = tickets.filter(t => t.status !== 'closed' && isNew(t))
-  const showBar = newTickets.length > 0 && !barDismissed
-
-  // Reset bar dismissal when new tickets come in
-  useEffect(() => {
-    if (newTickets.length > 0) setBarDismissed(false)
-  }, [newTickets.length])
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-3">
-
-      {/* ── NEW MESSAGES NOTIFICATION BAR ── */}
-      {showBar && (
-        <div className="bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3 flex items-start gap-3 shadow-sm">
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-400 text-white shrink-0 mt-0.5">
-            <Bell size={15} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-amber-800">
-              {newTickets.length === 1
-                ? '1 user is waiting for support'
-                : `${newTickets.length} users are waiting for support`}
-            </p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {newTickets.map(t => (
-                <div key={t.id} className="flex items-center gap-2 bg-white border border-amber-200 rounded-xl px-3 py-1.5 text-xs">
-                  <MessageCircle size={12} className="text-amber-500 shrink-0" />
-                  <div className="min-w-0">
-                    <span className="font-semibold text-gray-800 truncate block max-w-[140px]">{t.userName}</span>
-                    <span className="text-gray-500 truncate block max-w-[140px]">{catLabel(t.subject)}</span>
-                  </div>
-                  <div className="flex items-center gap-1 ml-2 shrink-0">
-                    <button
-                      onClick={() => { setSelectedTicket(t); setFilter('all') }}
-                      className="text-[11px] font-semibold text-sky-600 hover:text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-lg"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={async () => {
-                        await updateDoc(doc(db, 'supportTickets', t.id), {
-                          status: 'closed',
-                          updatedAt: Timestamp.now(),
-                        })
-                        markSeen(t.id)
-                      }}
-                      className="text-[11px] font-semibold text-green-700 hover:text-green-900 bg-green-50 border border-green-200 px-2 py-0.5 rounded-lg flex items-center gap-1"
-                      title="Mark as complete"
-                    >
-                      <CheckCheck size={11} /> Done
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <button
-            onClick={() => setBarDismissed(true)}
-            className="shrink-0 text-amber-400 hover:text-amber-700 p-1 rounded-lg hover:bg-amber-100 transition-colors mt-0.5"
-            title="Dismiss"
-          >
-            <X size={15} />
-          </button>
-        </div>
-      )}
-
-      {/* When no one needs support — quiet empty state (only shown if all closed and bar was dismissed or never shown) */}
-      {!showBar && counts.open === 0 && counts.pending === 0 && tickets.length > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-2.5 flex items-center gap-2 text-sm text-green-700 font-medium">
-          <CheckCheck size={15} className="text-green-500" />
-          All support requests have been resolved — no one waiting.
-        </div>
-      )}
-
-    <div className="flex gap-4" style={{ minHeight: 'calc(100vh - 180px)' }}>
+    <div className="flex gap-4 h-full" style={{ minHeight: 'calc(100vh - 120px)' }}>
 
       {/* ── LEFT PANEL – Ticket list ── */}
       <div className="w-full md:w-80 flex-shrink-0 flex flex-col gap-3">
