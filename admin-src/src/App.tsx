@@ -28,10 +28,12 @@ import EmailSettings from './components/EmailSettings/EmailSettings'
 import AIFraudMonitor from './components/AIFraudMonitor/AIFraudMonitor'
 import AIProofMonitor from './components/AIProofMonitor/AIProofMonitor'
 import AuraBars from './components/AuraBars/AuraBars'
+import UserFeedback from './components/UserFeedback/UserFeedback'
+import AuraDashboard from './components/AuraDashboard/AuraDashboard'
 import { LanguageProvider } from './context/LanguageContext'
 import { Loader2, Lock, Ban } from 'lucide-react'
 
-type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'user-dashboard' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet' | 'bars' | 'public-dashboard' | 'settings' | 'delivery-options' | 'support' | 'email' | 'fraud-monitor' | 'proof-monitor'
+type Section = 'live' | 'pairs' | 'methods' | 'cardholders' | 'cardholder-activity' | 'orders' | 'transactions' | 'users' | 'user-dashboard' | 'profile' | 'agents' | 'currency-assignments' | 'notifications' | 'chat' | 'wallet' | 'bars' | 'public-dashboard' | 'settings' | 'delivery-options' | 'support' | 'email' | 'fraud-monitor' | 'proof-monitor' | 'feedback' | 'aura-dashboard'
 type AuthState = 'loading' | 'admin' | 'agent' | 'unauthenticated' | 'unauthorized'
 
 // The primary admin email — always has admin access
@@ -232,6 +234,8 @@ function App() {
       case 'fraud-monitor': return <AIFraudMonitor />
       case 'proof-monitor': return <AIProofMonitor />
       case 'bars': return <AuraBars isAdmin={authState === 'admin'} />
+      case 'feedback': return <UserFeedback />
+      case 'aura-dashboard': return <AuraDashboard />
       default: return null
     }
   }

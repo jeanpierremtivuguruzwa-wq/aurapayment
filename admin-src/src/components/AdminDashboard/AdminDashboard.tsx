@@ -3,18 +3,16 @@ import { collection, onSnapshot, query, orderBy, limit, updateDoc, doc } from 'f
 import { db } from '../../services/firebase'
 import { Order, OrderStatus } from '../../types/Order'
 import { CurrencyPair } from '../../types/CurrencyPair'
-import { Inbox, Zap } from 'lucide-react'
+import { Inbox, RefreshCw, Zap, ArrowRightLeft, Users, ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function ago(ts: any): string {
+function fmtDate(ts: any): string {
   if (!ts) return '—'
   const d = ts.toDate ? ts.toDate() : new Date((ts.seconds ?? 0) * 1000)
-  const diff = Math.floor((Date.now() - d.getTime()) / 1000)
-  if (diff < 60) return `${diff}s ago`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  }) + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
 function fmt(n: number, currency?: string): string {
@@ -24,121 +22,132 @@ function fmt(n: number, currency?: string): string {
   }).format(n) + (currency ? ` ${currency}` : '')
 }
 
-const STATUS_META: Record<OrderStatus, { label: string; dot: string; bg: string; text: string; border: string }> = {
-  pending:   { label: 'Pending',   dot: 'bg-amber-400', bg: 'bg-amber-50',  text: 'text-amber-800',  border: 'border-amber-200' },
-  uploaded:  { label: 'Uploaded',  dot: 'bg-blue-400',  bg: 'bg-blue-50',   text: 'text-blue-800',   border: 'border-blue-200'  },
-  completed: { label: 'Completed', dot: 'bg-green-500', bg: 'bg-green-50',  text: 'text-green-800',  border: 'border-green-200' },
-  cancelled: { label: 'Cancelled', dot: 'bg-red-500',   bg: 'bg-red-50',    text: 'text-red-700',    border: 'border-red-200'   },
+// ── Transaction card ──────────────────────────────────────────────────────────
+
+interface OrderCardProps {
+  order: Order & { [key: string]: any }
+  isNew: boolean
 }
 
-// ── Order card ────────────────────────────────────────────────────────────────
-
-const OrderCard: React.FC<{ order: Order; isNew: boolean }> = ({ order, isNew }) => {
-  const s = STATUS_META[order.status] ?? STATUS_META.pending
+const OrderCard: React.FC<OrderCardProps> = ({ order, isNew }) => {
   const [updating, setUpdating] = useState(false)
 
   const updateStatus = async (status: OrderStatus) => {
     setUpdating(true)
-    try { await updateDoc(doc(db, 'orders', order.id), { status }) }
-    catch (e) { alert('Error: ' + (e as Error).message) }
+    try {
+      await updateDoc(doc(db, 'orders', order.id), {
+        status,
+        updatedBy: 'Admin',
+        [`${status}At`]: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 },
+      })
+    } catch (e) { alert('Error: ' + (e as Error).message) }
     finally { setUpdating(false) }
   }
 
+  const method = order.providerName || order.provider || order.paymentMethod || '—'
+  const phone  = order.phoneNumber || order.recipientPhone || '—'
+  const bank   = order.accountNumber || order.bankName || '—'
+  const sender = order.senderName || order.userEmail || '—'
+  const email  = order.senderEmail || order.userEmail || '—'
+  const tel    = order.senderPhone || order.senderTel || '—'
+  const updBy  = order.updatedBy || order.claimedByName || order.claimedBy || '—'
+
   return (
-    <div className={`relative rounded-2xl border ${s.border} ${s.bg} p-4 transition-all ${isNew ? 'ring-2 ring-amber-400 ring-offset-1' : ''}`}>
+    <div className={`bg-white border rounded-2xl overflow-hidden transition-shadow hover:shadow-md ${
+      isNew ? 'border-amber-400 ring-2 ring-amber-300 ring-offset-1' : 'border-gray-200'
+    }`}>
       {isNew && (
-        <span className="absolute -top-2 -right-2 bg-amber-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide animate-bounce">
-          New
-        </span>
+        <div className="bg-amber-400 text-white text-[10px] font-bold text-center py-0.5 uppercase tracking-widest">
+          New Order
+        </div>
       )}
 
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div>
-          <p className="text-xs font-mono text-slate-500">#{order.orderId || order.id.slice(0, 8).toUpperCase()}</p>
-          <p className="font-semibold text-slate-900 text-sm mt-0.5 leading-tight">{order.senderName || order.userEmail || '—'}</p>
-        </div>
-        <span className={`shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${s.bg} ${s.text} ${s.border}`}>
-          <span className={`w-2 h-2 rounded-full ${s.dot}`} /> {s.label}
-        </span>
-      </div>
+      <div className="p-4 space-y-0">
 
-      {/* Amount row */}
-      <div className="flex items-center gap-2 mb-3 bg-white/60 rounded-xl px-3 py-2">
-        <div className="text-center flex-1">
-          <p className="text-[10px] text-slate-500 uppercase tracking-wide">Sends</p>
-          <p className="font-bold text-slate-800">{fmt(order.sendAmount)} <span className="text-xs font-semibold text-slate-500">{order.sendCurrency}</span></p>
-        </div>
-        <div className="text-slate-400 text-lg">→</div>
-        <div className="text-center flex-1">
-          <p className="text-[10px] text-slate-500 uppercase tracking-wide">Gets</p>
-          <p className="font-bold text-slate-800">{fmt(order.receiveAmount)} <span className="text-xs font-semibold text-slate-500">{order.receiveCurrency}</span></p>
-        </div>
-        <div className="text-center flex-1">
-          <p className="text-[10px] text-slate-500 uppercase tracking-wide">Rate</p>
-          <p className="font-semibold text-slate-700 text-sm">{order.rate}</p>
-        </div>
-      </div>
+        {/* Recipient block */}
+        <Row label="Recipient"       value={order.recipientName || '—'} bold />
+        <Row label="Receiver Gets"   value={`${fmt(order.receiveAmount)} ${order.receiveCurrency}`} />
+        <Row label="Method"          value={method} />
+        <Row label="Phone"           value={phone} />
+        <Row label="Bank"            value={bank} />
+        <Row label="Date"            value={fmtDate(order.createdAt)} muted />
 
-      {/* Footer */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-slate-400">{ago(order.createdAt)}</span>
-        {order.status === 'pending' && (
-          <div className="flex gap-1.5">
-            <button
-              disabled={updating}
-              onClick={() => updateStatus('completed')}
-              className="text-xs bg-green-600 hover:bg-green-700 text-white px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-50"
-            >
-              ✓ Complete
-            </button>
-            <button
-              disabled={updating}
-              onClick={() => updateStatus('cancelled')}
-              className="text-xs bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-50"
-            >
-              ✕ Cancel
-            </button>
-          </div>
-        )}
-        {order.status === 'uploaded' && (
-          <button
-            disabled={updating}
-            onClick={() => updateStatus('completed')}
-            className="text-xs bg-green-600 hover:bg-green-700 text-white px-2.5 py-1 rounded-lg font-medium transition-colors disabled:opacity-50"
-          >
-            ✓ Mark Complete
-          </button>
-        )}
+        {/* Divider */}
+        <div className="border-t border-dashed border-gray-200 my-3" />
+
+        {/* Sender block */}
+        <Row label="Sender"          value={sender} bold />
+        <Row label="Email"           value={email} />
+        <Row label="Tel"             value={tel} />
+        <Row label="Amount"          value={`${fmt(order.sendAmount)} ${order.sendCurrency}`} />
+        <Row label="Mode"            value={order.deliveryMethod || method} />
+
+        {/* Divider */}
+        <div className="border-t border-gray-100 my-3" />
+
+        <Row label="Updated By"      value={updBy} muted />
+
+        {/* Order ref */}
+        <div className="mt-1">
+          <span className="text-[10px] text-gray-400 font-mono">
+            #{order.orderId || order.id.slice(0, 8).toUpperCase()}
+          </span>
+        </div>
+
+        {/* Status action buttons */}
+        <div className="flex gap-2 mt-3 flex-wrap">
+          {(['pending', 'completed', 'cancelled'] as OrderStatus[]).map(s => {
+            const isActive = order.status === s
+            const styles: Record<string, string> = {
+              pending:   isActive ? 'bg-amber-500  text-white border-amber-500'  : 'bg-white text-amber-600  border-amber-300  hover:bg-amber-50',
+              completed: isActive ? 'bg-green-600  text-white border-green-600'  : 'bg-white text-green-600  border-green-300  hover:bg-green-50',
+              cancelled: isActive ? 'bg-gray-800   text-white border-gray-800'   : 'bg-white text-gray-500   border-gray-300   hover:bg-gray-50',
+            }
+            return (
+              <button
+                key={s}
+                disabled={updating || isActive}
+                onClick={() => updateStatus(s)}
+                className={`flex-1 min-w-[80px] text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all disabled:cursor-default capitalize ${styles[s]}`}
+              >
+                {updating && !isActive ? '…' : s.charAt(0).toUpperCase() + s.slice(1)}
+              </button>
+            )
+          })}
+        </div>
       </div>
+    </div>
+  )
+}
+
+function Row({ label, value, bold, muted }: { label: string; value: string; bold?: boolean; muted?: boolean }) {
+  return (
+    <div className="flex gap-1 text-sm leading-6">
+      <span className="text-gray-500 font-medium shrink-0 w-[110px]">{label}:</span>
+      <span className={`truncate ${bold ? 'font-semibold text-gray-900' : muted ? 'text-gray-400' : 'text-gray-700'}`}>
+        {value}
+      </span>
     </div>
   )
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+type Tab = 'orders' | 'rates' | 'cardholders' | 'wallet'
+
 const AdminDashboard: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>([])
-  const [pairs, setPairs] = useState<CurrencyPair[]>([])
+  const [orders, setOrders]           = useState<Order[]>([])
+  const [pairs, setPairs]             = useState<CurrencyPair[]>([])
   const [ordersLoading, setOrdersLoading] = useState(true)
-  const [pairsLoading, setPairsLoading] = useState(true)
+  const [pairsLoading, setPairsLoading]   = useState(true)
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set())
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all' | 'active'>('active')
-  const [ticker, setTicker] = useState(0)
+  const [tab, setTab]                 = useState<Tab>('orders')
 
-  // Tick every second for live timestamps
+  // Live orders
   useEffect(() => {
-    const id = setInterval(() => setTicker(t => t + 1), 10000)
-    return () => clearInterval(id)
-  }, [])
-
-  // Live orders — newest 50
-  useEffect(() => {
-    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(50))
+    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(80))
     const unsub = onSnapshot(q, snap => {
       const fresh = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Order[]
-
-      // Detect newly added orders
       snap.docChanges().forEach(change => {
         if (change.type === 'added') {
           const id = change.doc.id
@@ -148,7 +157,6 @@ const AdminDashboard: React.FC = () => {
           }), 8000)
         }
       })
-
       setOrders(fresh)
       setOrdersLoading(false)
     }, () => setOrdersLoading(false))
@@ -158,19 +166,19 @@ const AdminDashboard: React.FC = () => {
   // Live currency pairs
   useEffect(() => {
     const unsub = onSnapshot(query(collection(db, 'currencyPairs')), snap => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() })) as CurrencyPair[]
-      data.sort((a, b) => (a.from + a.to).localeCompare(b.from + b.to))
-      setPairs(data)
+      setPairs(snap.docs.map(d => ({ id: d.id, ...d.data() })) as CurrencyPair[])
       setPairsLoading(false)
     }, () => setPairsLoading(false))
     return () => unsub()
   }, [])
 
-  const filteredOrders = useMemo(() => {
-    if (statusFilter === 'all') return orders
-    if (statusFilter === 'active') return orders.filter(o => o.status === 'pending' || o.status === 'uploaded')
-    return orders.filter(o => o.status === statusFilter)
-  }, [orders, statusFilter, ticker])
+  const pending = useMemo(() =>
+    orders.filter(o => o.status === 'pending' || o.status === 'uploaded'),
+  [orders])
+
+  const others = useMemo(() =>
+    orders.filter(o => o.status === 'completed' || o.status === 'cancelled'),
+  [orders])
 
   const stats = useMemo(() => ({
     total:     orders.length,
@@ -178,152 +186,219 @@ const AdminDashboard: React.FC = () => {
     uploaded:  orders.filter(o => o.status === 'uploaded').length,
     completed: orders.filter(o => o.status === 'completed').length,
     cancelled: orders.filter(o => o.status === 'cancelled').length,
-    volume:    orders.filter(o => o.status === 'completed').reduce((s, o) => s + Number(o.sendAmount || 0), 0),
   }), [orders])
 
-  const activePairs = pairs.filter(p => p.active !== false)
+  const TABS: { id: Tab; label: string; Icon: React.ElementType }[] = [
+    { id: 'orders',      label: 'Dashboard',   Icon: ArrowRightLeft },
+    { id: 'rates',       label: 'Rates',        Icon: Zap            },
+    { id: 'cardholders', label: 'Cardholders',  Icon: Users          },
+    { id: 'wallet',      label: 'Wallet',       Icon: ArrowDownCircle},
+  ]
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50">
 
-      {/* ── Page header ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Live orders &amp; exchange rates</p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span className="w-2 h-2 rounded-full bg-green-400 inline-block animate-pulse" />
-          Live
+      {/* ── Tab bar ── */}
+      <div className="bg-white border-b border-gray-200 px-4 md:px-6 sticky top-0 z-10">
+        <div className="flex items-center gap-0 overflow-x-auto">
+          {TABS.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`flex items-center gap-1.5 px-5 py-4 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors ${
+                tab === id
+                  ? 'border-gray-900 text-gray-900'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Icon size={15} strokeWidth={1.75} />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── Stats strip ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[
-          { label: 'Total Orders', value: stats.total,     color: 'text-slate-800',  bg: 'bg-white' },
-          { label: 'Pending',      value: stats.pending,   color: 'text-amber-700',  bg: 'bg-amber-50 border-amber-200' },
-          { label: 'Uploaded',     value: stats.uploaded,  color: 'text-blue-700',   bg: 'bg-blue-50 border-blue-200'   },
-          { label: 'Completed',    value: stats.completed, color: 'text-green-700',  bg: 'bg-green-50 border-green-200' },
-          { label: 'Cancelled',    value: stats.cancelled, color: 'text-red-700',    bg: 'bg-red-50 border-red-200'     },
-          { label: 'Volume',       value: fmt(stats.volume), color: 'text-indigo-700', bg: 'bg-indigo-50 border-indigo-200', small: true },
-        ].map(s => (
-          <div key={s.label} className={`rounded-2xl border px-4 py-3 ${s.bg}`}>
-            <p className="text-xs text-slate-500 uppercase tracking-wide">{s.label}</p>
-            <p className={`font-bold mt-0.5 ${s.color} ${s.small ? 'text-base' : 'text-2xl'}`}>{s.value}</p>
-          </div>
-        ))}
-      </div>
+      <div className="p-4 md:p-6 space-y-6">
 
-      {/* ── Main grid: Orders + Rates ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-        {/* ── Orders panel (takes 2/3 width on xl) ── */}
-        <div className="xl:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-800 text-lg">Incoming Orders</h2>
-            {/* Filter pills */}
-            <div className="flex gap-1.5 flex-wrap">
-              {(["active", "all", "pending", "uploaded", "completed", "cancelled"] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setStatusFilter(f)}
-                  className={`text-xs px-3 py-1.5 rounded-full font-medium border transition-colors capitalize ${
-                    statusFilter === f
-                      ? 'bg-slate-800 text-white border-slate-800'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-                  }`}
-                >
-              {f === 'active' ? `Active (${stats.pending + stats.uploaded})` : f === 'all' ? `All (${stats.total})` : f === 'pending' ? `Pending (${stats.pending})` : f === 'uploaded' ? `Uploaded (${stats.uploaded})` : f === 'completed' ? `Done (${stats.completed})` : `Cancelled (${stats.cancelled})`}
-                </button>
-              ))}
+        {/* ── Dashboard tab ── */}
+        {tab === 'orders' && (
+          <>
+            {/* Header + action buttons */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+                <p className="text-sm text-gray-500">
+                  {ordersLoading ? 'Loading…' : `${stats.total} total orders · ${stats.pending + stats.uploaded} active`}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" /> Live
+                </span>
+              </div>
             </div>
-          </div>
 
-          {ordersLoading ? (
-            <div className="space-y-3">
-              {[1,2,3].map(i => (
-                <div key={i} className="rounded-2xl border border-slate-200 bg-white p-4 animate-pulse">
-                  <div className="h-4 bg-slate-200 rounded w-1/3 mb-2" />
-                  <div className="h-10 bg-slate-100 rounded-xl" />
+            {/* Stats strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {[
+                { label: 'Total',     value: stats.total,     cls: 'text-gray-800' },
+                { label: 'Pending',   value: stats.pending,   cls: 'text-amber-600' },
+                { label: 'Uploaded',  value: stats.uploaded,  cls: 'text-blue-600' },
+                { label: 'Completed', value: stats.completed, cls: 'text-green-600' },
+                { label: 'Cancelled', value: stats.cancelled, cls: 'text-red-500' },
+              ].map(s => (
+                <div key={s.label} className="bg-white border border-gray-200 rounded-xl px-4 py-3">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">{s.label}</p>
+                  <p className={`text-2xl font-black mt-0.5 ${s.cls}`}>{s.value}</p>
                 </div>
               ))}
             </div>
-          ) : filteredOrders.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
-              <Inbox className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-              <p className="text-slate-500">No orders {statusFilter === 'active' ? 'in progress — all done!' : statusFilter !== 'all' ? `with status "${statusFilter}"` : 'yet'}</p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-[78vh] overflow-y-auto pr-1">
-              {filteredOrders.map(order => (
-                <OrderCard key={order.id} order={order} isNew={newOrderIds.has(order.id)} />
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* ── Rates panel (1/3 width on xl) ── */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-800 text-lg">Exchange Rates</h2>
-            <span className="text-xs text-slate-400">{activePairs.length} active</span>
-          </div>
+            {/* Two-column layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-          {pairsLoading ? (
-            <div className="space-y-2">
-              {[1,2,3,4].map(i => (
-                <div key={i} className="rounded-2xl border border-slate-200 bg-white p-3 animate-pulse">
-                  <div className="h-4 bg-slate-200 rounded w-1/2 mb-2" />
-                  <div className="h-6 bg-slate-100 rounded w-1/3" />
+              {/* ── Left: Pending Transactions ── */}
+              <section className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-bold text-gray-800">
+                    Pending Transactions
+                    <span className="ml-2 bg-amber-100 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                      {pending.length}
+                    </span>
+                  </h2>
+                  {ordersLoading && <RefreshCw size={14} className="animate-spin text-gray-400" />}
                 </div>
-              ))}
+
+                {ordersLoading ? (
+                  <SkeletonCards />
+                ) : pending.length === 0 ? (
+                  <EmptyState label="No pending transactions" />
+                ) : (
+                  <div className="space-y-3 max-h-[78vh] overflow-y-auto pr-1">
+                    {pending.map(o => (
+                      <OrderCard key={o.id} order={o as any} isNew={newOrderIds.has(o.id)} />
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* ── Right: Other Transactions ── */}
+              <section className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-bold text-gray-800">
+                    Other Transactions
+                    <span className="ml-2 bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded-full">
+                      {others.length}
+                    </span>
+                  </h2>
+                  {ordersLoading && <RefreshCw size={14} className="animate-spin text-gray-400" />}
+                </div>
+
+                {ordersLoading ? (
+                  <SkeletonCards />
+                ) : others.length === 0 ? (
+                  <EmptyState label="No completed or cancelled transactions yet" />
+                ) : (
+                  <div className="space-y-3 max-h-[78vh] overflow-y-auto pr-1">
+                    {others.map(o => (
+                      <OrderCard key={o.id} order={o as any} isNew={newOrderIds.has(o.id)} />
+                    ))}
+                  </div>
+                )}
+              </section>
+
             </div>
-          ) : pairs.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-10 text-center">
-              <p className="text-slate-400 text-sm">No currency pairs configured</p>
+          </>
+        )}
+
+        {/* ── Rates tab ── */}
+        {tab === 'rates' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-gray-900">Exchange Rates</h1>
+              <span className="text-sm text-gray-500">{pairs.filter(p => p.active !== false).length} active pairs</span>
             </div>
-          ) : (
-            <div className="space-y-2 max-h-[78vh] overflow-y-auto pr-1">
-              {pairs.map(pair => {
-                const active = pair.active !== false
-                return (
-                  <div
-                    key={pair.id}
-                    className={`rounded-2xl border px-4 py-3 transition-all ${
-                      active
-                        ? 'bg-white border-slate-200 hover:border-slate-300'
-                        : 'bg-slate-50 border-slate-100 opacity-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {pair.flag && <span className="text-xl">{pair.flag}</span>}
+
+            {pairsLoading ? (
+              <SkeletonCards count={6} />
+            ) : pairs.length === 0 ? (
+              <EmptyState label="No currency pairs configured" />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {pairs.map(pair => {
+                  const active = pair.active !== false
+                  return (
+                    <div
+                      key={pair.id}
+                      className={`bg-white border rounded-2xl px-5 py-4 flex items-center justify-between transition-all ${
+                        active ? 'border-gray-200 hover:shadow-md' : 'border-gray-100 opacity-40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {pair.flag && <span className="text-2xl">{pair.flag}</span>}
                         <div>
-                          <p className="text-xs text-slate-500 leading-none">{pair.country || pair.to}</p>
-                          <p className="font-semibold text-slate-900 text-sm">
-                            {pair.from} → {pair.to}
-                          </p>
+                          <p className="text-xs text-gray-400">{pair.country || pair.to}</p>
+                          <p className="font-bold text-gray-900">{pair.from} → {pair.to}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-slate-800 text-lg leading-none">{pair.rate}</p>
+                        <p className="text-2xl font-black text-gray-900">{pair.rate}</p>
                         {pair.urgent && (
-                          <span className="flex items-center gap-0.5 text-orange-500 text-xs"><Zap className="w-3 h-3" /> Urgent</span>
+                          <span className="text-xs text-orange-500 flex items-center gap-0.5 justify-end">
+                            <Zap size={11} /> Urgent
+                          </span>
                         )}
+                        {!active && <p className="text-xs text-gray-300">Inactive</p>}
                       </div>
                     </div>
-                    {!active && (
-                      <p className="text-[10px] text-slate-400 mt-1">Inactive</p>
-                    )}
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Cardholders / Wallet tabs (placeholders) ── */}
+        {(tab === 'cardholders' || tab === 'wallet') && (
+          <div className="flex items-center justify-center py-24 text-gray-400">
+            <div className="text-center">
+              {tab === 'cardholders'
+                ? <Users size={40} className="mx-auto mb-3 opacity-30" />
+                : <ArrowUpCircle size={40} className="mx-auto mb-3 opacity-30" />}
+              <p className="font-medium">
+                {tab === 'cardholders' ? 'Use Cardholders in the sidebar' : 'Use Aura Wallet in the sidebar'}
+              </p>
+              <p className="text-sm mt-1">Navigate using the left sidebar for full functionality.</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
       </div>
+    </div>
+  )
+}
+
+// ── Shared sub-components ─────────────────────────────────────────────────────
+
+function SkeletonCards({ count = 2 }: { count?: number }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="bg-white border border-gray-200 rounded-2xl p-4 animate-pulse space-y-2">
+          <div className="h-4 bg-gray-100 rounded w-1/2" />
+          <div className="h-3 bg-gray-100 rounded w-3/4" />
+          <div className="h-3 bg-gray-100 rounded w-2/3" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white py-14 text-center">
+      <Inbox size={32} className="mx-auto mb-2 text-gray-300" />
+      <p className="text-sm text-gray-400">{label}</p>
     </div>
   )
 }

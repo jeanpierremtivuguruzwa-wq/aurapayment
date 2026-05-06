@@ -331,27 +331,47 @@
             <button class="close-modal" id="closeResetModalBtn">&times;</button>
         </div>
         <div class="modal-body">
-            <p style="margin-bottom: 1rem; color: #4a5568;">Enter your email address and we’ll send you a link to reset your password.</p>
-            <div class="form-group">
-                <label>Email address</label>
-                <input type="email" id="resetEmail" placeholder="your@email.com" autocomplete="off">
-                <span id="resetEmailError" class="inline-error" style="display: none;"></span>
+
+            <!-- Form state -->
+            <div id="resetFormState">
+                <p style="margin-bottom: 1rem; color: #4a5568;">Enter your email address and we'll send you a secure link to reset your password.</p>
+                <div class="form-group">
+                    <label>Email address</label>
+                    <input type="email" id="resetEmail" placeholder="your@email.com" autocomplete="off">
+                    <span id="resetEmailError" class="inline-error" style="display: none;"></span>
+                </div>
+                <div class="step-buttons">
+                    <button class="btn-primary" id="sendResetLinkBtn">Send reset link</button>
+                    <button class="btn-secondary" id="cancelResetBtn">Cancel</button>
+                </div>
+                <div class="back-link">
+                    <a href="#" id="backToSigninFromReset">&larr; Back to sign in</a>
+                </div>
             </div>
-            <div class="step-buttons">
-                <button class="btn-primary" id="sendResetLinkBtn">Send reset link</button>
-                <button class="btn-secondary" id="cancelResetBtn">Cancel</button>
+
+            <!-- Success state -->
+            <div id="resetSuccessState" style="display:none; text-align:center; padding: 0.5rem 0;">
+                <div style="font-size: 2.5rem; margin-bottom: 1rem;">&#128231;</div>
+                <h3 style="color: #0b1b3a; font-size: 1.2rem; margin-bottom: 0.75rem;">Check your inbox</h3>
+                <p style="color: #4a5568; font-size: 0.9rem; line-height: 1.6; margin-bottom: 0.5rem;">
+                    We sent a password reset link to:
+                </p>
+                <p style="font-weight: 700; color: #0b1b3a; font-size: 0.95rem; margin-bottom: 1.25rem;" id="resetSuccessEmail"></p>
+                <p style="color: #718096; font-size: 0.82rem; line-height: 1.6; margin-bottom: 1.5rem;">
+                    Click the link in the email to create a new password. Check your spam folder if you don't see it within a minute.
+                </p>
+                <button class="btn-primary" onclick="document.getElementById('resetModal').classList.remove('active')">Back to Sign In</button>
             </div>
-            <div class="back-link">
-                <a href="#" id="backToSigninFromReset">← Back to sign in</a>
-            </div>
+
         </div>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-functions.js";
 
     // Firebase configuration (must match your project)
     const firebaseConfig = {
@@ -367,6 +387,7 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const fns = getFunctions(app);
 
     // DOM elements
     const signinForm = document.getElementById('signinForm');
@@ -519,22 +540,26 @@
     const closeResetModalBtn = document.getElementById('closeResetModalBtn');
     const backToSigninFromReset = document.getElementById('backToSigninFromReset');
     const resetEmailError = document.getElementById('resetEmailError');
-    
+    const resetSuccessState = document.getElementById('resetSuccessState');
+    const resetFormState = document.getElementById('resetFormState');
+
     function openResetModal() {
-        resetEmailInput.value = '';
+        resetEmailInput.value = emailInput.value.trim(); // pre-fill from sign-in form
         resetEmailError.style.display = 'none';
+        resetSuccessState.style.display = 'none';
+        resetFormState.style.display = 'block';
         resetModal.classList.add('active');
     }
-    
+
     function closeResetModal() {
         resetModal.classList.remove('active');
     }
-    
+
     document.getElementById('forgotPasswordBtn').addEventListener('click', (e) => {
         e.preventDefault();
         openResetModal();
     });
-    
+
     sendResetLinkBtn.addEventListener('click', async () => {
         const email = resetEmailInput.value.trim();
         if (!email) {
@@ -542,18 +567,27 @@
             resetEmailError.style.display = 'block';
             return;
         }
-        
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            resetEmailError.textContent = 'Please enter a valid email address';
+            resetEmailError.style.display = 'block';
+            return;
+        }
+
+        resetEmailError.style.display = 'none';
         sendResetLinkBtn.disabled = true;
-        sendResetLinkBtn.textContent = 'Sending...';
-        
+        sendResetLinkBtn.textContent = '⏳ Sending...';
+
         try {
-            await sendPasswordResetEmail(auth, email);
-            alert('✅ Password reset email sent! Check your inbox (and spam folder).');
-            closeResetModal();
+            const sendReset = httpsCallable(fns, 'sendPasswordResetCustomEmail');
+            await sendReset({ email });
+
+            // Show success state
+            resetFormState.style.display = 'none';
+            resetSuccessState.style.display = 'block';
+            document.getElementById('resetSuccessEmail').textContent = email;
         } catch (error) {
-            let errorMsg = 'Unable to send reset email. ';
-            if (error.code === 'auth/user-not-found') errorMsg = 'No account found with this email.';
-            if (error.code === 'auth/invalid-email') errorMsg = 'Please enter a valid email address.';
+            let errorMsg = 'Something went wrong. Please try again.';
+            if (error.code === 'functions/invalid-argument') errorMsg = 'Please enter a valid email address.';
             resetEmailError.textContent = errorMsg;
             resetEmailError.style.display = 'block';
         } finally {
@@ -561,14 +595,14 @@
             sendResetLinkBtn.textContent = 'Send reset link';
         }
     });
-    
+
     cancelResetBtn.addEventListener('click', closeResetModal);
     closeResetModalBtn.addEventListener('click', closeResetModal);
     backToSigninFromReset.addEventListener('click', (e) => {
         e.preventDefault();
         closeResetModal();
     });
-    
+
     resetModal.addEventListener('click', (e) => {
         if (e.target === resetModal) closeResetModal();
     });

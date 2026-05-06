@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Your Experience - Aura Payment</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f0f4f8; min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* ── Navbar ── */
+        .navbar {
+            display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+            padding: 1rem 5%; background: white; border-bottom: 1px solid #e2e8f0; gap: 0.75rem;
+        }
+        .logo { font-size: 1.4rem; font-weight: 700; color: #0b1b3a; text-decoration: none; }
+        .nav-menu { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+        .nav-menu a { text-decoration: none; color: #4a5568; font-weight: 500; font-size: 0.9rem; }
+        .nav-menu a.active { color: #0b1b3a; border-bottom: 2px solid #0b1b3a; }
+        .user-info { display: flex; align-items: center; gap: 0.75rem; }
+        .avatar { width: 36px; height: 36px; background: #0b1b3a; color: white; border-radius: 50%;
+                  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; }
+
+        /* ── Main ── */
+        main { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 2rem 1rem; }
+        .card {
+            background: white; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+            padding: 2.25rem 2rem; width: 100%; max-width: 500px;
+        }
+
+        .card-header { text-align: center; margin-bottom: 1.75rem; }
+        .card-header svg { display: block; margin: 0 auto 1rem; }
+        .card-header h2 { font-size: 1.35rem; font-weight: 800; color: #0b1b3a; margin-bottom: 0.35rem; }
+        .card-header p { font-size: 0.88rem; color: #718096; }
+
+        label { display: block; font-size: 0.8rem; font-weight: 700; color: #4a5568; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.04em; }
+
+        /* Rating */
+        #ratingRow { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+        .rating-btn {
+            width: 42px; height: 42px; border-radius: 10px; border: 1.5px solid #e2e8f0;
+            background: white; color: #4a5568; font-size: 0.88rem; font-weight: 700;
+            cursor: pointer; transition: all .15s; flex-shrink: 0;
+        }
+        .rating-btn.active { background: #0b1b3a; color: white; border-color: #0b1b3a; }
+
+        /* Topics */
+        #topicsRow { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .topic-chip {
+            padding: 0.35rem 0.85rem; border-radius: 20px; border: 1.5px solid #e2e8f0;
+            background: white; color: #4a5568; font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; transition: all .15s;
+        }
+        .topic-chip.active { background: #0b1b3a; color: white; border-color: #0b1b3a; }
+
+        /* Comment */
+        textarea {
+            width: 100%; border: 1.5px solid #e2e8f0; border-radius: 12px;
+            padding: 0.7rem 0.85rem; font-size: 0.88rem; color: #2d3748;
+            resize: vertical; outline: none; font-family: inherit; margin-bottom: 1.5rem;
+            transition: border-color .15s;
+        }
+        textarea:focus { border-color: #0b1b3a; }
+
+        .submit-btn {
+            width: 100%; padding: 0.9rem; background: #0b1b3a; color: white;
+            border: none; border-radius: 14px; font-weight: 700; font-size: 0.95rem;
+            cursor: pointer; transition: opacity .2s;
+        }
+        .submit-btn:disabled { opacity: 0.55; cursor: default; }
+
+        .thanks {
+            display: none; text-align: center; padding: 2rem; color: #0b1b3a;
+        }
+        .thanks svg { display: block; margin: 0 auto 0.75rem; }
+        .thanks h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.4rem; }
+        .thanks p { font-size: 0.88rem; color: #718096; }
+        .thanks a { display: inline-block; margin-top: 1.25rem; padding: 0.7rem 1.75rem; background: #0b1b3a; color: white; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.88rem; }
+
+        .section-gap { margin-bottom: 1.25rem; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <a class="logo" href="dashboard.html">Aura Payment</a>
+    <div class="nav-menu">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="send-money.html">Send</a>
+        <a href="history.html">History</a>
+        <a href="feedback.html" class="active">Feedback</a>
+    </div>
+    <div class="user-info">
+        <div class="avatar" id="navAvatar">?</div>
+    </div>
+</nav>
+
+<main>
+    <div class="card">
+        <!-- Form -->
+        <div id="feedbackForm">
+            <div class="card-header">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                     stroke="#0b1b3a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <h2>Rate Your Experience</h2>
+                <p>Help us improve by sharing your feedback. Takes less than 1 minute.</p>
+            </div>
+
+            <div class="section-gap">
+                <label>Your rating (1–10)</label>
+                <div id="ratingRow"></div>
+            </div>
+
+            <div class="section-gap">
+                <label>What would you like to highlight?</label>
+                <div id="topicsRow"></div>
+            </div>
+
+            <div class="section-gap">
+                <label>Your comment (optional)</label>
+                <textarea id="commentBox" rows="3" placeholder="Tell us what you think…"></textarea>
+            </div>
+
+            <button class="submit-btn" id="submitBtn" onclick="submitFeedback()">Submit Feedback</button>
+            <p id="errMsg" style="color:#e53e3e;font-size:0.82rem;margin-top:0.6rem;display:none;"></p>
+        </div>
+
+        <!-- Thank you -->
+        <div class="thanks" id="thanksScreen">
+            <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none"
+                 stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <h3>Thank you for your feedback!</h3>
+            <p>Your response helps us make Aura Payment better for everyone.</p>
+            <a href="dashboard.html">Back to Dashboard</a>
+        </div>
+    </div>
+</main>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDlz5mH-x7P7H6FNdPj62PYhqAY5hsH19A",
+        authDomain: "aura-payment.firebaseapp.com",
+        projectId: "aura-payment",
+        storageBucket: "aura-payment.firebasestorage.app",
+        messagingSenderId: "213847107667",
+        appId: "1:213847107667:web:9949c7a1ad9101959afea6"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
+
+    const TOPICS = [
+        'Transfer Speed', 'Customer Support', 'Fees & Rates',
+        'App Experience', 'Trust & Safety', 'Something Else'
+    ];
+    let selectedRating = null;
+    const selectedTopics = new Set();
+
+    // ── Rating buttons ──────────────────────────────────────────────
+    function buildRating() {
+        const row = document.getElementById('ratingRow');
+        for (let i = 1; i <= 10; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'rating-btn';
+            btn.textContent = i;
+            btn.dataset.val = i;
+            btn.onclick = function() {
+                selectedRating = parseInt(this.dataset.val);
+                row.querySelectorAll('.rating-btn').forEach(b => {
+                    b.classList.toggle('active', parseInt(b.dataset.val) <= selectedRating);
+                });
+            };
+            row.appendChild(btn);
+        }
+    }
+
+    // ── Topic chips ─────────────────────────────────────────────────
+    function buildTopics() {
+        const row = document.getElementById('topicsRow');
+        TOPICS.forEach(t => {
+            const chip = document.createElement('button');
+            chip.className = 'topic-chip';
+            chip.textContent = t;
+            chip.onclick = function() {
+                if (selectedTopics.has(t)) {
+                    selectedTopics.delete(t);
+                    chip.classList.remove('active');
+                } else {
+                    selectedTopics.add(t);
+                    chip.classList.add('active');
+                }
+            };
+            row.appendChild(chip);
+        });
+    }
+
+    // ── Submit ──────────────────────────────────────────────────────
+    async function submitFeedback() {
+        const comment = (document.getElementById('commentBox').value || '').trim();
+        const errMsg  = document.getElementById('errMsg');
+        errMsg.style.display = 'none';
+
+        if (!selectedRating && selectedTopics.size === 0 && !comment) {
+            errMsg.textContent = 'Please select a rating, a topic, or leave a comment.';
+            errMsg.style.display = 'block';
+            return;
+        }
+
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Submitting…';
+
+        try {
+            const user = auth.currentUser;
+            await db.collection('feedback').add({
+                rating:    selectedRating || 0,
+                topics:    Array.from(selectedTopics),
+                comment:   comment,
+                source:    'page',
+                userName:  user ? (user.displayName || '') : '',
+                userEmail: user ? user.email : '',
+                userId:    user ? user.uid : '',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+            document.getElementById('feedbackForm').style.display = 'none';
+            document.getElementById('thanksScreen').style.display = 'block';
+        } catch (err) {
+            console.error('Feedback error:', err);
+            btn.disabled = false;
+            btn.textContent = 'Submit Feedback';
+            errMsg.textContent = 'Could not submit. Please try again.';
+            errMsg.style.display = 'block';
+        }
+    }
+
+    // ── Auth + init ─────────────────────────────────────────────────
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            const initials = (user.displayName || user.email || '?')
+                .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            document.getElementById('navAvatar').textContent = initials;
+        }
+    });
+
+    buildRating();
+    buildTopics();
+</script>
+</body>
+</html>

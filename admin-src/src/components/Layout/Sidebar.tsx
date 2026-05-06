@@ -3,7 +3,7 @@ import {
   Home, ArrowLeftRight, CreditCard, Users, Activity, Package,
   BarChart2, User, Briefcase, MessageCircle, Wallet, Landmark,
   Bell, Truck, Globe, UserCircle, HelpCircle, Mail, Settings,
-  ShieldAlert, ScanSearch, Star,
+  ShieldAlert, ScanSearch, Star, MessageSquare, LayoutDashboard,
   LucideIcon,
 } from 'lucide-react'
 import { useLanguage } from '../../context/LanguageContext'
@@ -24,6 +24,7 @@ const Sidebar: React.FC<Props> = ({ activeSection, onSectionChange }) => {
   const { t } = useLanguage()
 
   const navItems: NavItem[] = [
+    { id: 'aura-dashboard',        label: 'Aura Dashboard',          description: 'Orders, rates, cardholders', Icon: LayoutDashboard },
     { id: 'live',                 label: t('dashboard'),           description: 'Overview & live orders',     Icon: Home           },
     { id: 'pairs',                label: t('currencyPairs'),       description: 'Manage exchange rates',      Icon: ArrowLeftRight },
     { id: 'methods',              label: t('paymentMethods'),      description: 'Cards & bank accounts',      Icon: CreditCard     },
@@ -39,6 +40,7 @@ const Sidebar: React.FC<Props> = ({ activeSection, onSectionChange }) => {
     { id: 'chat',                 label: t('auraChat'),            description: 'AI-powered support chat',    Icon: MessageCircle  },
     { id: 'wallet',               label: t('auraWallet'),          description: 'Balance & wallet ops',       Icon: Wallet         },
     { id: 'bars',                 label: 'Aura Bars',              description: 'Loyalty discount system',    Icon: Star           },
+    { id: 'feedback',             label: 'User Feedback',          description: 'Ratings & user comments',    Icon: MessageSquare  },
     { id: 'currency-assignments', label: t('currencyAssignments'), description: 'Currency routing rules',     Icon: Landmark       },
     { id: 'notifications',        label: t('notifications'),       description: 'Alerts & messages',          Icon: Bell           },
     { id: 'delivery-options',     label: t('deliveryOptions'),     description: 'Delivery method settings',   Icon: Truck          },

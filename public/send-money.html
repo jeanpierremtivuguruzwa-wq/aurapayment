@@ -506,6 +506,33 @@
                     View Transaction History
                 </a>
             </div>
+
+            <!-- ── Post-Transfer Feedback Widget ────────────────── -->
+            <div id="feedbackWidget" style="margin-top: 2rem; padding-top: 1.75rem; border-top: 1px solid #e2e8f0; text-align: left;">
+                <p style="font-size: 0.88rem; font-weight: 700; color: #0b1b3a; margin-bottom: 0.25rem;">How was your experience?</p>
+                <p style="font-size: 0.78rem; color: #718096; margin-bottom: 1rem;">Your feedback helps us improve.</p>
+
+                <!-- Star/number rating -->
+                <div style="display: flex; gap: 0.4rem; justify-content: center; margin-bottom: 1rem;" id="fbRatingRow">
+                    <!-- 1–10 -->
+                </div>
+
+                <!-- Topics (multi-select chips) -->
+                <div id="fbTopics" style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; justify-content: center;"></div>
+
+                <!-- Comment -->
+                <textarea id="fbComment" rows="2" placeholder="Any comments? (optional)"
+                    style="width:100%; border:1.5px solid #e2e8f0; border-radius:10px; padding:0.6rem 0.75rem; font-size:0.83rem; color:#2d3748; resize:vertical; outline:none; font-family:inherit;"></textarea>
+
+                <!-- Submit -->
+                <button id="fbSubmitBtn" onclick="submitFeedback()"
+                    style="margin-top: 0.75rem; width: 100%; padding: 0.8rem; background: #0b1b3a; color: white; border: none; border-radius: 12px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: opacity .2s;">
+                    Submit Feedback
+                </button>
+                <div id="fbThanks" style="display:none; text-align:center; color:#10b981; font-size:0.9rem; font-weight:600; margin-top:0.75rem;">
+                    ✓ Thank you for your feedback!
+                </div>
+            </div>
         </div>
     </main>
 
@@ -1389,6 +1416,17 @@
             if (refEl && transactionData.orderId) {
                 refEl.textContent = '#' + transactionData.orderId.slice(0, 8).toUpperCase();
             }
+
+            // Initialise the feedback widget
+            fbSelectedRating = null;
+            fbSelectedTopics.clear();
+            initFeedbackWidget();
+            const fbWidget = document.getElementById('feedbackWidget');
+            if (fbWidget) { fbWidget.style.opacity = '1'; fbWidget.style.pointerEvents = ''; }
+            const fbThanks = document.getElementById('fbThanks');
+            if (fbThanks) fbThanks.style.display = 'none';
+            const fbSubmitBtn = document.getElementById('fbSubmitBtn');
+            if (fbSubmitBtn) { fbSubmitBtn.style.display = ''; fbSubmitBtn.disabled = false; fbSubmitBtn.style.opacity = '1'; fbSubmitBtn.textContent = 'Submit Feedback'; }
         }
 
         function copyToClipboard(text, button) {
@@ -1409,6 +1447,102 @@
 
         function closeSupportModal() {
             document.getElementById('supportModal').style.display = 'none';
+        }
+
+        // ── Feedback widget ──────────────────────────────────────────────────────
+        let fbSelectedRating = null;
+        const FB_TOPICS = [
+            'Transfer Speed', 'Customer Support', 'Fees & Rates',
+            'App Experience', 'Trust & Safety', 'Something Else'
+        ];
+        const fbSelectedTopics = new Set();
+
+        function initFeedbackWidget() {
+            // Rating row 1-10
+            const ratingRow = document.getElementById('fbRatingRow');
+            if (!ratingRow) return;
+            ratingRow.innerHTML = '';
+            for (let i = 1; i <= 10; i++) {
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                btn.dataset.val = i;
+                btn.style.cssText = 'width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;color:#4a5568;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all .15s;flex-shrink:0;';
+                btn.onclick = function() {
+                    fbSelectedRating = parseInt(this.dataset.val);
+                    ratingRow.querySelectorAll('button').forEach(b => {
+                        const v = parseInt(b.dataset.val);
+                        const active = v <= fbSelectedRating;
+                        b.style.background = active ? '#0b1b3a' : 'white';
+                        b.style.color = active ? 'white' : '#4a5568';
+                        b.style.borderColor = active ? '#0b1b3a' : '#e2e8f0';
+                    });
+                };
+                ratingRow.appendChild(btn);
+            }
+
+            // Topic chips
+            const topicsEl = document.getElementById('fbTopics');
+            if (!topicsEl) return;
+            topicsEl.innerHTML = '';
+            FB_TOPICS.forEach(t => {
+                const chip = document.createElement('button');
+                chip.textContent = t;
+                chip.style.cssText = 'padding:0.3rem 0.7rem;border-radius:20px;border:1.5px solid #e2e8f0;background:white;color:#4a5568;font-size:0.75rem;font-weight:600;cursor:pointer;transition:all .15s;';
+                chip.onclick = function() {
+                    if (fbSelectedTopics.has(t)) {
+                        fbSelectedTopics.delete(t);
+                        chip.style.background = 'white';
+                        chip.style.color = '#4a5568';
+                        chip.style.borderColor = '#e2e8f0';
+                    } else {
+                        fbSelectedTopics.add(t);
+                        chip.style.background = '#0b1b3a';
+                        chip.style.color = 'white';
+                        chip.style.borderColor = '#0b1b3a';
+                    }
+                };
+                topicsEl.appendChild(chip);
+            });
+        }
+
+        async function submitFeedback() {
+            const btn = document.getElementById('fbSubmitBtn');
+            const thanks = document.getElementById('fbThanks');
+            const comment = (document.getElementById('fbComment').value || '').trim();
+
+            if (!fbSelectedRating && fbSelectedTopics.size === 0 && !comment) {
+                alert('Please select a rating, topic, or leave a comment before submitting.');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+            btn.textContent = 'Submitting…';
+
+            try {
+                const user = auth.currentUser;
+                await db.collection('feedback').add({
+                    rating: fbSelectedRating || 0,
+                    topics: Array.from(fbSelectedTopics),
+                    comment: comment,
+                    source: 'post-transfer',
+                    userName: user ? (user.displayName || '') : '',
+                    userEmail: user ? user.email : '',
+                    userId: user ? user.uid : '',
+                    orderId: transactionData.orderId || '',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                });
+                document.getElementById('feedbackWidget').style.opacity = '0.4';
+                document.getElementById('feedbackWidget').style.pointerEvents = 'none';
+                btn.style.display = 'none';
+                thanks.style.display = 'block';
+            } catch (err) {
+                console.error('Feedback submit error:', err);
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.textContent = 'Submit Feedback';
+                alert('Could not submit feedback. Please try again.');
+            }
         }
 
         // Set first step as active on load
